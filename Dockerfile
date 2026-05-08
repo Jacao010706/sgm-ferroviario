@@ -3,7 +3,7 @@ FROM python:3.12-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y \
-    gcc g++ libpq-dev curl build-essential libssl-dev libffi-dev \
+    gcc libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend/requirements.txt .
