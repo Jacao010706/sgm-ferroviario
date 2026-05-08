@@ -32,7 +32,7 @@ class User(Base):
     push_token: Mapped[str | None] = mapped_column(String(500))  # token mobile
 
     team: Mapped["Team"] = relationship("Team", back_populates="members")
-    work_orders: Mapped[list["WorkOrder"]] = relationship("WorkOrder", back_populates="assigned_to")
+    work_orders: Mapped[list["WorkOrder"]] = relationship("WorkOrder", back_populates="assigned_to", foreign_keys="[WorkOrder.assigned_to_id]")
 
 
 class Team(Base):
