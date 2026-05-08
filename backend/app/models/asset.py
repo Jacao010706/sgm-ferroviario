@@ -60,8 +60,8 @@ class Asset(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     location: Mapped["Location"] = relationship("Location", back_populates="assets")
-    children: Mapped[list["Asset"]] = relationship("Asset", back_populates="parent")
-    parent: Mapped["Asset | None"] = relationship("Asset", back_populates="children", remote_side="Asset.id")
+    children: Mapped[list["Asset"]] = relationship("Asset", back_populates="parent", foreign_keys="[Asset.parent_id]")
+    parent: Mapped["Asset | None"] = relationship("Asset", back_populates="children", foreign_keys="[Asset.parent_id]", remote_side="[Asset.id]")
     maintenance_plans: Mapped[list["MaintenancePlan"]] = relationship("MaintenancePlan", back_populates="asset")
     work_orders: Mapped[list["WorkOrder"]] = relationship("WorkOrder", back_populates="asset")
     alerts: Mapped[list["Alert"]] = relationship("Alert", back_populates="asset")
@@ -81,5 +81,5 @@ class Location(Base):
     parent_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("locations.id"))
 
     assets: Mapped[list["Asset"]] = relationship("Asset", back_populates="location")
-    children: Mapped[list["Location"]] = relationship("Location", back_populates="parent")
-    parent: Mapped["Location | None"] = relationship("Location", back_populates="children", remote_side="Location.id")
+    children: Mapped[list["Location"]] = relationship("Location", back_populates="parent", foreign_keys="[Location.parent_id]")
+    parent: Mapped["Location | None"] = relationship("Location", back_populates="children", foreign_keys="[Location.parent_id]", remote_side="[Location.id]")

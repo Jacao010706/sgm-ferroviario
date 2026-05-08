@@ -5,10 +5,10 @@ from app.core.config import settings
 
 engine = create_async_engine(
     settings.ASYNC_DATABASE_URL,
-    pool_size=20,
-    max_overflow=10,
+    pool_size=5,
+    max_overflow=5,
     pool_pre_ping=True,
-    echo=settings.ENVIRONMENT == "development",
+    echo=False,  # desabilitado para evitar spam de logs no Railway
 )
 
 AsyncSessionLocal = async_sessionmaker(
