@@ -13,18 +13,34 @@ log = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     log.info("Iniciando SGM Ferroviário", version=settings.VERSION, env=settings.ENVIRONMENT)
-    await create_tables()
 
-    # Iniciar gateway IoT/MQTT em background
-    from app.integrations.iot.iot_gateway import IoTGateway
-    iot = IoTGateway()
+    # Conectar ao banco com retry
     import asyncio
-    asyncio.create_task(iot.start())
+    for attempt in range(5):
+        try:
+            await create_tables()
+            log.info("Banco de dados conectado com sucesso")
+            break
+        except Exception as e:
+            log.warning("Tentativa de conexão ao banco falhou", attempt=attempt + 1, error=str(e))
+            if attempt < 4:
+                await asyncio.sleep(3)
 
-    # Iniciar bridge SCADA em background
-    from app.integrations.scada.scada_gateway import ScadaGateway
-    scada = ScadaGateway()
-    asyncio.create_task(scada.start())
+    # Iniciar gateway IoT/MQTT em background (falha silenciosa se MQTT indisponível)
+    try:
+        from app.integrations.iot.iot_gateway import IoTGateway
+        iot = IoTGateway()
+        asyncio.create_task(iot.start())
+    except Exception as e:
+        log.warning("IoT Gateway não iniciado", error=str(e))
+
+    # Iniciar bridge SCADA em background (falha silenciosa se SCADA indisponível)
+    try:
+        from app.integrations.scada.scada_gateway import ScadaGateway
+        scada = ScadaGateway()
+        asyncio.create_task(scada.start())
+    except Exception as e:
+        log.warning("SCADA Gateway não iniciado", error=str(e))
 
     log.info("Sistema iniciado com sucesso")
     yield
