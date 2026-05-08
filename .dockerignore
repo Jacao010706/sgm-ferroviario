@@ -1,0 +1,14 @@
+.git
+.gitignore
+*.md
+frontend/
+mobile/
+infra/
+docker-compose.yml
+.env
+.env.example
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+node_modules
