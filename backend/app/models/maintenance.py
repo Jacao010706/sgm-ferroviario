@@ -110,5 +110,5 @@ class WorkOrder(Base):
 
     asset: Mapped["Asset"] = relationship("Asset", back_populates="work_orders")
     maintenance_plan: Mapped["MaintenancePlan | None"] = relationship("MaintenancePlan", back_populates="work_orders")
-    assigned_to: Mapped["User | None"] = relationship("User", back_populates="work_orders", foreign_keys=[assigned_to_id])
+    assigned_to: Mapped["User | None"] = relationship("User", back_populates="work_orders", foreign_keys="[WorkOrder.assigned_to_id]")
     alert: Mapped["Alert | None"] = relationship("Alert", back_populates="work_order")

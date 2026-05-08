@@ -72,24 +72,29 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
 @router.post("/register", status_code=201)
 async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
     """Cria usuário. Primeiro usuário torna-se admin automaticamente."""
-    existing = await db.execute(select(User).where(User.email == body.email))
-    if existing.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email já cadastrado")
-    # Primeiro usuário vira admin automaticamente
-    count_result = await db.execute(select(User))
-    is_first = count_result.first() is None
-    user = User(
-        name=body.name,
-        email=body.email,
-        hashed_password=hash_password(body.password),
-        role=UserRole.ADMIN if is_first else body.role,
-        badge_number=body.badge_number,
-        phone=body.phone,
-    )
-    db.add(user)
-    await db.commit()
-    await db.refresh(user)
-    return {"id": str(user.id), "name": user.name, "email": user.email, "role": user.role}
+    try:
+        existing = await db.execute(select(User).where(User.email == body.email))
+        if existing.scalar_one_or_none():
+            raise HTTPException(status_code=400, detail="Email já cadastrado")
+        # Primeiro usuário vira admin automaticamente
+        count_result = await db.execute(select(User))
+        is_first = count_result.first() is None
+        user = User(
+            name=body.name,
+            email=body.email,
+            hashed_password=hash_password(body.password),
+            role=UserRole.ADMIN if is_first else body.role,
+            badge_number=body.badge_number,
+            phone=body.phone,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        return {"id": str(user.id), "name": user.name, "email": user.email, "role": user.role}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"[DEBUG] {type(e).__name__}: {str(e)}")
 
 
 @router.get("/me")
