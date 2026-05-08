@@ -33,7 +33,7 @@ asyncua==1.1.0
 pymodbus==3.6.6
 
 # IoT - MQTT
-paho-mqtt==2.0.0
+paho-mqtt==1.6.1
 aiomqtt==1.2.1
 
 # HTTP client (ERP connectors)
