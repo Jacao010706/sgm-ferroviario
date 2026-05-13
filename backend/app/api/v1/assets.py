@@ -34,7 +34,8 @@ class AssetCreate(BaseModel):
     modbus_address: Optional[int] = None
     mqtt_topic: Optional[str] = None
     erp_asset_id: Optional[str] = None
-
+    warranty_expiry: Optional[datetime] = None
+    qr_code: Optional[str] = None
 
 class AssetOut(BaseModel):
     id: UUID
@@ -48,7 +49,7 @@ class AssetOut(BaseModel):
     nominal_voltage_kv: Optional[float]
     nominal_power_kva: Optional[float]
     criticality: int
-    location_id: Optional[UUID]
+  location_id: Optional[UUID]
     erp_asset_id: Optional[str]
     created_at: datetime
 
@@ -107,7 +108,27 @@ async def get_asset(asset_id: UUID, db: AsyncSession = Depends(get_db), _: User 
     if not asset:
         raise HTTPException(status_code=404, detail="Ativo não encontrado")
     return asset
+    
+@router.patch("/{asset_id}", response_model=AssetOut)
+async def update_asset(asset_id: UUID, body: AssetUpdate, db: AsyncSession = Depends(get_db), _: User = Depends(require_manager)):
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Ativo nao encontrado")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(asset, field, value)
+    await db.commit()
+    await db.refresh(asset)
+    return asset
 
+@router.delete("/{asset_id}", status_code=204)
+async def deactivate_asset(asset_id: UUID, db: AsyncSession = Depends(get_db), _: User = Depends(require_manager)):
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset:
+        raise HTTPException(status_code=404, detail="Ativo nao encontrado")
+    asset.status = AssetStatus.DECOMMISSIONED
+    await db.commit()
 
 @router.post("/", response_model=AssetOut, status_code=201)
 async def create_asset(
@@ -154,6 +175,23 @@ class LocationCreate(BaseModel):
     address: Optional[str] = None
     parent_id: Optional[UUID] = None
 
+    class AssetUpdate(BaseModel):
+    name: Optional[str] = None
+    manufacturer: Optional[str] = None
+    model: Optional[str] = None
+    serial_number: Optional[str] = None
+    installation_date: Optional[datetime] = None
+    warranty_expiry: Optional[datetime] = None
+    location_id: Optional[UUID] = None
+    parent_id: Optional[UUID] = None
+    description: Optional[str] = None
+    specifications: Optional[dict] = None
+    nominal_voltage_kv: Optional[float] = None
+    nominal_power_kva: Optional[float] = None
+    nominal_current_a: Optional[float] = None
+    criticality: Optional[int] = None
+    erp_asset_id: Optional[str] = None
+    qr_code: Optional[str] = None
 
 @locations_router.get("/")
 async def list_locations(db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
