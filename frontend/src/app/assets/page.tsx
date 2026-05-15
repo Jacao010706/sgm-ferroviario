@@ -7,7 +7,7 @@ import clsx from "clsx";
 const STATUS_BADGE: Record<string, string> = { operational: "bg-green-100 text-green-700", maintenance: "bg-amber-100 text-amber-700", failure: "bg-red-100 text-red-700", standby: "bg-slate-100 text-slate-600", decommissioned: "bg-gray-100 text-gray-400" };
 const STATUS_LABEL: Record<string, string> = { operational: "Operacional", maintenance: "Manutencao", failure: "Falha", standby: "Reserva", decommissioned: "Desativado" };
 const TYPE_LABEL: Record<string, string> = { substation: "Subestacao", generator: "Gerador", transformer: "Transformador", rectifier: "Retificador", inverter: "Inversor", switchgear: "Painel", catenary: "Catenaria", battery_bank: "Banco Baterias", circuit_breaker: "Disjuntor", measurement: "Medicao", cooling: "Refrigeracao", other: "Outro" };
-const emptyForm = { tag: "", name: "", asset_type: "generator", status: "operational", criticality: 3, manufacturer: "", model: "", serial_number: "", location_description: "", installation_date: "", notes: "" };
+const emptyForm = { tag: "", name: "", asset_type: "generator", status: "operational", manufacturer: "", model: "", serial_number: "", location_description: "", installation_date: "", notes: "" };
 export default function AssetsPage() {
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function AssetsPage() {
     if (!form.tag || !form.name || !form.asset_type) { setError("Preencha Tag, Nome e Tipo"); return; }
     setSaving(true); setError("");
     try {
-      const payload: any = { ...form, criticality: parseInt(form.criticality) };
+      const payload: any = { ...form, criticality: 3 };
       if (!payload.installation_date) delete payload.installation_date;
       if (!payload.manufacturer) delete payload.manufacturer;
       if (!payload.model) delete payload.model;
@@ -54,17 +54,16 @@ export default function AssetsPage() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200"><tr>{["Tag","Nome","Tipo","Status","Criticidade","Fabricante","Modelo","Acoes"].map((h) => (<th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>))}</tr></thead>
+            <thead className="bg-slate-50 border-b border-slate-200"><tr>{["Tag","Nome","Tipo","Status","Fabricante","Modelo","Acoes"].map((h) => (<th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>))}</tr></thead>
             <tbody className="divide-y divide-slate-100">
-              {loading ? (<tr><td colSpan={8} className="text-center py-10 text-slate-400">Carregando...</td></tr>
-              ) : filtered.length === 0 ? (<tr><td colSpan={8} className="text-center py-10 text-slate-400">Nenhum ativo encontrado</td></tr>
+              {loading ? (<tr><td colSpan={7} className="text-center py-10 text-slate-400">Carregando...</td></tr>
+              ) : filtered.length === 0 ? (<tr><td colSpan={7} className="text-center py-10 text-slate-400">Nenhum ativo encontrado</td></tr>
               ) : filtered.map((a) => (
                 <tr key={a.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-mono font-semibold text-blue-700">{a.tag}</td>
                   <td className="px-4 py-3 font-medium text-slate-800">{a.name}</td>
                   <td className="px-4 py-3 text-slate-500">{TYPE_LABEL[a.asset_type] || a.asset_type}</td>
                   <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[a.status])}>{STATUS_LABEL[a.status] || a.status}</span></td>
-                  <td className="px-4 py-3 text-center"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", a.criticality <= 2 ? "bg-red-100 text-red-700" : a.criticality === 3 ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700")}>P{a.criticality}</span></td>
                   <td className="px-4 py-3 text-slate-500">{a.manufacturer || "-"}</td>
                   <td className="px-4 py-3 text-slate-500">{a.model || "-"}</td>
                   <td className="px-4 py-3"><button className="text-blue-600 hover:underline text-xs">Ver</button></td>
@@ -95,10 +94,9 @@ export default function AssetsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className={lbl}>Numero de Serie</label><input className={inp} value={form.serial_number} onChange={e => setForm({...form, serial_number: e.target.value})} placeholder="Ex: SN123456" /></div>
-                  <div><label className={lbl}>Criticidade (1=Alta, 5=Baixa)</label><select className={inp} value={form.criticality} onChange={e => setForm({...form, criticality: e.target.value})}><option value={1}>1 - Critica</option><option value={2}>2 - Alta</option><option value={3}>3 - Media</option><option value={4}>4 - Baixa</option><option value={5}>5 - Minima</option></select></div>
+                  <div><label className={lbl}>Data de Instalacao</label><input type="date" className={inp} value={form.installation_date} onChange={e => setForm({...form, installation_date: e.target.value})} /></div>
                 </div>
                 <div><label className={lbl}>Localizacao</label><input className={inp} value={form.location_description} onChange={e => setForm({...form, location_description: e.target.value})} placeholder="Ex: Sala de maquinas - Bloco A" /></div>
-                <div><label className={lbl}>Data de Instalacao</label><input type="date" className={inp} value={form.installation_date} onChange={e => setForm({...form, installation_date: e.target.value})} /></div>
                 <div><label className={lbl}>Observacoes</label><textarea className={inp} rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Informacoes adicionais..." /></div>
                 {error && <p className="text-red-600 text-sm">{error}</p>}
               </div>
