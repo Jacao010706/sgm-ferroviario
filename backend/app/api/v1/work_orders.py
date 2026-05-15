@@ -24,6 +24,11 @@ class WorkOrderCreate(BaseModel):
     estimated_duration_h: Optional[float] = None
     assigned_to_id: Optional[UUID] = None
     maintenance_plan_id: Optional[UUID] = None
+    team_id: Optional[UUID] = None
+    contractor_name: Optional[str] = None
+    contractor_document: Optional[str] = None
+    internal_hours: Optional[float] = None
+    contractor_hours: Optional[float] = None
 
 class WorkOrderUpdate(BaseModel):
     status: Optional[WorkOrderStatus] = None

@@ -45,3 +45,4 @@ class Team(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     members: Mapped[list["User"]] = relationship("User", back_populates="team")
+work_orders: Mapped[list["WorkOrder"]] = relationship("WorkOrder", back_populates="team")
