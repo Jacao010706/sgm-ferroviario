@@ -1,176 +1,117 @@
-"use client";
-import { useEffect, useState, useRef } from "react";
-import { api, createTelemetrySocket } from "@/lib/api";
+﻿"use client";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { Zap, Thermometer, Activity, Gauge, Battery, Droplets } from "lucide-react";
-import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, ReferenceLine,
-} from "recharts";
-
-type Reading = { timestamp: string; value: number };
-type LiveData = Record<string, { value: number; unit: string; timestamp: string }>;
-
-const SENSOR_ICONS: Record<string, React.ReactNode> = {
-  voltage: <Zap size={16} className="text-yellow-500" />,
-  temperature: <Thermometer size={16} className="text-red-500" />,
-  oil_temp: <Thermometer size={16} className="text-orange-500" />,
-  current: <Activity size={16} className="text-blue-500" />,
-  power: <Gauge size={16} className="text-purple-500" />,
-  fuel_level: <Droplets size={16} className="text-green-500" />,
-  battery_voltage: <Battery size={16} className="text-cyan-500" />,
-};
+import { Activity, RefreshCw, Thermometer, Zap, Gauge } from "lucide-react";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 
 export default function MonitoringPage() {
   const [assets, setAssets] = useState<any[]>([]);
-  const [selectedAsset, setSelectedAsset] = useState<any>(null);
-  const [liveData, setLiveData] = useState<LiveData>({});
-  const [history, setHistory] = useState<Record<string, Reading[]>>({});
-  const wsRef = useRef<WebSocket | null>(null);
+  const [selected, setSelected] = useState<any>(null);
+  const [readings, setReadings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    api.get("/assets", { params: { limit: 100 } }).then((r) => {
+    api.get("/assets", { params: { limit: 50 } }).then((r) => {
       setAssets(r.data);
-      if (r.data.length > 0) setSelectedAsset(r.data[0]);
+      if (r.data.length > 0) setSelected(r.data[0]);
     });
   }, []);
 
   useEffect(() => {
-    if (!selectedAsset) return;
+    if (!selected) return;
+    setLoading(true);
+    api.get(`/iot/readings/${selected.id}`, { params: { limit: 20 } })
+      .then((r) => setReadings(r.data))
+      .catch(() => setReadings([]))
+      .finally(() => setLoading(false));
+  }, [selected]);
 
-    // Carregar histórico das últimas 2h
-    api.get(`/iot/readings/${selectedAsset.id}`, { params: { hours: 2 } }).then((r) => {
-      const grouped: Record<string, Reading[]> = {};
-      for (const rd of r.data) {
-        if (!grouped[rd.type]) grouped[rd.type] = [];
-        grouped[rd.type].push({ timestamp: rd.timestamp, value: rd.value });
-      }
-      setHistory(grouped);
-    });
-
-    // WebSocket para dados em tempo real
-    wsRef.current?.close();
-    const ws = createTelemetrySocket(selectedAsset.id, (data: any) => {
-      setLiveData((prev) => {
-        const next = { ...prev };
-        for (const [k, v] of Object.entries(data)) {
-          if (k !== "timestamp" && typeof v === "number") {
-            next[k] = { value: v as number, unit: "", timestamp: data.timestamp || new Date().toISOString() };
-          }
-        }
-        return next;
-      });
-      setHistory((prev) => {
-        const next = { ...prev };
-        for (const [k, v] of Object.entries(data)) {
-          if (k !== "timestamp" && typeof v === "number") {
-            if (!next[k]) next[k] = [];
-            next[k] = [...next[k].slice(-60), { timestamp: data.timestamp, value: v as number }];
-          }
-        }
-        return next;
-      });
-    });
-    wsRef.current = ws;
-
-    return () => { ws.close(); };
-  }, [selectedAsset]);
+  const latest = readings[0];
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <div className="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-4">
-          <h1 className="text-xl font-bold text-slate-800">Monitoramento em Tempo Real</h1>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-            <span className="text-xs text-slate-500">Ao vivo</span>
+      <main className="flex-1 p-6 overflow-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Monitoramento</h1>
+            <p className="text-slate-500 text-sm">Telemetria em tempo real</p>
           </div>
+          <button onClick={() => setSelected({...selected})} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">
+            <RefreshCw size={15} className="text-slate-500" />
+          </button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden">
-          {/* Lista de ativos */}
-          <div className="w-56 bg-white border-r border-slate-200 overflow-y-auto">
-            <p className="px-4 py-3 text-xs font-semibold text-slate-400 uppercase tracking-wider">Ativos</p>
-            {assets.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setSelectedAsset(a)}
-                className={`w-full text-left px-4 py-3 border-b border-slate-100 hover:bg-blue-50 transition-colors ${
-                  selectedAsset?.id === a.id ? "bg-blue-50 border-l-4 border-l-blue-600" : ""
-                }`}
-              >
-                <p className="font-semibold text-sm text-slate-800 truncate">{a.tag}</p>
-                <p className="text-xs text-slate-500 truncate">{a.name}</p>
-                <span className={`text-xs px-1.5 py-0.5 rounded mt-1 inline-block ${
-                  a.status === "operational" ? "bg-green-100 text-green-700" :
-                  a.status === "failure" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
-                }`}>{a.status}</span>
-              </button>
-            ))}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <h2 className="font-semibold text-slate-700 mb-3 text-sm">Ativos</h2>
+            <div className="space-y-1">
+              {assets.map((a) => (
+                <button key={a.id} onClick={() => setSelected(a)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700"}`}>
+                  <p className="font-medium truncate">{a.name}</p>
+                  <p className={`text-xs ${selected?.id === a.id ? "text-blue-200" : "text-slate-400"}`}>{a.tag}</p>
+                </button>
+              ))}
+              {assets.length === 0 && <p className="text-slate-400 text-xs text-center py-4">Nenhum ativo cadastrado</p>}
+            </div>
           </div>
 
-          {/* Painel de telemetria */}
-          <div className="flex-1 p-6 overflow-y-auto bg-slate-50">
-            {selectedAsset ? (
+          <div className="lg:col-span-3 space-y-4">
+            {selected && (
               <>
-                <div className="mb-4">
-                  <h2 className="text-lg font-bold text-slate-800">{selectedAsset.name}</h2>
-                  <p className="text-sm text-slate-500">{selectedAsset.tag} — {selectedAsset.asset_type}</p>
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="font-semibold text-slate-700">{selected.name}</h2>
+                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${selected.status === "operational" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>{selected.status}</span>
+                  </div>
+                  <p className="text-xs text-slate-500">Tag: {selected.tag} | Tipo: {selected.asset_type}</p>
                 </div>
 
-                {/* Cards de leitura atual */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                  {Object.entries(liveData).map(([key, data]) => (
-                    <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100">
-                      <div className="flex items-center gap-2 mb-1">
-                        {SENSOR_ICONS[key] || <Activity size={16} />}
-                        <span className="text-xs text-slate-500 capitalize">{key.replace(/_/g, " ")}</span>
-                      </div>
-                      <p className="text-2xl font-bold text-slate-800">
-                        {typeof data.value === "number" ? data.value.toFixed(2) : "—"}
-                        <span className="text-sm font-normal text-slate-400 ml-1">{data.unit}</span>
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">{new Date(data.timestamp).toLocaleTimeString("pt-BR")}</p>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
+                    <div className="p-2 bg-blue-50 rounded-lg"><Zap size={20} className="text-blue-600" /></div>
+                    <div>
+                      <p className="text-xl font-bold text-slate-800">{latest?.voltage_v ? `${latest.voltage_v}V` : "--"}</p>
+                      <p className="text-xs text-slate-500">Tensao</p>
                     </div>
-                  ))}
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
+                    <div className="p-2 bg-amber-50 rounded-lg"><Thermometer size={20} className="text-amber-600" /></div>
+                    <div>
+                      <p className="text-xl font-bold text-slate-800">{latest?.temperature_c ? `${latest.temperature_c}C` : "--"}</p>
+                      <p className="text-xs text-slate-500">Temperatura</p>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
+                    <div className="p-2 bg-green-50 rounded-lg"><Gauge size={20} className="text-green-600" /></div>
+                    <div>
+                      <p className="text-xl font-bold text-slate-800">{latest?.current_a ? `${latest.current_a}A` : "--"}</p>
+                      <p className="text-xs text-slate-500">Corrente</p>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Gráficos histórico */}
-                {Object.entries(history).map(([key, readings]) => (
-                  <div key={key} className="bg-white rounded-xl p-4 shadow-sm border border-slate-100 mb-4">
-                    <h3 className="font-semibold text-slate-700 mb-3 capitalize flex items-center gap-2">
-                      {SENSOR_ICONS[key]} {key.replace(/_/g, " ")}
-                    </h3>
-                    <ResponsiveContainer width="100%" height={120}>
-                      <LineChart data={readings}>
-                        <XAxis
-                          dataKey="timestamp"
-                          tick={{ fontSize: 10 }}
-                          tickFormatter={(t) => new Date(t).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                        />
+                <div className="bg-white rounded-xl border border-slate-200 p-4">
+                  <h2 className="font-semibold text-slate-700 mb-4 flex items-center gap-2"><Activity size={16} /> Historico de Leituras</h2>
+                  {loading ? <p className="text-center text-slate-400 py-8">Carregando...</p>
+                  : readings.length === 0 ? <p className="text-center text-slate-400 py-8">Nenhuma leitura disponivel para este ativo</p>
+                  : (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={[...readings].reverse()}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                        <XAxis dataKey="timestamp" tick={{ fontSize: 10 }} tickFormatter={(v) => new Date(v).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} />
                         <YAxis tick={{ fontSize: 10 }} />
-                        <Tooltip
-                          formatter={(v: number) => [v.toFixed(3), key]}
-                          labelFormatter={(l) => new Date(l).toLocaleTimeString("pt-BR")}
-                        />
-                        <Line type="monotone" dataKey="value" stroke="#2563EB" dot={false} strokeWidth={1.5} />
+                        <Tooltip />
+                        <Line type="monotone" dataKey="voltage_v" stroke="#2563EB" name="Tensao (V)" dot={false} />
+                        <Line type="monotone" dataKey="temperature_c" stroke="#D97706" name="Temp (C)" dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
-                  </div>
-                ))}
-
-                {Object.keys(history).length === 0 && Object.keys(liveData).length === 0 && (
-                  <div className="text-center py-16 text-slate-400">
-                    <Activity size={40} className="mx-auto mb-3 opacity-30" />
-                    <p>Aguardando dados de telemetria...</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </>
-            ) : (
-              <div className="flex items-center justify-center h-full text-slate-400">
-                Selecione um ativo para monitorar
-              </div>
             )}
+            {!selected && <p className="text-center text-slate-400 py-20">Selecione um ativo para ver o monitoramento</p>}
           </div>
         </div>
       </main>

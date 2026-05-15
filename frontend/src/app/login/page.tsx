@@ -19,6 +19,7 @@ export default function LoginPage() {
       localStorage.setItem("refresh_token", resp.data.refresh_token);
       localStorage.setItem("user_name", resp.data.name);
       localStorage.setItem("user_role", resp.data.role);
+      document.cookie = `access_token=${resp.data.access_token}; path=/; max-age=3600`;
       router.push("/dashboard");
     } catch {
       setError("Email ou senha invalidos");
