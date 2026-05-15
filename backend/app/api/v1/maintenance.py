@@ -10,8 +10,7 @@ from app.models.maintenance import MaintenancePlan, MaintenanceType, Frequency, 
 from app.models.user import User
 from app.api.deps import get_current_user, require_manager
 
-router = APIRouter(prefix="/maintenance-plans", tags=["Planos de Manutenção"])
-
+router = APIRouter(prefix="/maintenance-plans", tags=["Planos de Manutencao"])
 
 class PlanCreate(BaseModel):
     name: str
@@ -26,6 +25,18 @@ class PlanCreate(BaseModel):
     required_skills: Optional[list] = None
     required_parts: Optional[list] = None
 
+class PlanUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    frequency: Optional[Frequency] = None
+    frequency_days: Optional[int] = None
+    estimated_duration_h: Optional[float] = None
+    priority: Optional[Priority] = None
+    checklist: Optional[list] = None
+    required_skills: Optional[list] = None
+    required_parts: Optional[list] = None
+    is_active: Optional[bool] = None
+    next_due: Optional[datetime] = None
 
 FREQUENCY_DAYS = {
     Frequency.DAILY: 1,
@@ -38,90 +49,69 @@ FREQUENCY_DAYS = {
     Frequency.BIENNIAL: 730,
 }
 
-
 @router.get("/")
-async def list_plans(
-    asset_id: Optional[UUID] = None,
-    is_active: Optional[bool] = True,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
+async def list_plans(asset_id: Optional[UUID]=None, is_active: Optional[bool]=True, db: AsyncSession=Depends(get_db), _: User=Depends(get_current_user)):
     q = select(MaintenancePlan)
-    if asset_id:
-        q = q.where(MaintenancePlan.asset_id == asset_id)
-    if is_active is not None:
-        q = q.where(MaintenancePlan.is_active == is_active)
+    if asset_id: q = q.where(MaintenancePlan.asset_id == asset_id)
+    if is_active is not None: q = q.where(MaintenancePlan.is_active == is_active)
     result = await db.execute(q)
     return result.scalars().all()
 
-
 @router.get("/due-soon")
-async def plans_due_soon(
-    days: int = 7,
-    db: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
-):
-    """Planos com manutenção vencendo nos próximos N dias"""
+async def plans_due_soon(days: int=7, db: AsyncSession=Depends(get_db), _: User=Depends(get_current_user)):
     cutoff = datetime.utcnow() + timedelta(days=days)
-    result = await db.execute(
-        select(MaintenancePlan).where(
-            MaintenancePlan.is_active == True,
-            MaintenancePlan.next_due <= cutoff,
-        ).order_by(MaintenancePlan.next_due)
-    )
+    result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.is_active == True, MaintenancePlan.next_due <= cutoff).order_by(MaintenancePlan.next_due))
     return result.scalars().all()
 
+@router.get("/{plan_id}")
+async def get_plan(plan_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(get_current_user)):
+    result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    if not plan: raise HTTPException(status_code=404, detail="Plano nao encontrado")
+    return plan
 
 @router.post("/", status_code=201)
-async def create_plan(
-    body: PlanCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_manager),
-):
+async def create_plan(body: PlanCreate, db: AsyncSession=Depends(get_db), current_user: User=Depends(require_manager)):
     days = body.frequency_days if body.frequency == Frequency.CUSTOM_DAYS else FREQUENCY_DAYS.get(body.frequency, 30)
     next_due = datetime.utcnow() + timedelta(days=days)
-    plan = MaintenancePlan(
-        **body.model_dump(),
-        next_due=next_due,
-        created_by_id=current_user.id,
-    )
+    plan = MaintenancePlan(**body.model_dump(), next_due=next_due, created_by_id=current_user.id)
     db.add(plan)
     await db.flush()
     await db.refresh(plan)
+    await db.commit()
     return plan
 
-
-@router.post("/{plan_id}/generate-work-order")
-async def generate_work_order(
-    plan_id: UUID,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_manager),
-):
-    """Gera uma OS a partir do plano de manutenção"""
-    from app.models.maintenance import WorkOrder
-    from app.api.v1.work_orders import generate_os_number
-
+@router.patch("/{plan_id}")
+async def update_plan(plan_id: UUID, body: PlanUpdate, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
     result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
     plan = result.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plano não encontrado")
+    if not plan: raise HTTPException(status_code=404, detail="Plano nao encontrado")
+    for field, value in body.model_dump(exclude_unset=True).items():
+        setattr(plan, field, value)
+    await db.commit()
+    await db.refresh(plan)
+    return plan
 
-    wo = WorkOrder(
-        number=generate_os_number(),
-        title=f"[PM] {plan.name}",
-        description=plan.description,
-        asset_id=plan.asset_id,
-        maintenance_type=plan.maintenance_type,
-        priority=plan.priority,
-        maintenance_plan_id=plan.id,
-        estimated_duration_h=plan.estimated_duration_h,
-        checklist_progress={item["id"]: False for item in (plan.checklist or [])},
-        created_by_id=current_user.id,
-        scheduled_start=datetime.utcnow(),
-    )
+@router.delete("/{plan_id}", status_code=204)
+async def deactivate_plan(plan_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
+    result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    if not plan: raise HTTPException(status_code=404, detail="Plano nao encontrado")
+    plan.is_active = False
+    await db.commit()
+
+@router.post("/{plan_id}/generate-work-order")
+async def generate_work_order(plan_id: UUID, db: AsyncSession=Depends(get_db), current_user: User=Depends(require_manager)):
+    from app.models.maintenance import WorkOrder
+    from app.api.v1.work_orders import generate_os_number
+    result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    if not plan: raise HTTPException(status_code=404, detail="Plano nao encontrado")
+    wo = WorkOrder(number=generate_os_number(), title=f"[PM] {plan.name}", description=plan.description, asset_id=plan.asset_id, maintenance_type=plan.maintenance_type, priority=plan.priority, maintenance_plan_id=plan.id, estimated_duration_h=plan.estimated_duration_h, checklist_progress={item["id"]: False for item in (plan.checklist or [])}, created_by_id=current_user.id, scheduled_start=datetime.utcnow())
     db.add(wo)
     days = FREQUENCY_DAYS.get(plan.frequency, plan.frequency_days or 30)
     plan.last_executed = datetime.utcnow()
     plan.next_due = datetime.utcnow() + timedelta(days=days)
     await db.flush()
+    await db.commit()
     return {"work_order_id": str(wo.id), "number": wo.number, "next_due": plan.next_due.isoformat()}

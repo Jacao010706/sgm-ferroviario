@@ -105,6 +105,11 @@ class WorkOrder(Base):
     erp_wo_id: Mapped[str | None] = mapped_column(String(100))     # ID no ERP
     synced_erp: Mapped[bool] = mapped_column(Boolean, default=False)
     synced_at: Mapped[datetime | None] = mapped_column(DateTime)
+    team_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
+    contractor_name: Mapped[str | None] = mapped_column(String(200))
+    contractor_document: Mapped[str | None] = mapped_column(String(20))
+    internal_hours: Mapped[float | None] = mapped_column(Float)
+    contractor_hours: Mapped[float | None] = mapped_column(Float)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -112,3 +117,4 @@ class WorkOrder(Base):
     maintenance_plan: Mapped["MaintenancePlan | None"] = relationship("MaintenancePlan", back_populates="work_orders")
     assigned_to: Mapped["User | None"] = relationship("User", back_populates="work_orders", foreign_keys="[WorkOrder.assigned_to_id]")
     alert: Mapped["Alert | None"] = relationship("Alert", back_populates="work_order")
+team: Mapped["Team | None"] = relationship("Team", back_populates="work_orders")

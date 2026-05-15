@@ -58,7 +58,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.ENVIRONMENT == "development" else ["https://sgm.empresa.com.br"],
+    allow_origins=["*"] if settings.ENVIRONMENT == "development" else ["https://sgm.empresa.com.br", "https://laudable-peace-production-09cd.up.railway.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

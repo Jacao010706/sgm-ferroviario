@@ -29,11 +29,30 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Cancelada", waiting_approval: "Ag. Aprovação",
 };
 
+const MAINTENANCE_BADGE: Record<string, string> = {
+  preventive:  "bg-blue-100 text-blue-700",
+  corrective:  "bg-red-100 text-red-700",
+  emergency:   "bg-rose-100 text-rose-800",
+  predictive:  "bg-purple-100 text-purple-700",
+  inspection:  "bg-teal-100 text-teal-700",
+  calibration: "bg-gray-100 text-gray-700",
+};
+
+const MAINTENANCE_LABEL: Record<string, string> = {
+  preventive:  "Preventiva",
+  corrective:  "Corretiva",
+  emergency:   "Emergencial",
+  predictive:  "Preditiva",
+  inspection:  "Inspeção",
+  calibration: "Calibração",
+};
+
 export default function WorkOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -48,9 +67,10 @@ export default function WorkOrdersPage() {
 
   const filtered = orders.filter(
     (o) =>
-      !search ||
-      o.number.toLowerCase().includes(search.toLowerCase()) ||
-      o.title.toLowerCase().includes(search.toLowerCase())
+      (!search ||
+        o.number.toLowerCase().includes(search.toLowerCase()) ||
+        o.title.toLowerCase().includes(search.toLowerCase())) &&
+      (!typeFilter || o.maintenance_type === typeFilter)
   );
 
   return (
@@ -88,6 +108,16 @@ export default function WorkOrdersPage() {
               <option key={k} value={k}>{v}</option>
             ))}
           </select>
+          <select
+            className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+          >
+            <option value="">Todos os tipos</option>
+            {Object.entries(MAINTENANCE_LABEL).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
           <button onClick={load} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50">
             <RefreshCw size={15} className="text-slate-500" />
           </button>
@@ -98,16 +128,16 @@ export default function WorkOrdersPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                {["Número", "Título", "Ativo", "Tipo", "Prioridade", "Status", "Prazo", "Ações"].map((h) => (
+                {["Número", "Título", "Ativo", "Tipo", "Equipe / Terceirizada", "Horas Int.", "Horas Terc.", "Prioridade", "Status", "Prazo", "Ações"].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Carregando...</td></tr>
+                <tr><td colSpan={11} className="text-center py-10 text-slate-400">Carregando...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-10 text-slate-400">Nenhuma OS encontrada</td></tr>
+                <tr><td colSpan={11} className="text-center py-10 text-slate-400">Nenhuma OS encontrada</td></tr>
               ) : filtered.map((o) => (
                 <tr key={o.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-mono font-semibold text-blue-700">{o.number}</td>
@@ -115,7 +145,36 @@ export default function WorkOrdersPage() {
                     <p className="truncate font-medium text-slate-800">{o.title}</p>
                   </td>
                   <td className="px-4 py-3 text-slate-500">{o.asset_id?.slice(0, 8)}...</td>
-                  <td className="px-4 py-3 text-slate-500 capitalize">{o.maintenance_type?.replace("_", " ")}</td>
+                  <td className="px-4 py-3">
+                    <span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", MAINTENANCE_BADGE[o.maintenance_type] || "bg-gray-100 text-gray-600")}>
+                      {MAINTENANCE_LABEL[o.maintenance_type] || o.maintenance_type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 text-xs">
+                    {o.team_id ? (
+                      <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                        🏢 Interna
+                      </span>
+                    ) : null}
+                    {o.contractor_name ? (
+                      <span className="inline-flex items-center gap-1 bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium mt-1">
+                        🔧 {o.contractor_name}
+                      </span>
+                    ) : null}
+                    {!o.team_id && !o.contractor_name ? (
+                      <span className="text-slate-400">—</span>
+                    ) : null}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 text-center">
+                    {o.internal_hours != null ? (
+                      <span className="font-semibold text-blue-700">{o.internal_hours}h</span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="px-4 py-3 text-slate-600 text-center">
+                    {o.contractor_hours != null ? (
+                      <span className="font-semibold text-orange-600">{o.contractor_hours}h</span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", PRIORITY_BADGE[o.priority])}>
                       {o.priority}
