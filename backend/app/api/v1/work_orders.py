@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+﻿from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from pydantic import BaseModel
@@ -157,7 +157,7 @@ async def complete_work_order(wo_id: UUID, observations: Optional[str]=None, db:
     if wo.status != WorkOrderStatus.IN_PROGRESS:
         raise HTTPException(status_code=400, detail="OS precisa estar em progresso para ser concluida")
     
-    @router.post("/{wo_id}/photos")
+@router.post("/{wo_id}/photos")
 async def upload_photo(wo_id: UUID, file: UploadFile = File(...), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
     result = await db.execute(select(WorkOrder).where(WorkOrder.id == wo_id))
     wo = result.scalar_one_or_none()
