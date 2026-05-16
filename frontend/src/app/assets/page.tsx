@@ -21,7 +21,6 @@ export default function AssetsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const router = useRouter();
   const load = () => { setLoading(true); api.get("/assets", { params: { limit: 200 } }).then((r) => setAssets(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
   const roots = assets.filter(a => !a.parent_id).filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.tag.toLowerCase().includes(search.toLowerCase())).filter(a => !statusFilter || a.status === statusFilter).filter(a => !typeFilter || a.asset_type === typeFilter);
