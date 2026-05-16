@@ -79,7 +79,29 @@ export default function WorkOrderDetailPage() {
     } catch (e: any) {
       setMsg(e?.response?.data?.detail || "Erro ao concluir");
     } finally { setSaving(false); }
-  };
+  };const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  setUploading(true);
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await api.post("/work-orders/" + id + "/photos", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
+    setMsg("Foto enviada com sucesso!");
+    setTimeout(() => setMsg(""), 3000);
+  } catch { setMsg("Erro ao enviar foto"); }
+  finally { setUploading(false); }
+};
+const handlePhotoDelete = async (publicId: string) => {
+  if (!confirm("Remover esta foto?")) return;
+  try {
+    const res = await api.delete("/work-orders/" + id + "/photos/" + publicId);
+    setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
+  } catch { setMsg("Erro ao remover foto"); }
+};
   <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
   <div className="flex items-center justify-between mb-3">
     <h2 className="font-semibold text-slate-700 flex items-center gap-2"><Camera size={15}/> Fotos da Manutencao</h2>
