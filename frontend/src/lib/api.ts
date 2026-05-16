@@ -1,5 +1,5 @@
 import axios from "axios";
-const API_BASE = "https://sgm-ferroviario-production.up.railway.app";
+const API_BASE = "https://sgm-ferroviario-production.up.railway.app"; // cache-bust: 2026-05-16
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
   timeout: 15000,
