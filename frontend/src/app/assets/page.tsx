@@ -21,11 +21,16 @@ export default function AssetsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const router = useRouter();
   const load = () => { setLoading(true); api.get("/assets", { params: { limit: 200 } }).then((r) => setAssets(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
   const roots = assets.filter(a => !a.parent_id).filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.tag.toLowerCase().includes(search.toLowerCase())).filter(a => !statusFilter || a.status === statusFilter).filter(a => !typeFilter || a.asset_type === typeFilter);
   const children = (parentId: string) => assets.filter(a => a.parent_id === parentId);
   const toggleExpand = (id: string) => { const s = new Set(expanded); s.has(id) ? s.delete(id) : s.add(id); setExpanded(s); };
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir este ativo?")) return;
+    try { await api.delete(`/assets/${id}`); load(); } catch { alert("Erro ao excluir ativo"); }
+  };
   const openNew = (parentId?: string) => { setForm({...emptyForm, parent_id: parentId || ""}); setShowModal(true); };
   const handleSubmit = async () => {
     if (!form.tag || !form.name || !form.asset_type) { setError("Preencha Tag, Nome e Tipo"); return; }
@@ -56,7 +61,7 @@ export default function AssetsPage() {
         <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[a.status])}>{STATUS_LABEL[a.status] || a.status}</span></td>
         <td className="px-4 py-3 text-slate-500 text-sm">{a.manufacturer || "-"}</td>
         <td className="px-4 py-3 text-slate-500 text-sm">{a.model || "-"}</td>
-        <td className="px-4 py-3 flex gap-2"><button onClick={() => router.push(`/assets/${a.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button><button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button></td>
+        <td className="px-4 py-3 flex gap-2"><button onClick={() => router.push(`/assets/${a.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button><button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button><button onClick={() => handleDelete(a.id)} className="text-red-500 hover:underline text-xs">Excluir</button></td>
       </tr>
       {isExpanded && kids.map(k => <AssetRow key={k.id} a={k} depth={depth+1} />)}
     </>);
@@ -125,6 +130,12 @@ export default function AssetsPage() {
     </div>
   );
 }
+
+
+
+
+
+
 
 
 
