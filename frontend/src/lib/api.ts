@@ -1,12 +1,9 @@
-import axios from "axios";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://sgm-ferroviario-production.up.railway.app";
-
+﻿import axios from "axios";
+const API_BASE = "https://sgm-ferroviario-production.up.railway.app";
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
   timeout: 15000,
 });
-
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access_token");
@@ -14,7 +11,6 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
-
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
@@ -37,11 +33,8 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
-
-// ─── WebSocket helper ────────────────────────────────────────────────────────
 export function createTelemetrySocket(assetId: string, onData: (d: any) => void): WebSocket {
-  const wsBase = (process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8000").replace("http", "ws");
-  const ws = new WebSocket(`${wsBase}/api/v1/iot/ws/${assetId}`);
+  const ws = new WebSocket(`wss://sgm-ferroviario-production.up.railway.app/api/v1/iot/ws/${assetId}`);
   ws.onmessage = (e) => { try { onData(JSON.parse(e.data)); } catch {} };
   return ws;
 }
