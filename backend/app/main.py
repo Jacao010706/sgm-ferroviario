@@ -54,6 +54,8 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     lifespan=lifespan,
+    from fastapi.middleware.trustedhost import TrustedHostMiddleware
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
 )
 
 app.add_middleware(
