@@ -10,7 +10,6 @@ const STATUS_LABEL: Record<string, string> = { operational: "Operacional", maint
 const TYPE_LABEL: Record<string, string> = { substation: "Subestacao", generator: "Gerador", transformer: "Transformador", rectifier: "Retificador", inverter: "Inversor", switchgear: "Painel", catenary: "Catenaria", battery_bank: "Banco Baterias", circuit_breaker: "Disjuntor", measurement: "Medicao", cooling: "Refrigeracao", other: "Outro" };
 export default function AssetDetailPage() {
   const { id } = useParams();
-  const router = useRouter();
   const [asset, setAsset] = useState<any>(null);
   const [kids, setKids] = useState<any[]>([]);
   const [workOrders, setWorkOrders] = useState<any[]>([]);
