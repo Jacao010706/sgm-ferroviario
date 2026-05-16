@@ -10,7 +10,16 @@ from app.core.database import get_db
 from app.models.maintenance import WorkOrder, WorkOrderStatus, MaintenanceType, Priority
 from app.models.user import User
 from app.api.deps import get_current_user, require_manager, require_technician
+from fastapi import UploadFile, File
+import cloudinary
+import cloudinary.uploader
+import os
 
+cloudinary.config(
+    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+    api_key=os.getenv("CLOUDINARY_API_KEY"),
+    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+)
 router = APIRouter(prefix="/work-orders", tags=["Ordens de Servico"])
 
 class WorkOrderCreate(BaseModel):
@@ -44,6 +53,11 @@ class WorkOrderUpdate(BaseModel):
     scheduled_start: Optional[datetime] = None
     scheduled_end: Optional[datetime] = None
     priority: Optional[Priority] = None
+    team_id: Optional[UUID] = None
+    contractor_name: Optional[str] = None
+    contractor_document: Optional[str] = None
+    internal_hours: Optional[float] = None
+    contractor_hours: Optional[float] = None
 
 def generate_os_number() -> str:
     from datetime import date
@@ -142,6 +156,32 @@ async def complete_work_order(wo_id: UUID, observations: Optional[str]=None, db:
     if not wo: raise HTTPException(status_code=404, detail="OS nao encontrada")
     if wo.status != WorkOrderStatus.IN_PROGRESS:
         raise HTTPException(status_code=400, detail="OS precisa estar em progresso para ser concluida")
+    @router.post("/{wo_id}/photos")
+async def upload_photo(wo_id: UUID, file: UploadFile = File(...), db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(WorkOrder).where(WorkOrder.id == wo_id))
+    wo = result.scalar_one_or_none()
+    if not wo:
+        raise HTTPException(status_code=404, detail="OS nao encontrada")
+    contents = await file.read()
+    upload_result = cloudinary.uploader.upload(contents, folder=f"sgm/work-orders/{wo_id}", resource_type="image")
+    photos = wo.photos or []
+    photos.append({"url": upload_result["secure_url"], "public_id": upload_result["public_id"], "uploaded_at": datetime.utcnow().isoformat(), "uploaded_by": str(current_user.id)})
+    wo.photos = photos
+    await db.commit()
+    await db.refresh(wo)
+    return {"url": upload_result["secure_url"], "photos": wo.photos}
+
+@router.delete("/{wo_id}/photos/{public_id:path}")
+async def delete_photo(wo_id: UUID, public_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    result = await db.execute(select(WorkOrder).where(WorkOrder.id == wo_id))
+    wo = result.scalar_one_or_none()
+    if not wo:
+        raise HTTPException(status_code=404, detail="OS nao encontrada")
+    cloudinary.uploader.destroy(public_id)
+    photos = [p for p in (wo.photos or []) if p.get("public_id") != public_id]
+    wo.photos = photos
+    await db.commit()
+    return {"photos": wo.photos}
     wo.status = WorkOrderStatus.COMPLETED
     wo.actual_end = datetime.utcnow()
     if wo.actual_start:
