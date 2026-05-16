@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { ArrowLeft, Save, CheckCircle } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Camera, Trash2 } from "lucide-react";
 import clsx from "clsx";
 const PRIORITY_BADGE: Record<string, string> = { critical: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", medium: "bg-amber-100 text-amber-700", low: "bg-green-100 text-green-700" };
 const PRIORITY_LABEL: Record<string, string> = { critical: "Critica", high: "Alta", medium: "Media", low: "Baixa" };
@@ -20,6 +20,7 @@ export default function WorkOrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
+  const [uploading, setUploading] = useState(false);
   const [form, setForm] = useState<any>({});
   useEffect(() => {
     if (!id) return;
@@ -79,6 +80,28 @@ export default function WorkOrderDetailPage() {
       setMsg(e?.response?.data?.detail || "Erro ao concluir");
     } finally { setSaving(false); }
   };
+  <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+  <div className="flex items-center justify-between mb-3">
+    <h2 className="font-semibold text-slate-700 flex items-center gap-2"><Camera size={15}/> Fotos da Manutencao</h2>
+    <label className={clsx("flex items-center gap-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm cursor-pointer", uploading && "opacity-50 pointer-events-none")}>
+      <Camera size={14}/>{uploading ? "Enviando..." : "Adicionar Foto"}
+      <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+    </label>
+  </div>
+  {(!order.photos || order.photos.length === 0) ? (
+    <p className="text-slate-400 text-sm">Nenhuma foto adicionada.</p>
+  ) : (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {order.photos.map((p: any) => (
+        <div key={p.public_id} className="relative group">
+          <img src={p.url} alt="foto" className="w-full h-32 object-cover rounded-lg border border-slate-200" />
+          <button onClick={() => handlePhotoDelete(p.public_id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+          <p className="text-xs text-slate-400 mt-1">{new Date(p.uploaded_at).toLocaleDateString("pt-BR")}</p>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
   if (loading) return <div className="flex min-h-screen bg-slate-50"><Sidebar /><main className="flex-1 p-6 flex items-center justify-center text-slate-400">Carregando...</main></div>;
   if (!order) return <div className="flex min-h-screen bg-slate-50"><Sidebar /><main className="flex-1 p-6 flex items-center justify-center text-slate-400">OS nao encontrada</main></div>;
   return (
