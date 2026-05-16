@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -86,12 +86,12 @@ export default function WorkOrdersPage() {
                   <td className="px-4 py-3 max-w-xs"><p className="truncate font-medium text-slate-800">{o.title}</p></td>
                   <td className="px-4 py-3 text-slate-500 text-xs">{assets.find(a => a.id === o.asset_id)?.name || o.asset_id?.slice(0,8)}</td>
                   <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", MAINTENANCE_BADGE[o.maintenance_type] || "bg-gray-100 text-gray-600")}>{MAINTENANCE_LABEL[o.maintenance_type] || o.maintenance_type}</span></td>
-                  <td className="px-4 py-3 text-xs">{o.team_id ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Interna</span> : null}{o.contractor_name ? <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium ml-1">{o.contractor_name}</span> : null}{!o.team_id && !o.contractor_name ? <span className="text-slate-400">—</span> : null}</td>
-                  <td className="px-4 py-3 text-center">{o.internal_hours != null ? <span className="font-semibold text-blue-700">{o.internal_hours}h</span> : <span className="text-slate-300">—</span>}</td>
-                  <td className="px-4 py-3 text-center">{o.contractor_hours != null ? <span className="font-semibold text-orange-600">{o.contractor_hours}h</span> : <span className="text-slate-300">—</span>}</td>
+                  <td className="px-4 py-3 text-xs">{o.team_id ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Interna</span> : null}{o.contractor_name ? <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium ml-1">{o.contractor_name}</span> : null}{!o.team_id && !o.contractor_name ? <span className="text-slate-400">â€”</span> : null}</td>
+                  <td className="px-4 py-3 text-center">{o.internal_hours != null ? <span className="font-semibold text-blue-700">{o.internal_hours}h</span> : <span className="text-slate-300">â€”</span>}</td>
+                  <td className="px-4 py-3 text-center">{o.contractor_hours != null ? <span className="font-semibold text-orange-600">{o.contractor_hours}h</span> : <span className="text-slate-300">â€”</span>}</td>
                   <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", PRIORITY_BADGE[o.priority])}>{o.priority}</span></td>
                   <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[o.status])}>{STATUS_LABEL[o.status] || o.status}</span></td>
-                  <td className="px-4 py-3 text-slate-500 text-xs">{o.scheduled_end ? new Date(o.scheduled_end).toLocaleDateString("pt-BR") : "—"}</td>
+                  <td className="px-4 py-3 text-slate-500 text-xs">{o.scheduled_end ? new Date(o.scheduled_end).toLocaleDateString("pt-BR") : "â€”"}</td>
                   <td className="px-4 py-3 flex gap-2"><button onClick={() => router.push(`/work-orders/${o.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button><button onClick={() => handleDelete(o.id)} className="text-red-500 hover:underline text-xs">Excluir</button></td>
                 </tr>
               ))}
