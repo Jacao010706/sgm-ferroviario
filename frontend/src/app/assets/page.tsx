@@ -1,5 +1,6 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Plus, Search, RefreshCw, X, ChevronRight, ChevronDown } from "lucide-react";
@@ -9,6 +10,7 @@ const STATUS_LABEL: Record<string, string> = { operational: "Operacional", maint
 const TYPE_LABEL: Record<string, string> = { substation: "Subestacao", generator: "Gerador", transformer: "Transformador", rectifier: "Retificador", inverter: "Inversor", switchgear: "Painel", catenary: "Catenaria", battery_bank: "Banco Baterias", circuit_breaker: "Disjuntor", measurement: "Medicao", cooling: "Refrigeracao", other: "Outro" };
 const emptyForm = { tag: "", name: "", asset_type: "generator", status: "operational", manufacturer: "", model: "", serial_number: "", location_description: "", installation_date: "", notes: "", parent_id: "" };
 export default function AssetsPage() {
+  const router = useRouter();
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -54,7 +56,7 @@ export default function AssetsPage() {
         <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[a.status])}>{STATUS_LABEL[a.status] || a.status}</span></td>
         <td className="px-4 py-3 text-slate-500 text-sm">{a.manufacturer || "-"}</td>
         <td className="px-4 py-3 text-slate-500 text-sm">{a.model || "-"}</td>
-        <td className="px-4 py-3 flex gap-2"><button className="text-blue-600 hover:underline text-xs">Ver</button><button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button></td>
+        <td className="px-4 py-3 flex gap-2"><button onClick={() => router.push(`/assets/${a.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button><button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button></td>
       </tr>
       {isExpanded && kids.map(k => <AssetRow key={k.id} a={k} depth={depth+1} />)}
     </>);
@@ -123,3 +125,6 @@ export default function AssetsPage() {
     </div>
   );
 }
+
+
+
