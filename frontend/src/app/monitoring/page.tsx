@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -7,23 +7,23 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import clsx from "clsx";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending:          { label: "Pendente",         color: "bg-slate-100 text-slate-600" },
-  assigned:         { label: "Atribuída",         color: "bg-blue-100 text-blue-700" },
-  in_progress:      { label: "Em Execução",       color: "bg-yellow-100 text-yellow-700" },
-  paused:           { label: "Pausada",           color: "bg-orange-100 text-orange-700" },
-  completed:        { label: "Concluída",         color: "bg-green-100 text-green-700" },
-  cancelled:        { label: "Cancelada",         color: "bg-red-100 text-red-700" },
-  waiting_parts:    { label: "Aguard. Peças",     color: "bg-purple-100 text-purple-700" },
-  waiting_approval: { label: "Aguard. Aprovação", color: "bg-indigo-100 text-indigo-700" },
+  pending:          { label: "Pendente",          color: "bg-slate-100 text-slate-600" },
+  assigned:         { label: "Atribuida",          color: "bg-blue-100 text-blue-700" },
+  in_progress:      { label: "Em Execucao",        color: "bg-yellow-100 text-yellow-700" },
+  paused:           { label: "Pausada",            color: "bg-orange-100 text-orange-700" },
+  completed:        { label: "Concluida",          color: "bg-green-100 text-green-700" },
+  cancelled:        { label: "Cancelada",          color: "bg-red-100 text-red-700" },
+  waiting_parts:    { label: "Aguard. Pecas",      color: "bg-purple-100 text-purple-700" },
+  waiting_approval: { label: "Aguard. Aprovacao",  color: "bg-indigo-100 text-indigo-700" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
   preventive:  "Preventiva",
   corrective:  "Corretiva",
   predictive:  "Preditiva",
-  inspection:  "Inspeção",
-  calibration: "Calibração",
-  emergency:   "Emergência",
+  inspection:  "Inspecao",
+  calibration: "Calibracao",
+  emergency:   "Emergencia",
 };
 
 function SubAssetHistory({ subAsset }: { subAsset: any }) {
@@ -88,7 +88,7 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
                           <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>
                         )}
                         {os.corrective_action && (
-                          <p className="text-xs text-slate-500 mt-0.5">Ação corretiva: {os.corrective_action}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Acao corretiva: {os.corrective_action}</p>
                         )}
                       </div>
                       <div className="text-right text-xs text-slate-400 shrink-0">
@@ -96,7 +96,7 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
                           <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>
                         )}
                         {os.actual_end && (
-                          <p className="text-green-600">Concluído: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>
+                          <p className="text-green-600">Concluido: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>
                         )}
                         {os.actual_duration_h && (
                           <p>{os.actual_duration_h}h</p>
@@ -155,7 +155,7 @@ export default function MonitoringPage() {
     try {
       await api.post("/iot/simulate/" + selected.id);
       setTimeout(() => loadReadings(), 500);
-    } catch { }
+    } catch {}
     finally { setSimulating(false); }
   };
 
@@ -175,11 +175,7 @@ export default function MonitoringPage() {
   const fuelLevel = getVal("fuel_level");
   const mode = getVal("mode");
   const isSubAsset = !!selected?.parent_id;
-
-  // Subativos do ativo principal selecionado
-  const subAssets = selected && !isSubAsset
-    ? assets.filter((a) => a.parent_id === selected.id)
-    : [];
+  const subAssets = selected && !isSubAsset ? assets.filter((a) => a.parent_id === selected.id) : [];
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -201,7 +197,6 @@ export default function MonitoringPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Lista de ativos */}
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <h2 className="font-semibold text-slate-700 mb-3 text-sm">Ativos</h2>
             <div className="space-y-1">
@@ -212,9 +207,7 @@ export default function MonitoringPage() {
                   className={clsx(
                     "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
                     a.parent_id ? "pl-6" : "",
-                    selected?.id === a.id
-                      ? "bg-blue-600 text-white"
-                      : "hover:bg-slate-50 text-slate-700"
+                    selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700"
                   )}
                 >
                   <p className="font-medium truncate">{a.parent_id ? "↳ " : ""}{a.name}</p>
@@ -225,11 +218,9 @@ export default function MonitoringPage() {
             </div>
           </div>
 
-          {/* Painel direito */}
           <div className="lg:col-span-3 space-y-4">
             {selected && (
               <>
-                {/* Cabeçalho — sempre visível */}
                 <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
                   <div>
                     <h2 className="font-semibold text-slate-700">{selected.name}</h2>
@@ -247,7 +238,6 @@ export default function MonitoringPage() {
                   </div>
                 </div>
 
-                {/* Telemetria — somente para ativo principal */}
                 {!isSubAsset ? (
                   <>
                     <div className="grid grid-cols-3 gap-3">
@@ -320,12 +310,11 @@ export default function MonitoringPage() {
                       </div>
                     </div>
 
-                    {/* Histórico de OS dos subativos */}
                     {subAssets.length > 0 && (
                       <div className="space-y-3">
                         <h2 className="font-semibold text-slate-700 flex items-center gap-2 text-sm">
                           <ClipboardList size={15} className="text-slate-500" />
-                          Histórico de Subativos
+                          Historico de Subativos
                         </h2>
                         {subAssets.map((sub) => (
                           <SubAssetHistory key={sub.id} subAsset={sub} />
@@ -335,7 +324,7 @@ export default function MonitoringPage() {
                   </>
                 ) : (
                   <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                    <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponível apenas no ativo principal.</p>
+                    <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponivel apenas no ativo principal.</p>
                   </div>
                 )}
               </>
