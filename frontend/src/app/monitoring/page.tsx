@@ -1,335 +1,236 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
+import { Plus, Search, RefreshCw, X } from "lucide-react";
 import clsx from "clsx";
 
-const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending:          { label: "Pendente",          color: "bg-slate-100 text-slate-600" },
-  assigned:         { label: "Atribuida",          color: "bg-blue-100 text-blue-700" },
-  in_progress:      { label: "Em Execucao",        color: "bg-yellow-100 text-yellow-700" },
-  paused:           { label: "Pausada",            color: "bg-orange-100 text-orange-700" },
-  completed:        { label: "Concluida",          color: "bg-green-100 text-green-700" },
-  cancelled:        { label: "Cancelada",          color: "bg-red-100 text-red-700" },
-  waiting_parts:    { label: "Aguard. Pecas",      color: "bg-purple-100 text-purple-700" },
-  waiting_approval: { label: "Aguard. Aprovacao",  color: "bg-indigo-100 text-indigo-700" },
+const PRIORITY_LABEL: Record<string, string> = { critical: "Critica", high: "Alta", medium: "Media", low: "Baixa" };
+const PRIORITY_BADGE: Record<string, string> = { critical: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", medium: "bg-amber-100 text-amber-700", low: "bg-green-100 text-green-700" };
+const STATUS_BADGE: Record<string, string> = { pending: "bg-slate-100 text-slate-600", assigned: "bg-blue-100 text-blue-700", in_progress: "bg-indigo-100 text-indigo-700", paused: "bg-yellow-100 text-yellow-700", waiting_parts: "bg-orange-100 text-orange-700", waiting_approval: "bg-purple-100 text-purple-700", completed: "bg-green-100 text-green-700", cancelled: "bg-slate-100 text-slate-400" };
+const STATUS_LABEL: Record<string, string> = { pending: "Pendente", assigned: "Atribuida", in_progress: "Em Execucao", paused: "Pausada", waiting_parts: "Ag. Pecas", completed: "Concluida", cancelled: "Cancelada", waiting_approval: "Ag. Aprovacao" };
+const MAINTENANCE_BADGE: Record<string, string> = { preventive: "bg-blue-100 text-blue-700", corrective: "bg-red-100 text-red-700", emergency: "bg-rose-100 text-rose-800", predictive: "bg-purple-100 text-purple-700", inspection: "bg-teal-100 text-teal-700", calibration: "bg-gray-100 text-gray-700" };
+const MAINTENANCE_LABEL: Record<string, string> = { preventive: "Preventiva", corrective: "Corretiva", emergency: "Emergencial", predictive: "Preditiva", inspection: "Inspecao", calibration: "Calibracao" };
+
+const emptyForm = {
+  title: "", description: "", asset_id: "", sub_asset_id: "",
+  maintenance_type: "corrective", priority: "medium",
+  scheduled_start: "", scheduled_end: "", estimated_duration_h: "",
+  assigned_to_id: "", contractor_name: "", contractor_document: "",
+  internal_hours: "", contractor_hours: ""
 };
 
-const TYPE_LABEL: Record<string, string> = {
-  preventive:  "Preventiva",
-  corrective:  "Corretiva",
-  predictive:  "Preditiva",
-  inspection:  "Inspecao",
-  calibration: "Calibracao",
-  emergency:   "Emergencia",
-};
-
-function SubAssetHistory({ subAsset }: { subAsset: any }) {
+export default function WorkOrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
-  const [open, setOpen] = useState(true);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    setLoading(true);
-    api.get("/work-orders/", { params: { asset_id: subAsset.id, limit: 10 } })
-      .then((r) => setOrders(r.data))
-      .catch(() => setOrders([]))
-      .finally(() => setLoading(false));
-  }, [subAsset.id]);
-
-  return (
-    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          <ClipboardList size={15} className="text-slate-500" />
-          <span className="font-semibold text-slate-700 text-sm">{subAsset.name}</span>
-          <span className="text-xs text-slate-400">{subAsset.tag}</span>
-          {!loading && (
-            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
-              {orders.length} OS
-            </span>
-          )}
-        </div>
-        {open ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
-      </button>
-
-      {open && (
-        <div className="border-t border-slate-100">
-          {loading && <p className="text-center text-slate-400 py-6 text-sm">Carregando...</p>}
-          {!loading && orders.length === 0 && (
-            <p className="text-center text-slate-400 py-6 text-sm">Nenhuma OS encontrada para este subativo.</p>
-          )}
-          {!loading && orders.length > 0 && (
-            <div className="divide-y divide-slate-50">
-              {orders.map((os) => {
-                const st = STATUS_LABEL[os.status] ?? { label: os.status, color: "bg-slate-100 text-slate-600" };
-                return (
-                  <div key={os.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-mono text-slate-400">{os.number}</span>
-                          <span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", st.color)}>{st.label}</span>
-                          {os.maintenance_type && (
-                            <span className="text-xs text-slate-500">{TYPE_LABEL[os.maintenance_type] ?? os.maintenance_type}</span>
-                          )}
-                        </div>
-                        <p className="text-sm font-medium text-slate-700 truncate">{os.title}</p>
-                        {os.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{os.description}</p>}
-                        {os.observations && (
-                          <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>
-                        )}
-                        {os.root_cause && (
-                          <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>
-                        )}
-                        {os.corrective_action && (
-                          <p className="text-xs text-slate-500 mt-0.5">Acao corretiva: {os.corrective_action}</p>
-                        )}
-                      </div>
-                      <div className="text-right text-xs text-slate-400 shrink-0">
-                        {os.scheduled_start && (
-                          <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>
-                        )}
-                        {os.actual_end && (
-                          <p className="text-green-600">Concluido: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>
-                        )}
-                        {os.actual_duration_h && (
-                          <p>{os.actual_duration_h}h</p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export default function MonitoringPage() {
   const [assets, setAssets] = useState<any[]>([]);
-  const [selected, setSelected] = useState<any>(null);
-  const [readings, setReadings] = useState<any[]>([]);
-  const [latest, setLatest] = useState<Record<string, any>>({});
-  const [loading, setLoading] = useState(false);
-  const [simulating, setSimulating] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState<any>({ ...emptyForm });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  useEffect(() => {
-    api.get("/assets", { params: { limit: 50 } }).then((r) => {
-      setAssets(r.data);
-      if (r.data.length > 0) setSelected(r.data[0]);
-    });
-  }, []);
-
-  const loadReadings = useCallback(() => {
-    if (!selected) return;
+  const load = () => {
     setLoading(true);
-    api.get("/iot/readings/" + selected.id, { params: { hours: 2 } })
-      .then((r) => {
-        setReadings(r.data);
-        const latestMap: Record<string, any> = {};
-        r.data.forEach((reading: any) => {
-          if (!latestMap[reading.sensor_id] || reading.timestamp > latestMap[reading.sensor_id].timestamp) {
-            latestMap[reading.sensor_id] = reading;
-          }
-        });
-        setLatest(latestMap);
-      })
-      .catch(() => { setReadings([]); setLatest({}); })
-      .finally(() => setLoading(false));
-  }, [selected]);
-
-  useEffect(() => { loadReadings(); }, [loadReadings]);
-
-  const simulate = async () => {
-    if (!selected) return;
-    setSimulating(true);
-    try {
-      await api.post("/iot/simulate/" + selected.id);
-      setTimeout(() => loadReadings(), 500);
-    } catch {}
-    finally { setSimulating(false); }
+    Promise.all([
+      api.get("/work-orders", { params: { status: statusFilter || undefined, limit: 100 } }).then((r) => setOrders(r.data)),
+      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+    ]).finally(() => setLoading(false));
   };
 
-  const getVal = (sensorId: string) => latest[sensorId]?.value;
-  const fmt = (v: any, unit: string) => v != null ? `${v}${unit}` : "--";
+  useEffect(() => { load(); }, [statusFilter]);
 
-  const voltageData = readings.filter(r => r.sensor_id === "voltage_r").slice(-20).map(r => ({
-    time: new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-    "Tensao R": r.value,
-  }));
+  const subAssets = assets.filter((a) => a.parent_id === form.asset_id);
 
-  const currentData = readings.filter(r => r.sensor_id === "current_r").slice(-20).map(r => ({
-    time: new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-    "Corrente R": r.value,
-  }));
+  const handleAssetChange = (asset_id: string) => {
+    setForm({ ...form, asset_id, sub_asset_id: "" });
+  };
 
-  const fuelLevel = getVal("fuel_level");
-  const mode = getVal("mode");
-  const isSubAsset = !!selected?.parent_id;
-  const subAssets = selected && !isSubAsset ? assets.filter((a) => a.parent_id === selected.id) : [];
+  const filtered = orders.filter((o) =>
+    (!search || o.number?.toLowerCase().includes(search.toLowerCase()) || o.title?.toLowerCase().includes(search.toLowerCase())) &&
+    (!typeFilter || o.maintenance_type === typeFilter)
+  );
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Tem certeza que deseja excluir esta OS?")) return;
+    try { await api.delete(`/work-orders/${id}`); load(); } catch { alert("Erro ao excluir OS"); }
+  };
+
+  const handleSubmit = async () => {
+    if (!form.title || !form.asset_id || !form.maintenance_type) { setError("Preencha titulo, ativo e tipo de manutencao"); return; }
+    setSaving(true); setError("");
+    try {
+      const payload: any = { ...form };
+      if (payload.estimated_duration_h) payload.estimated_duration_h = parseFloat(payload.estimated_duration_h);
+      if (payload.internal_hours) payload.internal_hours = parseFloat(payload.internal_hours);
+      if (payload.contractor_hours) payload.contractor_hours = parseFloat(payload.contractor_hours);
+      if (!payload.scheduled_start) delete payload.scheduled_start;
+      if (!payload.scheduled_end) delete payload.scheduled_end;
+      if (!payload.assigned_to_id) delete payload.assigned_to_id;
+      if (!payload.contractor_name) delete payload.contractor_name;
+      if (!payload.contractor_document) delete payload.contractor_document;
+      if (!payload.internal_hours) delete payload.internal_hours;
+      if (!payload.contractor_hours) delete payload.contractor_hours;
+      if (!payload.sub_asset_id) delete payload.sub_asset_id;
+      await api.post("/work-orders", payload);
+      setShowModal(false); setForm({ ...emptyForm }); load();
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || "Erro ao criar OS");
+    } finally { setSaving(false); }
+  };
+
+  const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  const lbl = "block text-sm font-medium text-slate-700 mb-1";
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen">
       <Sidebar />
       <main className="flex-1 p-6 overflow-auto">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">Monitoramento</h1>
-            <p className="text-slate-500 text-sm">Telemetria em tempo real</p>
+            <h1 className="text-2xl font-bold text-slate-800">Ordens de Servico</h1>
+            <p className="text-slate-500 text-sm">{filtered.length} registros</p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={simulate} disabled={simulating || !selected || isSubAsset} className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm">
-              <PlayCircle size={15} />{simulating ? "Simulando..." : "Simular Dados"}
-            </button>
-            <button onClick={loadReadings} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">
-              <RefreshCw size={15} className="text-slate-500" />
-            </button>
-          </div>
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+            <Plus size={16} /> Nova OS
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <h2 className="font-semibold text-slate-700 mb-3 text-sm">Ativos</h2>
-            <div className="space-y-1">
-              {assets.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setSelected(a)}
-                  className={clsx(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                    a.parent_id ? "pl-6" : "",
-                    selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700"
-                  )}
-                >
-                  <p className="font-medium truncate">{a.parent_id ? "↳ " : ""}{a.name}</p>
-                  <p className={clsx("text-xs", selected?.id === a.id ? "text-blue-200" : "text-slate-400")}>{a.tag}</p>
-                </button>
-              ))}
-              {assets.length === 0 && <p className="text-slate-400 text-xs text-center py-4">Nenhum ativo cadastrado</p>}
-            </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4 flex gap-3 items-center flex-wrap">
+          <div className="relative flex-1 min-w-48">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Buscar por numero ou titulo..." value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+            <option value="">Todos os status</option>
+            {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option value="">Todos os tipos</option>
+            {Object.entries(MAINTENANCE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <button onClick={load} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50"><RefreshCw size={15} className="text-slate-500" /></button>
+        </div>
 
-          <div className="lg:col-span-3 space-y-4">
-            {selected && (
-              <>
-                <div className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between">
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                {["Numero", "Titulo", "Ativo", "Subativo", "Tipo", "Equipe / Terceirizada", "Horas Int.", "Horas Terc.", "Prioridade", "Status", "Prazo", "Acoes"].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {loading ? (
+                <tr><td colSpan={12} className="text-center py-10 text-slate-400">Carregando...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={12} className="text-center py-10 text-slate-400">Nenhuma OS encontrada</td></tr>
+              ) : filtered.map((o) => (
+                <tr key={o.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3 font-mono font-semibold text-blue-700">{o.number}</td>
+                  <td className="px-4 py-3 max-w-xs"><p className="truncate font-medium text-slate-800">{o.title}</p></td>
+                  <td className="px-4 py-3 text-slate-500 text-xs">{assets.find(a => a.id === o.asset_id)?.name || o.asset_id?.slice(0, 8)}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {o.sub_asset_id
+                      ? <span className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full font-medium">{assets.find(a => a.id === o.sub_asset_id)?.name || "Subativo"}</span>
+                      : <span className="text-slate-300">--</span>
+                    }
+                  </td>
+                  <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", MAINTENANCE_BADGE[o.maintenance_type] || "bg-gray-100 text-gray-600")}>{MAINTENANCE_LABEL[o.maintenance_type] || o.maintenance_type}</span></td>
+                  <td className="px-4 py-3 text-xs">
+                    {o.team_id ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">Interna</span> : null}
+                    {o.contractor_name ? <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium ml-1">{o.contractor_name}</span> : null}
+                    {!o.team_id && !o.contractor_name ? <span className="text-slate-400">--</span> : null}
+                  </td>
+                  <td className="px-4 py-3 text-center">{o.internal_hours != null ? <span className="font-semibold text-blue-700">{o.internal_hours}h</span> : <span className="text-slate-300">--</span>}</td>
+                  <td className="px-4 py-3 text-center">{o.contractor_hours != null ? <span className="font-semibold text-orange-600">{o.contractor_hours}h</span> : <span className="text-slate-300">--</span>}</td>
+                  <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", PRIORITY_BADGE[o.priority])}>{PRIORITY_LABEL[o.priority] || o.priority}</span></td>
+                  <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[o.status])}>{STATUS_LABEL[o.status] || o.status}</span></td>
+                  <td className="px-4 py-3 text-slate-500 text-xs">{o.scheduled_end ? new Date(o.scheduled_end).toLocaleDateString("pt-BR") : "--"}</td>
+                  <td className="px-4 py-3 flex gap-2">
+                    <button onClick={() => router.push(`/work-orders/${o.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button>
+                    <button onClick={() => handleDelete(o.id)} className="text-red-500 hover:underline text-xs">Excluir</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {showModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <h2 className="text-lg font-bold text-slate-800">Nova Ordem de Servico</h2>
+                <button onClick={() => { setShowModal(false); setError(""); setForm({ ...emptyForm }); }} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div><label className={lbl}>Titulo *</label><input className={inp} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex: Manutencao corretiva do gerador" /></div>
+                <div><label className={lbl}>Descricao</label><textarea className={inp} rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descricao detalhada..." /></div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <h2 className="font-semibold text-slate-700">{selected.name}</h2>
-                    <p className="text-xs text-slate-500">Tag: {selected.tag} | Tipo: {selected.asset_type}</p>
+                    <label className={lbl}>Ativo Principal *</label>
+                    <select className={inp} value={form.asset_id} onChange={e => handleAssetChange(e.target.value)}>
+                      <option value="">Selecione um ativo</option>
+                      {assets.filter(a => !a.parent_id).map(a => <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>)}
+                    </select>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {!isSubAsset && (
-                      <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", mode === 1 ? "bg-blue-100 text-blue-700" : mode === 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500")}>
-                        {mode === 1 ? "Automatico" : mode === 0 ? "Manual" : "-- Modo"}
-                      </span>
-                    )}
-                    <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", selected.status === "operational" ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700")}>
-                      {selected.status === "operational" ? "Operacional" : selected.status}
-                    </span>
+                  <div>
+                    <label className={lbl}>Subativo <span className="text-slate-400 font-normal">(opcional)</span></label>
+                    <select
+                      className={clsx(inp, subAssets.length === 0 && "opacity-50 cursor-not-allowed")}
+                      value={form.sub_asset_id}
+                      onChange={e => setForm({ ...form, sub_asset_id: e.target.value })}
+                      disabled={subAssets.length === 0}
+                    >
+                      <option value="">{subAssets.length === 0 ? "Selecione o ativo primeiro" : "Nenhum (ativo principal)"}</option>
+                      {subAssets.map(a => <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>)}
+                    </select>
                   </div>
                 </div>
 
-                {!isSubAsset ? (
-                  <>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { label: "Tensao R", sensor: "voltage_r", unit: "V", icon: <Zap size={18} className="text-blue-600"/>, bg: "bg-blue-50" },
-                        { label: "Tensao S", sensor: "voltage_s", unit: "V", icon: <Zap size={18} className="text-indigo-600"/>, bg: "bg-indigo-50" },
-                        { label: "Tensao T", sensor: "voltage_t", unit: "V", icon: <Zap size={18} className="text-violet-600"/>, bg: "bg-violet-50" },
-                        { label: "Corrente R", sensor: "current_r", unit: "A", icon: <Gauge size={18} className="text-green-600"/>, bg: "bg-green-50" },
-                        { label: "Corrente S", sensor: "current_s", unit: "A", icon: <Gauge size={18} className="text-emerald-600"/>, bg: "bg-emerald-50" },
-                        { label: "Corrente T", sensor: "current_t", unit: "A", icon: <Gauge size={18} className="text-teal-600"/>, bg: "bg-teal-50" },
-                      ].map(item => (
-                        <div key={item.sensor} className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
-                          <div className={clsx("p-2 rounded-lg", item.bg)}>{item.icon}</div>
-                          <div>
-                            <p className="text-xl font-bold text-slate-800">{fmt(getVal(item.sensor), item.unit)}</p>
-                            <p className="text-xs text-slate-500">{item.label}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className={lbl}>Tipo de Manutencao *</label><select className={inp} value={form.maintenance_type} onChange={e => setForm({ ...form, maintenance_type: e.target.value })}>{Object.entries(MAINTENANCE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
+                  <div><label className={lbl}>Prioridade</label><select className={inp} value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}><option value="low">Baixa</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Critica</option></select></div>
+                </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
-                        <div className="p-2 bg-amber-50 rounded-lg"><Thermometer size={18} className="text-amber-600"/></div>
-                        <div>
-                          <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "°C")}</p>
-                          <p className="text-xs text-slate-500">Temperatura</p>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-xl border border-slate-200 p-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Droplets size={18} className="text-blue-500"/>
-                          <p className="text-xs text-slate-500">Nivel Combustivel</p>
-                          <span className="ml-auto font-bold text-slate-800">{fmt(fuelLevel, "%")}</span>
-                        </div>
-                        <div className="w-full bg-slate-100 rounded-full h-3">
-                          <div className={clsx("h-3 rounded-full transition-all", fuelLevel > 50 ? "bg-green-500" : fuelLevel > 20 ? "bg-amber-500" : "bg-red-500")} style={{ width: fuelLevel != null ? fuelLevel + "%" : "0%" }} />
-                        </div>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className={lbl}>Duracao Estimada (horas)</label><input type="number" className={inp} value={form.estimated_duration_h} onChange={e => setForm({ ...form, estimated_duration_h: e.target.value })} placeholder="Ex: 4" /></div>
+                  <div></div>
+                </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><Activity size={14}/> Historico Tensao R (V)</h2>
-                        {voltageData.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">Sem dados</p> : (
-                          <ResponsiveContainer width="100%" height={150}>
-                            <LineChart data={voltageData}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="time" tick={{ fontSize: 9 }} />
-                              <YAxis tick={{ fontSize: 9 }} domain={[180, 250]} />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="Tensao R" stroke="#2563EB" dot={false} strokeWidth={2} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        )}
-                      </div>
-                      <div className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><Activity size={14}/> Historico Corrente R (A)</h2>
-                        {currentData.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">Sem dados</p> : (
-                          <ResponsiveContainer width="100%" height={150}>
-                            <LineChart data={currentData}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="time" tick={{ fontSize: 9 }} />
-                              <YAxis tick={{ fontSize: 9 }} domain={[0, 100]} />
-                              <Tooltip />
-                              <Line type="monotone" dataKey="Corrente R" stroke="#16A34A" dot={false} strokeWidth={2} />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        )}
-                      </div>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className={lbl}>Inicio Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_start} onChange={e => setForm({ ...form, scheduled_start: e.target.value })} /></div>
+                  <div><label className={lbl}>Fim Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_end} onChange={e => setForm({ ...form, scheduled_end: e.target.value })} /></div>
+                </div>
 
-                    {subAssets.length > 0 && (
-                      <div className="space-y-3">
-                        <h2 className="font-semibold text-slate-700 flex items-center gap-2 text-sm">
-                          <ClipboardList size={15} className="text-slate-500" />
-                          Historico de Subativos
-                        </h2>
-                        {subAssets.map((sub) => (
-                          <SubAssetHistory key={sub.id} subAsset={sub} />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <SubAssetHistory subAsset={selected} />
-                )}
-              </>
-            )}
-            {!selected && <p className="text-center text-slate-400 py-20">Selecione um ativo para ver o monitoramento</p>}
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Execucao</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div><label className={lbl}>Empresa Terceirizada</label><input className={inp} value={form.contractor_name} onChange={e => setForm({ ...form, contractor_name: e.target.value })} placeholder="Nome da empresa" /></div>
+                    <div><label className={lbl}>CNPJ da Terceirizada</label><input className={inp} value={form.contractor_document} onChange={e => setForm({ ...form, contractor_document: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div><label className={lbl}>Horas Internas</label><input type="number" step="0.5" className={inp} value={form.internal_hours} onChange={e => setForm({ ...form, internal_hours: e.target.value })} placeholder="Ex: 8" /></div>
+                    <div><label className={lbl}>Horas Terceirizadas</label><input type="number" step="0.5" className={inp} value={form.contractor_hours} onChange={e => setForm({ ...form, contractor_hours: e.target.value })} placeholder="Ex: 4" /></div>
+                  </div>
+                </div>
+
+                {error && <p className="text-red-600 text-sm">{error}</p>}
+              </div>
+              <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
+                <button onClick={() => { setShowModal(false); setError(""); setForm({ ...emptyForm }); }} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
+                <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">{saving ? "Salvando..." : "Criar OS"}</button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
