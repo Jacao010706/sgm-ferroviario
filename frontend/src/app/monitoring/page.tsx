@@ -2,9 +2,117 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle } from "lucide-react";
+import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import clsx from "clsx";
+
+const STATUS_LABEL: Record<string, { label: string; color: string }> = {
+  pending:          { label: "Pendente",         color: "bg-slate-100 text-slate-600" },
+  assigned:         { label: "Atribuída",         color: "bg-blue-100 text-blue-700" },
+  in_progress:      { label: "Em Execução",       color: "bg-yellow-100 text-yellow-700" },
+  paused:           { label: "Pausada",           color: "bg-orange-100 text-orange-700" },
+  completed:        { label: "Concluída",         color: "bg-green-100 text-green-700" },
+  cancelled:        { label: "Cancelada",         color: "bg-red-100 text-red-700" },
+  waiting_parts:    { label: "Aguard. Peças",     color: "bg-purple-100 text-purple-700" },
+  waiting_approval: { label: "Aguard. Aprovação", color: "bg-indigo-100 text-indigo-700" },
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  preventive:  "Preventiva",
+  corrective:  "Corretiva",
+  predictive:  "Preditiva",
+  inspection:  "Inspeção",
+  calibration: "Calibração",
+  emergency:   "Emergência",
+};
+
+function SubAssetHistory({ subAsset }: { subAsset: any }) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [open, setOpen] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get("/work-orders/", { params: { asset_id: subAsset.id, limit: 10 } })
+      .then((r) => setOrders(r.data))
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [subAsset.id]);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <ClipboardList size={15} className="text-slate-500" />
+          <span className="font-semibold text-slate-700 text-sm">{subAsset.name}</span>
+          <span className="text-xs text-slate-400">{subAsset.tag}</span>
+          {!loading && (
+            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
+              {orders.length} OS
+            </span>
+          )}
+        </div>
+        {open ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-100">
+          {loading && <p className="text-center text-slate-400 py-6 text-sm">Carregando...</p>}
+          {!loading && orders.length === 0 && (
+            <p className="text-center text-slate-400 py-6 text-sm">Nenhuma OS encontrada para este subativo.</p>
+          )}
+          {!loading && orders.length > 0 && (
+            <div className="divide-y divide-slate-50">
+              {orders.map((os) => {
+                const st = STATUS_LABEL[os.status] ?? { label: os.status, color: "bg-slate-100 text-slate-600" };
+                return (
+                  <div key={os.id} className="px-4 py-3 hover:bg-slate-50 transition-colors">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-mono text-slate-400">{os.number}</span>
+                          <span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", st.color)}>{st.label}</span>
+                          {os.maintenance_type && (
+                            <span className="text-xs text-slate-500">{TYPE_LABEL[os.maintenance_type] ?? os.maintenance_type}</span>
+                          )}
+                        </div>
+                        <p className="text-sm font-medium text-slate-700 truncate">{os.title}</p>
+                        {os.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{os.description}</p>}
+                        {os.observations && (
+                          <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>
+                        )}
+                        {os.root_cause && (
+                          <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>
+                        )}
+                        {os.corrective_action && (
+                          <p className="text-xs text-slate-500 mt-0.5">Ação corretiva: {os.corrective_action}</p>
+                        )}
+                      </div>
+                      <div className="text-right text-xs text-slate-400 shrink-0">
+                        {os.scheduled_start && (
+                          <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>
+                        )}
+                        {os.actual_end && (
+                          <p className="text-green-600">Concluído: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>
+                        )}
+                        {os.actual_duration_h && (
+                          <p>{os.actual_duration_h}h</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function MonitoringPage() {
   const [assets, setAssets] = useState<any[]>([]);
@@ -67,6 +175,11 @@ export default function MonitoringPage() {
   const fuelLevel = getVal("fuel_level");
   const mode = getVal("mode");
   const isSubAsset = !!selected?.parent_id;
+
+  // Subativos do ativo principal selecionado
+  const subAssets = selected && !isSubAsset
+    ? assets.filter((a) => a.parent_id === selected.id)
+    : [];
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -206,9 +319,21 @@ export default function MonitoringPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* Histórico de OS dos subativos */}
+                    {subAssets.length > 0 && (
+                      <div className="space-y-3">
+                        <h2 className="font-semibold text-slate-700 flex items-center gap-2 text-sm">
+                          <ClipboardList size={15} className="text-slate-500" />
+                          Histórico de Subativos
+                        </h2>
+                        {subAssets.map((sub) => (
+                          <SubAssetHistory key={sub.id} subAsset={sub} />
+                        ))}
+                      </div>
+                    )}
                   </>
                 ) : (
-                  /* Mensagem para subativo */
                   <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
                     <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponível apenas no ativo principal.</p>
                   </div>
