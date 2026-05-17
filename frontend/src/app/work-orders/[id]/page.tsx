@@ -19,8 +19,8 @@ export default function WorkOrderDetailPage() {
   const [asset, setAsset] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [msg, setMsg] = useState("");
   const [form, setForm] = useState<any>({});
   useEffect(() => {
     if (!id) return;
@@ -79,51 +79,28 @@ export default function WorkOrderDetailPage() {
     } catch (e: any) {
       setMsg(e?.response?.data?.detail || "Erro ao concluir");
     } finally { setSaving(false); }
-  };const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  setUploading(true);
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-    const res = await api.post("/work-orders/" + id + "/photos", formData, {
-      headers: { "Content-Type": "multipart/form-data" }
-    });
-    setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
-    setMsg("Foto enviada com sucesso!");
-    setTimeout(() => setMsg(""), 3000);
-  } catch { setMsg("Erro ao enviar foto"); }
-  finally { setUploading(false); }
-};
-const handlePhotoDelete = async (publicId: string) => {
-  if (!confirm("Remover esta foto?")) return;
-  try {
-    const res = await api.delete("/work-orders/" + id + "/photos/" + publicId);
-    setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
-  } catch { setMsg("Erro ao remover foto"); }
-};
-  <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
-  <div className="flex items-center justify-between mb-3">
-    <h2 className="font-semibold text-slate-700 flex items-center gap-2"><Camera size={15}/> Fotos da Manutencao</h2>
-    <label className={clsx("flex items-center gap-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm cursor-pointer", uploading && "opacity-50 pointer-events-none")}>
-      <Camera size={14}/>{uploading ? "Enviando..." : "Adicionar Foto"}
-      <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
-    </label>
-  </div>
-  {(!order.photos || order.photos.length === 0) ? (
-    <p className="text-slate-400 text-sm">Nenhuma foto adicionada.</p>
-  ) : (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {order.photos.map((p: any) => (
-        <div key={p.public_id} className="relative group">
-          <img src={p.url} alt="foto" className="w-full h-32 object-cover rounded-lg border border-slate-200" />
-          <button onClick={() => handlePhotoDelete(p.public_id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
-          <p className="text-xs text-slate-400 mt-1">{new Date(p.uploaded_at).toLocaleDateString("pt-BR")}</p>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+  };
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api.post("/work-orders/" + id + "/photos", formData, { headers: { "Content-Type": "multipart/form-data" } });
+      setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
+      setMsg("Foto enviada com sucesso!");
+      setTimeout(() => setMsg(""), 3000);
+    } catch { setMsg("Erro ao enviar foto"); }
+    finally { setUploading(false); }
+  };
+  const handlePhotoDelete = async (publicId: string) => {
+    if (!confirm("Remover esta foto?")) return;
+    try {
+      const res = await api.delete("/work-orders/" + id + "/photos/" + publicId);
+      setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
+    } catch { setMsg("Erro ao remover foto"); }
+  };
   if (loading) return <div className="flex min-h-screen bg-slate-50"><Sidebar /><main className="flex-1 p-6 flex items-center justify-center text-slate-400">Carregando...</main></div>;
   if (!order) return <div className="flex min-h-screen bg-slate-50"><Sidebar /><main className="flex-1 p-6 flex items-center justify-center text-slate-400">OS nao encontrada</main></div>;
   return (
@@ -174,9 +151,31 @@ const handlePhotoDelete = async (publicId: string) => {
           </div>
           <div><label className={lbl}>Observacoes</label><textarea className={inp} rows={2} value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Observacoes gerais..." /></div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
           <h2 className="font-semibold text-slate-700 mb-3">Resultado da Atividade</h2>
           <textarea className={inp} rows={4} value={form.completion_notes} onChange={e => setForm({...form, completion_notes: e.target.value})} placeholder="Descreva o que foi feito, pecas trocadas, observacoes tecnicas..." />
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-700 flex items-center gap-2"><Camera size={15}/> Fotos da Manutencao</h2>
+            <label className={clsx("flex items-center gap-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm cursor-pointer", uploading && "opacity-50 pointer-events-none")}>
+              <Camera size={14}/>{uploading ? "Enviando..." : "Adicionar Foto"}
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+            </label>
+          </div>
+          {(!order?.photos || order.photos.length === 0) ? (
+            <p className="text-slate-400 text-sm">Nenhuma foto adicionada.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(order?.photos || []).map((p: any) => (
+                <div key={p.public_id} className="relative group">
+                  <img src={p.url} alt="foto" className="w-full h-32 object-cover rounded-lg border border-slate-200" />
+                  <button onClick={() => handlePhotoDelete(p.public_id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={12}/></button>
+                  <p className="text-xs text-slate-400 mt-1">{new Date(p.uploaded_at).toLocaleDateString("pt-BR")}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex gap-3 justify-end">
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium"><Save size={15} />{saving ? "Salvando..." : "Salvar Alteracoes"}</button>
