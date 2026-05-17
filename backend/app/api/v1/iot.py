@@ -122,3 +122,43 @@ async def telemetry_ws(asset_id: str, websocket: WebSocket):
     finally:
         await pubsub.unsubscribe(f"telemetry:{asset_id}")
         await r.aclose()
+@router.post("/simulate/{asset_id}")
+async def simulate_readings(
+    asset_id: UUID,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    import random
+    now = datetime.utcnow()
+    readings = [
+        {"type": ReadingType.VOLTAGE, "value": round(random.uniform(209, 231), 1), "unit": "V", "sensor_id": "voltage_r"},
+        {"type": ReadingType.VOLTAGE, "value": round(random.uniform(209, 231), 1), "unit": "V", "sensor_id": "voltage_s"},
+        {"type": ReadingType.VOLTAGE, "value": round(random.uniform(209, 231), 1), "unit": "V", "sensor_id": "voltage_t"},
+        {"type": ReadingType.CURRENT, "value": round(random.uniform(20, 80), 1), "unit": "A", "sensor_id": "current_r"},
+        {"type": ReadingType.CURRENT, "value": round(random.uniform(20, 80), 1), "unit": "A", "sensor_id": "current_s"},
+        {"type": ReadingType.CURRENT, "value": round(random.uniform(20, 80), 1), "unit": "A", "sensor_id": "current_t"},
+        {"type": ReadingType.TEMPERATURE, "value": round(random.uniform(60, 95), 1), "unit": "C", "sensor_id": "temperature"},
+        {"type": ReadingType.FUEL_LEVEL, "value": round(random.uniform(20, 100), 1), "unit": "%", "sensor_id": "fuel_level"},
+        {"type": ReadingType.STATUS, "value": float(random.choice([0, 1])), "unit": "", "sensor_id": "mode"},
+    ]
+    for item in readings:
+        reading = IoTReading(
+            asset_id=asset_id,
+            sensor_id=item["sensor_id"],
+            reading_type=item["type"],
+            value=item["value"],
+            unit=item["unit"],
+            source="simulator",
+            timestamp=now,
+        )
+        db.add(reading)
+    await db.commit()
+    r_client = redis.from_url(settings.REDIS_URL)
+    payload = {
+        "asset_id": str(asset_id),
+        "timestamp": now.isoformat(),
+        "readings": [{"sensor_id": item["sensor_id"], "type": item["type"], "value": item["value"], "unit": item["unit"]} for item in readings]
+    }
+    await r_client.publish(f"telemetry:{asset_id}", json.dumps(payload))
+    await r_client.aclose()
+    return {"simulated": len(readings), "readings": payload["readings"]}
