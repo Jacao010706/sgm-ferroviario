@@ -323,9 +323,7 @@ export default function MonitoringPage() {
                     )}
                   </>
                 ) : (
-                  <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                    <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponivel apenas no ativo principal.</p>
-                  </div>
+                  <SubAssetHistory subAsset={selected} />
                 )}
               </>
             )}
