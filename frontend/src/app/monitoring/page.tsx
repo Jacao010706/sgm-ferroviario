@@ -227,7 +227,7 @@ export default function MonitoringPage() {
                   </div>
                 </div>
 
-                {!isSubAsset ? (
+                {showTelemetry ? (
                   <>
                     <div className="grid grid-cols-3 gap-3">
                       {[
