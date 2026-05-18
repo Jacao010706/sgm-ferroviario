@@ -11,7 +11,7 @@ const STATUS_BADGE: Record<string, string> = { operational: "bg-green-100 text-g
 const STATUS_LABEL: Record<string, string> = { operational: "Operacional", maintenance: "Manutencao", failure: "Falha", standby: "Reserva", decommissioned: "Desativado" };
 const TYPE_LABEL: Record<string, string> = { substation: "Subestacao", generator: "Gerador", transformer: "Transformador", rectifier: "Retificador", inverter: "Inversor", switchgear: "Painel", catenary: "Catenaria", battery_bank: "Banco Baterias", circuit_breaker: "Disjuntor", measurement: "Medicao", cooling: "Refrigeracao", other: "Outro" };
 
-const TELEMETRY_ASSETS = ["generator", "transformer", "substation", "rectifier", "inverter"];
+const TELEMETRY_ASSETS = ["generator"];
 
 export default function AssetDetailPage() {
   const { id } = useParams();
