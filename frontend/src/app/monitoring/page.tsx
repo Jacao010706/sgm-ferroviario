@@ -163,6 +163,7 @@ export default function MonitoringPage() {
   const fuelLevel = getVal("fuel_level");
   const mode = getVal("mode");
   const isSubAsset = !!selected?.parent_id;
+  const showTelemetry = !isSubAsset && selected?.asset_type === "generator";
   const subAssets = selected && !isSubAsset ? assets.filter((a) => a.parent_id === selected.id) : [];
 
   return (
