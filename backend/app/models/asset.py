@@ -63,7 +63,7 @@ class Asset(Base):
     children: Mapped[list["Asset"]] = relationship("Asset", back_populates="parent", foreign_keys="[Asset.parent_id]")
     parent: Mapped["Asset | None"] = relationship("Asset", back_populates="children", foreign_keys="[Asset.parent_id]", remote_side="[Asset.id]")
     maintenance_plans: Mapped[list["MaintenancePlan"]] = relationship("MaintenancePlan", back_populates="asset")
-    work_orders: Mapped[list["WorkOrder"]] = relationship("WorkOrder", back_populates="asset")
+    work_orders: Mapped[list["WorkOrder"]] = relationship("WorkOrder", back_populates="asset", foreign_keys="[WorkOrder.asset_id]")
     alerts: Mapped[list["Alert"]] = relationship("Alert", back_populates="asset")
     iot_readings: Mapped[list["IoTReading"]] = relationship("IoTReading", back_populates="asset")
 
