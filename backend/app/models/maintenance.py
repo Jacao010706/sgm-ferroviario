@@ -110,6 +110,7 @@ class WorkOrder(Base):
     contractor_document: Mapped[str | None] = mapped_column(String(20))
     internal_hours: Mapped[float | None] = mapped_column(Float)
     contractor_hours: Mapped[float | None] = mapped_column(Float)
+    sub_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 

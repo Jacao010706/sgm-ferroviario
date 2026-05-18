@@ -26,6 +26,7 @@ class WorkOrderCreate(BaseModel):
     title: str
     description: Optional[str] = None
     asset_id: UUID
+    sub_asset_id: Optional[UUID] = None
     maintenance_type: MaintenanceType
     priority: Priority = Priority.MEDIUM
     scheduled_start: Optional[datetime] = None
