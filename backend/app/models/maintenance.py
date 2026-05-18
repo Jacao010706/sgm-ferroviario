@@ -114,7 +114,7 @@ class WorkOrder(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    asset: Mapped["Asset"] = relationship("Asset", back_populates="work_orders")
+    asset: Mapped["Asset"] = relationship("Asset", back_populates="work_orders", foreign_keys="[WorkOrder.asset_id]")
     maintenance_plan: Mapped["MaintenancePlan | None"] = relationship("MaintenancePlan", back_populates="work_orders")
     assigned_to: Mapped["User | None"] = relationship("User", back_populates="work_orders", foreign_keys="[WorkOrder.assigned_to_id]")
     alert: Mapped["Alert | None"] = relationship("Alert", back_populates="work_order")
