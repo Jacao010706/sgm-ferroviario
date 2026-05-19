@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList } from "lucide-react";
 import clsx from "clsx";
 
 const PRIORITY_BADGE: Record<string, string> = { critical: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", medium: "bg-amber-100 text-amber-700", low: "bg-green-100 text-green-700" };
@@ -15,24 +15,20 @@ const MAINTENANCE_LABEL: Record<string, string> = { preventive: "Preventiva", co
 const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 const lbl = "block text-sm font-medium text-slate-700 mb-1";
 
-interface ChecklistItem { id: string; text: string; done: boolean; }
-interface Material { id: string; name: string; quantity: string; unit: string; }
-
 export default function WorkOrderDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [order, setOrder] = useState<any>(null);
   const [asset, setAsset] = useState<any>(null);
   const [subAsset, setSubAsset] = useState<any>(null);
+  const [allAssets, setAllAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [msg, setMsg] = useState("");
   const [form, setForm] = useState<any>({});
-  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [checklist, setChecklist] = useState<{ id: string; text: string; done: boolean }[]>([]);
   const [newTask, setNewTask] = useState("");
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
 
   useEffect(() => {
     if (!id) return;
@@ -42,6 +38,7 @@ export default function WorkOrderDetailPage() {
     ]).then(([r, assetsRes]) => {
       const o = r.data;
       setOrder(o);
+      setAllAssets(assetsRes.data);
       setForm({
         status: o.status || "pending",
         priority: o.priority || "medium",
@@ -57,36 +54,27 @@ export default function WorkOrderDetailPage() {
         root_cause: o.root_cause || "",
         corrective_action: o.corrective_action || "",
       });
-
-      // Checklist
+      // Carregar checklist do JSON
       if (o.checklist_progress && typeof o.checklist_progress === "object") {
         const items = Object.entries(o.checklist_progress).map(([key, val]: any) => ({
-          id: key, text: val.text || key, done: val.done || false,
+          id: key,
+          text: val.text || key,
+          done: val.done || false,
         }));
         setChecklist(items);
       }
-
-      // Materiais utilizados
-      if (o.parts_used && Array.isArray(o.parts_used)) {
-        setMaterials(o.parts_used.map((p: any, i: number) => ({
-          id: p.id || `mat_${i}`,
-          name: p.name || p,
-          quantity: p.quantity || "1",
-          unit: p.unit || "un",
-        })));
+      if (o.asset_id) {
+        const found = assetsRes.data.find((a: any) => a.id === o.asset_id);
+        if (found) setAsset(found);
       }
-
-      const allAssets = assetsRes.data;
-      const found = allAssets.find((a: any) => a.id === o.asset_id);
-      if (found) setAsset(found);
       if (o.sub_asset_id) {
-        const sub = allAssets.find((a: any) => a.id === o.sub_asset_id);
-        if (sub) setSubAsset(sub);
+        const found = assetsRes.data.find((a: any) => a.id === o.sub_asset_id);
+        if (found) setSubAsset(found);
       }
     }).catch(console.error).finally(() => setLoading(false));
   }, [id]);
 
-  const buildChecklistPayload = (items: ChecklistItem[]) => {
+  const buildChecklistPayload = (items: typeof checklist) => {
     const obj: Record<string, any> = {};
     items.forEach(item => { obj[item.id] = { text: item.text, done: item.done }; });
     return obj;
@@ -110,7 +98,6 @@ export default function WorkOrderDetailPage() {
       if (!payload.root_cause) delete payload.root_cause;
       if (!payload.corrective_action) delete payload.corrective_action;
       payload.checklist_progress = buildChecklistPayload(checklist);
-      payload.parts_used = materials.map(m => ({ id: m.id, name: m.name, quantity: m.quantity, unit: m.unit }));
       await api.patch("/work-orders/" + id, payload);
       setMsg("Salvo com sucesso!");
       setTimeout(() => setMsg(""), 3000);
@@ -129,7 +116,6 @@ export default function WorkOrderDetailPage() {
       if (payload.contractor_hours !== "") payload.contractor_hours = parseFloat(payload.contractor_hours);
       else delete payload.contractor_hours;
       payload.checklist_progress = buildChecklistPayload(checklist);
-      payload.parts_used = materials.map(m => ({ id: m.id, name: m.name, quantity: m.quantity, unit: m.unit }));
       await api.patch("/work-orders/" + id, payload);
       setMsg("OS concluida com sucesso!");
       setTimeout(() => router.back(), 2000);
@@ -147,7 +133,7 @@ export default function WorkOrderDetailPage() {
       formData.append("file", file);
       const res = await api.post("/work-orders/" + id + "/photos", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
-      setMsg("Foto enviada!");
+      setMsg("Foto enviada com sucesso!");
       setTimeout(() => setMsg(""), 3000);
     } catch { setMsg("Erro ao enviar foto"); }
     finally { setUploading(false); }
@@ -161,24 +147,18 @@ export default function WorkOrderDetailPage() {
     } catch { setMsg("Erro ao remover foto"); }
   };
 
-  // Checklist handlers
   const addChecklistItem = () => {
     if (!newTask.trim()) return;
     setChecklist([...checklist, { id: Date.now().toString(), text: newTask.trim(), done: false }]);
     setNewTask("");
   };
-  const toggleChecklistItem = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i));
-  const removeChecklistItem = (itemId: string) => setChecklist(checklist.filter(i => i.id !== itemId));
 
-  // Material handlers
-  const addMaterial = () => {
-    if (!newMaterial.name.trim()) return;
-    setMaterials([...materials, { id: Date.now().toString(), ...newMaterial }]);
-    setNewMaterial({ name: "", quantity: "1", unit: "un" });
+  const toggleChecklistItem = (itemId: string) => {
+    setChecklist(checklist.map(item => item.id === itemId ? { ...item, done: !item.done } : item));
   };
-  const removeMaterial = (matId: string) => setMaterials(materials.filter(m => m.id !== matId));
-  const updateMaterial = (matId: string, field: string, value: string) => {
-    setMaterials(materials.map(m => m.id === matId ? { ...m, [field]: value } : m));
+
+  const removeChecklistItem = (itemId: string) => {
+    setChecklist(checklist.filter(item => item.id !== itemId));
   };
 
   const checklistDone = checklist.filter(i => i.done).length;
@@ -222,6 +202,7 @@ export default function WorkOrderDetailPage() {
           </div>
         )}
 
+        {/* Subativo vinculado */}
         {subAsset && (
           <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 flex items-center gap-3">
             <ClipboardList size={16} className="text-indigo-600" />
@@ -235,17 +216,20 @@ export default function WorkOrderDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
             <h2 className="font-semibold text-slate-700">Status e Prioridade</h2>
-            <div><label className={lbl}>Status</label>
+            <div>
+              <label className={lbl}>Status</label>
               <select className={inp} value={form.status} onChange={e => setForm({ ...form, status: e.target.value })}>
                 {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
-            <div><label className={lbl}>Prioridade</label>
+            <div>
+              <label className={lbl}>Prioridade</label>
               <select className={inp} value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}>
                 {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             </div>
           </div>
+
           <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
             <h2 className="font-semibold text-slate-700">Prazos</h2>
             <div><label className={lbl}>Inicio Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_start} onChange={e => setForm({ ...form, scheduled_start: e.target.value })} /></div>
@@ -290,9 +274,16 @@ export default function WorkOrderDetailPage() {
           <div className="space-y-2 mb-3">
             {checklist.map(item => (
               <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-                <input type="checkbox" checked={item.done} onChange={() => toggleChecklistItem(item.id)} className="w-4 h-4 rounded accent-blue-600" />
+                <input
+                  type="checkbox"
+                  checked={item.done}
+                  onChange={() => toggleChecklistItem(item.id)}
+                  className="w-4 h-4 rounded accent-blue-600"
+                />
                 <span className={clsx("text-sm flex-1", item.done && "line-through text-slate-400")}>{item.text}</span>
-                <button onClick={() => removeChecklistItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+                <button onClick={() => removeChecklistItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors">
+                  <X size={14} />
+                </button>
               </div>
             ))}
             {checklist.length === 0 && <p className="text-slate-400 text-sm py-2">Nenhuma tarefa adicionada.</p>}
@@ -302,50 +293,59 @@ export default function WorkOrderDetailPage() {
               className={clsx(inp, "flex-1")}
               value={newTask}
               onChange={e => setNewTask(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); }}}
-              placeholder="Nova tarefa..."
+              onKeyDown={e => e.key === "Enter" && addChecklistItem()}
+              placeholder="Nova tarefa... (Enter para adicionar)"
             />
-            <button
-              type="button"
-              onClick={addChecklistItem}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
-            >
+            <button onClick={addChecklistItem} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm">
               <Plus size={15} />
             </button>
           </div>
         </div>
 
-        {/* Materiais Utilizados */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-          <h2 className="font-semibold text-slate-700 flex items-center gap-2 mb-3">
-            <Package size={15} className="text-slate-500" />
-            Materiais Utilizados
-          </h2>
-          {materials.length > 0 && (
-            <div className="mb-3 space-y-2">
-              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-500 px-2">
-                <span className="col-span-6">Material / Peca</span>
-                <span className="col-span-2 text-center">Qtd</span>
-                <span className="col-span-3">Unidade</span>
-                <span className="col-span-1"></span>
-              </div>
-              {materials.map(mat => (
-                <div key={mat.id} className="grid grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg px-2 py-1.5">
-                  <input className="col-span-6 border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.name} onChange={e => updateMaterial(mat.id, "name", e.target.value)} placeholder="Nome do material" />
-                  <input type="number" className="col-span-2 border border-slate-200 rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.quantity} onChange={e => updateMaterial(mat.id, "quantity", e.target.value)} min="0" step="0.1" />
-                  <select className="col-span-3 border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.unit} onChange={e => updateMaterial(mat.id, "unit", e.target.value)}>
-                    <option value="un">un</option>
-                    <option value="kg">kg</option>
-                    <option value="L">L</option>
-                    <option value="m">m</option>
-                    <option value="m²">m²</option>
-                    <option value="cx">cx</option>
-                    <option value="par">par</option>
-                    <option value="jogo">jogo</option>
-                  </select>
-                  <button onClick={() => removeMaterial(mat.id)} className="col-span-1 flex justify-center text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+        {/* Analise tecnica */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4 space-y-4">
+          <h2 className="font-semibold text-slate-700">Analise Tecnica</h2>
+          <div><label className={lbl}>Causa Raiz</label><textarea className={inp} rows={2} value={form.root_cause} onChange={e => setForm({ ...form, root_cause: e.target.value })} placeholder="Descreva a causa raiz do problema..." /></div>
+          <div><label className={lbl}>Acao Corretiva</label><textarea className={inp} rows={2} value={form.corrective_action} onChange={e => setForm({ ...form, corrective_action: e.target.value })} placeholder="Descreva a acao corretiva aplicada..." /></div>
+        </div>
+
+        {/* Fotos */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-6">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-slate-700 flex items-center gap-2"><Camera size={15}/> Fotos da Manutencao</h2>
+            <label className={clsx("flex items-center gap-2 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm cursor-pointer", uploading && "opacity-50 pointer-events-none")}>
+              <Camera size={14}/>{uploading ? "Enviando..." : "Adicionar Foto"}
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={uploading} />
+            </label>
+          </div>
+          {(!order?.photos || order.photos.length === 0) ? (
+            <p className="text-slate-400 text-sm">Nenhuma foto adicionada.</p>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {(order?.photos || []).map((p: any) => (
+                <div key={p.public_id} className="relative group">
+                  <img src={p.url} alt="foto" className="w-full h-32 object-cover rounded-lg border border-slate-200" />
+                  <button onClick={() => handlePhotoDelete(p.public_id)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Trash2 size={12}/>
+                  </button>
+                  <p className="text-xs text-slate-400 mt-1">{new Date(p.uploaded_at).toLocaleDateString("pt-BR")}</p>
                 </div>
               ))}
             </div>
           )}
-          <div className="grid grid-cols-12 gap-2 items-center">
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+            <Save size={15} />{saving ? "Salvando..." : "Salvar Alteracoes"}
+          </button>
+          {form.status !== "completed" && form.status !== "cancelled" && (
+            <button onClick={handleComplete} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+              <CheckCircle size={15} />Concluir OS
+            </button>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
