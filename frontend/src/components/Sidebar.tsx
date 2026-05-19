@@ -1,7 +1,7 @@
-﻿"use client";
+"use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap } from "lucide-react";
+import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, CalendarClock } from "lucide-react";
 import clsx from "clsx";
 
 const nav = [
@@ -9,6 +9,7 @@ const nav = [
   { href: "/monitoring", label: "Monitoramento", icon: Radio },
   { href: "/assets", label: "Ativos", icon: Layers },
   { href: "/work-orders", label: "Ordens de Servico", icon: ClipboardList },
+  { href: "/maintenance-plans", label: "Planos de Manutencao", icon: CalendarClock },
   { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/settings", label: "Configuracoes", icon: Settings },
@@ -38,7 +39,16 @@ export default function Sidebar() {
       </div>
       <nav className="flex-1 py-4">
         {nav.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href} className={clsx("flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors", pathname.startsWith(href) ? "bg-blue-700 text-white" : "text-blue-200 hover:bg-blue-800 hover:text-white")}>
+          <Link
+            key={href}
+            href={href}
+            className={clsx(
+              "flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors",
+              pathname.startsWith(href)
+                ? "bg-blue-700 text-white"
+                : "text-blue-200 hover:bg-blue-800 hover:text-white"
+            )}
+          >
             <Icon size={18} />
             {label}
           </Link>
@@ -50,7 +60,10 @@ export default function Sidebar() {
           <p className="text-blue-300 text-xs capitalize">{userRole}</p>
         </div>
       )}
-      <button onClick={handleLogout} className="flex items-center gap-3 px-6 py-4 text-blue-300 hover:text-white text-sm border-t border-blue-900 transition-colors">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 px-6 py-4 text-blue-300 hover:text-white text-sm border-t border-blue-900 transition-colors"
+      >
         <LogOut size={16} /> Sair
       </button>
     </aside>
