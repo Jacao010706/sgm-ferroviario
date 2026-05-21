@@ -10,8 +10,9 @@ logger = logging.getLogger(__name__)
 
 def send_email(to: str, subject: str, html_body: str) -> bool:
     api_key = os.getenv("RESEND_API_KEY", "")
+    print(f"[EMAIL] RESEND_API_KEY presente: {bool(api_key)}", flush=True)
     if not api_key:
-        logger.error("RESEND_API_KEY nao configurada.")
+        print("[EMAIL] ERRO: RESEND_API_KEY nao configurada", flush=True)
         return False
 
     payload = json.dumps({
@@ -34,14 +35,14 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
     try:
         with urllib.request.urlopen(req, timeout=10) as response:
             result = json.loads(response.read().decode())
-            logger.info(f"Email enviado para {to} | ID: {result.get('id')}")
+            print(f"[EMAIL] Enviado com sucesso! ID: {result.get('id')}", flush=True)
             return True
     except urllib.error.HTTPError as e:
         body = e.read().decode()
-        logger.error(f"Erro Resend HTTP {e.code}: {body}")
+        print(f"[EMAIL] Erro Resend HTTP {e.code}: {body}", flush=True)
         return False
     except Exception as e:
-        logger.error(f"Erro ao enviar email via Resend: {e}")
+        print(f"[EMAIL] Erro inesperado: {type(e).__name__}: {e}", flush=True)
         return False
 
 
