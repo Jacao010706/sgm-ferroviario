@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, CalendarClock, CheckSquare } from "lucide-react";
+import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, CalendarClock } from "lucide-react";
 import clsx from "clsx";
 
 const nav = [
@@ -10,7 +10,6 @@ const nav = [
   { href: "/assets", label: "Ativos", icon: Layers },
   { href: "/work-orders", label: "Ordens de Servico", icon: ClipboardList },
   { href: "/maintenance-plans", label: "Planos de Manutencao", icon: CalendarClock },
-  { href: "/checklists", label: "Checklists", icon: CheckSquare },
   { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/settings", label: "Configuracoes", icon: Settings },
