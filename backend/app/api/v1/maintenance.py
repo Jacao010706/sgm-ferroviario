@@ -71,7 +71,7 @@ async def get_plan(plan_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depe
     return plan
 
 @router.post("/", status_code=201)
-async def create_plan(body: PlanCreate, db: AsyncSession=Depends(get_db), current_user: User=Depends(require_manager)):
+async def create_plan(body: PlanCreate, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
     days = body.frequency_days if body.frequency == Frequency.CUSTOM_DAYS else FREQUENCY_DAYS.get(body.frequency, 30)
     next_due = datetime.utcnow() + timedelta(days=days)
     plan = MaintenancePlan(**body.model_dump(), next_due=next_due, created_by_id=current_user.id)
@@ -82,7 +82,7 @@ async def create_plan(body: PlanCreate, db: AsyncSession=Depends(get_db), curren
     return plan
 
 @router.patch("/{plan_id}")
-async def update_plan(plan_id: UUID, body: PlanUpdate, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
+async def update_plan(plan_id: UUID, body: PlanUpdate, db: AsyncSession=Depends(get_db), _: User=Depends(get_current_user)):
     result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan: raise HTTPException(status_code=404, detail="Plano nao encontrado")
@@ -93,7 +93,7 @@ async def update_plan(plan_id: UUID, body: PlanUpdate, db: AsyncSession=Depends(
     return plan
 
 @router.delete("/{plan_id}", status_code=204)
-async def deactivate_plan(plan_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
+async def deactivate_plan(plan_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(get_current_user)):
     result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
     plan = result.scalar_one_or_none()
     if not plan: raise HTTPException(status_code=404, detail="Plano nao encontrado")
@@ -101,7 +101,7 @@ async def deactivate_plan(plan_id: UUID, db: AsyncSession=Depends(get_db), _: Us
     await db.commit()
 
 @router.post("/{plan_id}/generate-work-order")
-async def generate_work_order(plan_id: UUID, db: AsyncSession=Depends(get_db), current_user: User=Depends(require_manager)):
+async def generate_work_order(plan_id: UUID, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
     from app.models.maintenance import WorkOrder
     from app.api.v1.work_orders import generate_os_number
     result = await db.execute(select(MaintenancePlan).where(MaintenancePlan.id == plan_id))
