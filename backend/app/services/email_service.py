@@ -1,63 +1,57 @@
-import smtplib
 import os
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import urllib.request
+import urllib.error
+import json
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# Configuracoes SMTP via variaveis de ambiente
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASS = os.getenv("SMTP_PASS", "")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY", "")
+SMTP_USER = os.getenv("SMTP_USER", "")  # usado como remetente fallback
 
 
 def send_email(to: str, subject: str, html_body: str) -> bool:
-    """Envia um email HTML. Retorna True se enviado com sucesso."""
-    if not SMTP_USER or not SMTP_PASS:
-        logger.error("SMTP_USER ou SMTP_PASS nao configurados.")
+    """Envia um email HTML via Resend API. Retorna True se enviado com sucesso."""
+    if not RESEND_API_KEY:
+        logger.error("RESEND_API_KEY nao configurada.")
         return False
+
+    # Remetente: usa dominio onboarding do Resend (funciona sem dominio proprio)
+    from_email = "SGM Ferroviario <onboarding@resend.dev>"
+
+    payload = json.dumps({
+        "from": from_email,
+        "to": [to],
+        "subject": subject,
+        "html": html_body,
+    }).encode("utf-8")
+
+    req = urllib.request.Request(
+        "https://api.resend.com/emails",
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
 
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = SMTP_USER
-        msg["To"] = to
-        msg.attach(MIMEText(html_body, "html"))
-
-        if SMTP_PORT == 465:
-            # SSL direto
-            import ssl
-            context = ssl.create_default_context()
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_USER, to, msg.as_string())
-        else:
-            # STARTTLS (porta 587)
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASS)
-                server.sendmail(SMTP_USER, to, msg.as_string())
-
-        logger.info(f"Email enviado para {to} | Assunto: {subject}")
-        return True
-
-    except smtplib.SMTPAuthenticationError:
-        logger.error("Erro de autenticacao SMTP. Verifique SMTP_USER e SMTP_PASS (use Senha de App do Gmail).")
-        return False
-    except smtplib.SMTPException as e:
-        logger.error(f"Erro SMTP ao enviar email: {e}")
+        with urllib.request.urlopen(req, timeout=10) as response:
+            result = json.loads(response.read().decode())
+            logger.info(f"Email enviado para {to} | ID: {result.get('id')}")
+            return True
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()
+        logger.error(f"Erro Resend HTTP {e.code}: {body}")
         return False
     except Exception as e:
-        logger.error(f"Erro inesperado ao enviar email: {e}")
+        logger.error(f"Erro ao enviar email via Resend: {e}")
         return False
 
 
 def email_alerta(to: str, titulo: str, descricao: str, severidade: str, ativo: Optional[str] = None) -> bool:
-    """Email de alerta critico/alto."""
     cor = "#dc2626" if severidade.lower() == "critico" else "#f59e0b"
     ativo_html = f"<p><strong>Ativo:</strong> {ativo}</p>" if ativo else ""
 
@@ -82,7 +76,6 @@ def email_alerta(to: str, titulo: str, descricao: str, severidade: str, ativo: O
 
 
 def email_os_criada(to: str, os_numero: str, titulo: str, prioridade: str, atribuido_a: Optional[str] = None) -> bool:
-    """Email de nova Ordem de Servico criada ou atribuida."""
     atribuido_html = f"<p><strong>Atribuido a:</strong> {atribuido_a}</p>" if atribuido_a else ""
 
     html = f"""
@@ -107,7 +100,6 @@ def email_os_criada(to: str, os_numero: str, titulo: str, prioridade: str, atrib
 
 
 def email_plano_vencendo(to: str, plano_nome: str, dias_restantes: int, ativo: Optional[str] = None) -> bool:
-    """Email de aviso de plano de manutencao vencendo."""
     cor = "#dc2626" if dias_restantes <= 0 else "#f59e0b"
     status = "VENCIDO" if dias_restantes <= 0 else f"vence em {dias_restantes} dia(s)"
     ativo_html = f"<p><strong>Ativo:</strong> {ativo}</p>" if ativo else ""
