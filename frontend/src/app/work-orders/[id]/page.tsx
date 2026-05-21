@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package, Download } from "lucide-react";
 import clsx from "clsx";
 
 const PRIORITY_BADGE: Record<string, string> = { critical: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", medium: "bg-amber-100 text-amber-700", low: "bg-green-100 text-green-700" };
@@ -34,6 +34,13 @@ export default function WorkOrderDetailPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
 
+  // Modal importar checklist
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>("");
+  const [importMode, setImportMode] = useState<"replace" | "append">("append");
+
   useEffect(() => {
     if (!id) return;
     Promise.all([
@@ -58,7 +65,6 @@ export default function WorkOrderDetailPage() {
         corrective_action: o.corrective_action || "",
       });
 
-      // Checklist
       if (o.checklist_progress && typeof o.checklist_progress === "object") {
         const items = Object.entries(o.checklist_progress).map(([key, val]: any) => ({
           id: key, text: val.text || key, done: val.done || false,
@@ -66,13 +72,9 @@ export default function WorkOrderDetailPage() {
         setChecklist(items);
       }
 
-      // Materiais utilizados
       if (o.parts_used && Array.isArray(o.parts_used)) {
         setMaterials(o.parts_used.map((p: any, i: number) => ({
-          id: p.id || `mat_${i}`,
-          name: p.name || p,
-          quantity: p.quantity || "1",
-          unit: p.unit || "un",
+          id: p.id || `mat_${i}`, name: p.name || p, quantity: p.quantity || "1", unit: p.unit || "un",
         })));
       }
 
@@ -85,6 +87,34 @@ export default function WorkOrderDetailPage() {
       }
     }).catch(console.error).finally(() => setLoading(false));
   }, [id]);
+
+  const openImportModal = () => {
+    setShowImportModal(true);
+    setSelectedTemplate("");
+    setLoadingTemplates(true);
+    api.get("/checklists/")
+      .then((r) => setTemplates(r.data))
+      .catch(() => setTemplates([]))
+      .finally(() => setLoadingTemplates(false));
+  };
+
+  const handleImport = () => {
+    const template = templates.find(t => t.id === selectedTemplate);
+    if (!template) return;
+    const newItems: ChecklistItem[] = template.items.map((item: any) => ({
+      id: Date.now().toString() + Math.random().toString(36).slice(2),
+      text: item.text || item,
+      done: false,
+    }));
+    if (importMode === "replace") {
+      setChecklist(newItems);
+    } else {
+      setChecklist(prev => [...prev, ...newItems]);
+    }
+    setShowImportModal(false);
+    setMsg(`Checklist "${template.name}" importado com sucesso!`);
+    setTimeout(() => setMsg(""), 3000);
+  };
 
   const buildChecklistPayload = (items: ChecklistItem[]) => {
     const obj: Record<string, any> = {};
@@ -161,7 +191,6 @@ export default function WorkOrderDetailPage() {
     } catch { setMsg("Erro ao remover foto"); }
   };
 
-  // Checklist handlers
   const addChecklistItem = () => {
     if (!newTask.trim()) return;
     setChecklist([...checklist, { id: Date.now().toString(), text: newTask.trim(), done: false }]);
@@ -170,7 +199,6 @@ export default function WorkOrderDetailPage() {
   const toggleChecklistItem = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i));
   const removeChecklistItem = (itemId: string) => setChecklist(checklist.filter(i => i.id !== itemId));
 
-  // Material handlers
   const addMaterial = () => {
     if (!newMaterial.name.trim()) return;
     setMaterials([...materials, { id: Date.now().toString(), ...newMaterial }]);
@@ -207,12 +235,8 @@ export default function WorkOrderDetailPage() {
             {order.description && <p className="text-slate-400 text-sm mt-1">{order.description}</p>}
           </div>
           <div className="flex items-center gap-2">
-            <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", PRIORITY_BADGE[form.priority])}>
-              {PRIORITY_LABEL[form.priority] || form.priority}
-            </span>
-            <span className={clsx("px-3 py-1 rounded-full text-sm font-medium", STATUS_BADGE[form.status])}>
-              {STATUS_LABEL[form.status] || form.status}
-            </span>
+            <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", PRIORITY_BADGE[form.priority])}>{PRIORITY_LABEL[form.priority] || form.priority}</span>
+            <span className={clsx("px-3 py-1 rounded-full text-sm font-medium", STATUS_BADGE[form.status])}>{STATUS_LABEL[form.status] || form.status}</span>
           </div>
         </div>
 
@@ -255,7 +279,6 @@ export default function WorkOrderDetailPage() {
           </div>
         </div>
 
-        {/* Execucao */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4 space-y-4">
           <h2 className="font-semibold text-slate-700">Execucao</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -281,7 +304,15 @@ export default function WorkOrderDetailPage() {
                 </span>
               )}
             </h2>
+            <button
+              type="button"
+              onClick={openImportModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
+            >
+              <Download size={13} /> Importar Template
+            </button>
           </div>
+
           {checklistTotal > 0 && (
             <div className="w-full bg-slate-100 rounded-full h-2 mb-3">
               <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(checklistDone / checklistTotal) * 100}%` }} />
@@ -295,31 +326,20 @@ export default function WorkOrderDetailPage() {
                 <button onClick={() => removeChecklistItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
               </div>
             ))}
-            {checklist.length === 0 && <p className="text-slate-400 text-sm py-2">Nenhuma tarefa adicionada.</p>}
+            {checklist.length === 0 && <p className="text-slate-400 text-sm py-2">Nenhuma tarefa adicionada. Use "Importar Template" ou adicione manualmente.</p>}
           </div>
           <div className="flex gap-2">
-            <input
-              className={clsx(inp, "flex-1")}
-              value={newTask}
-              onChange={e => setNewTask(e.target.value)}
+            <input className={clsx(inp, "flex-1")} value={newTask} onChange={e => setNewTask(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addChecklistItem(); }}}
-              placeholder="Nova tarefa..."
-            />
-            <button
-              type="button"
-              onClick={addChecklistItem}
-              className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm"
-            >
-              <Plus size={15} />
-            </button>
+              placeholder="Nova tarefa manual..." />
+            <button type="button" onClick={addChecklistItem} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"><Plus size={15} /></button>
           </div>
         </div>
 
         {/* Materiais Utilizados */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
           <h2 className="font-semibold text-slate-700 flex items-center gap-2 mb-3">
-            <Package size={15} className="text-slate-500" />
-            Materiais Utilizados
+            <Package size={15} className="text-slate-500" /> Materiais Utilizados
           </h2>
           {materials.length > 0 && (
             <div className="mb-3 space-y-2">
@@ -331,59 +351,28 @@ export default function WorkOrderDetailPage() {
               </div>
               {materials.map(mat => (
                 <div key={mat.id} className="grid grid-cols-12 gap-2 items-center bg-slate-50 rounded-lg px-2 py-1.5">
-                  <input className="col-span-6 border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.name} onChange={e => updateMaterial(mat.id, "name", e.target.value)} placeholder="Nome do material" />
-                  <input type="number" className="col-span-2 border border-slate-200 rounded px-2 py-1 text-sm text-center focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.quantity} onChange={e => updateMaterial(mat.id, "quantity", e.target.value)} min="0" step="0.1" />
-                  <select className="col-span-3 border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.unit} onChange={e => updateMaterial(mat.id, "unit", e.target.value)}>
-                    <option value="un">un</option>
-                    <option value="kg">kg</option>
-                    <option value="L">L</option>
-                    <option value="m">m</option>
-                    <option value="m²">m²</option>
-                    <option value="cx">cx</option>
-                    <option value="par">par</option>
-                    <option value="jogo">jogo</option>
+                  <input className="col-span-6 border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500" value={mat.name} onChange={e => updateMaterial(mat.id, "name", e.target.value)} />
+                  <input type="number" className="col-span-2 border border-slate-200 rounded px-2 py-1 text-sm text-center focus:outline-none" value={mat.quantity} onChange={e => updateMaterial(mat.id, "quantity", e.target.value)} min="0" step="0.1" />
+                  <select className="col-span-3 border border-slate-200 rounded px-2 py-1 text-sm focus:outline-none" value={mat.unit} onChange={e => updateMaterial(mat.id, "unit", e.target.value)}>
+                    {["un","kg","L","m","m²","cx","par","jogo"].map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
-                  <button onClick={() => removeMaterial(mat.id)} className="col-span-1 flex justify-center text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+                  <button onClick={() => removeMaterial(mat.id)} className="col-span-1 flex justify-center text-slate-300 hover:text-red-500"><X size={14} /></button>
                 </div>
               ))}
             </div>
           )}
           <div className="grid grid-cols-12 gap-2 items-center">
-            <input
-              className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={newMaterial.name}
-              onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })}
+            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })}
               onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}}
-              placeholder="Nome do material ou peca..."
-            />
-            <input
-              type="number"
-              className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={newMaterial.quantity}
-              onChange={e => setNewMaterial({ ...newMaterial, quantity: e.target.value })}
-              min="0" step="0.1"
-            />
-            <select
-              className="col-span-3 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={newMaterial.unit}
-              onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}
-            >
-              <option value="un">un</option>
-              <option value="kg">kg</option>
-              <option value="L">L</option>
-              <option value="m">m</option>
-              <option value="m²">m²</option>
-              <option value="cx">cx</option>
-              <option value="par">par</option>
-              <option value="jogo">jogo</option>
+              placeholder="Nome do material ou peca..." />
+            <input type="number" className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={newMaterial.quantity} onChange={e => setNewMaterial({ ...newMaterial, quantity: e.target.value })} min="0" step="0.1" />
+            <select className="col-span-3 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}>
+              {["un","kg","L","m","m²","cx","par","jogo"].map(u => <option key={u} value={u}>{u}</option>)}
             </select>
-            <button
-              type="button"
-              onClick={addMaterial}
-              className="col-span-1 flex justify-center px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-            >
-              <Plus size={15} />
-            </button>
+            <button type="button" onClick={addMaterial} className="col-span-1 flex justify-center px-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"><Plus size={15} /></button>
           </div>
         </div>
 
@@ -428,6 +417,77 @@ export default function WorkOrderDetailPage() {
             </button>
           )}
         </div>
+
+        {/* Modal Importar Checklist */}
+        {showImportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <Download size={18} className="text-indigo-600" /> Importar Checklist
+                </h2>
+                <button onClick={() => setShowImportModal(false)} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                {loadingTemplates ? (
+                  <p className="text-center text-slate-400 py-8">Carregando templates...</p>
+                ) : templates.length === 0 ? (
+                  <p className="text-center text-slate-400 py-8">Nenhum checklist cadastrado. Acesse o menu Checklists para criar.</p>
+                ) : (
+                  <>
+                    <div>
+                      <label className={lbl}>Selecione o template</label>
+                      <div className="space-y-2">
+                        {templates.map(t => (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setSelectedTemplate(t.id)}
+                            className={clsx(
+                              "w-full text-left p-3 rounded-xl border transition-all",
+                              selectedTemplate === t.id
+                                ? "border-indigo-500 bg-indigo-50"
+                                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
+                            )}
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm text-slate-800">{t.name}</span>
+                              <span className="text-xs text-slate-400">{t.items.length} tarefas</span>
+                            </div>
+                            {t.category && <span className="text-xs text-indigo-600">{t.category}</span>}
+                            {t.description && <p className="text-xs text-slate-500 mt-0.5">{t.description}</p>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {checklist.length > 0 && (
+                      <div>
+                        <label className={lbl}>Modo de importacao</label>
+                        <div className="flex gap-3">
+                          <button type="button" onClick={() => setImportMode("append")}
+                            className={clsx("flex-1 py-2 rounded-lg border text-sm transition-all", importMode === "append" ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                            Adicionar ao existente
+                          </button>
+                          <button type="button" onClick={() => setImportMode("replace")}
+                            className={clsx("flex-1 py-2 rounded-lg border text-sm transition-all", importMode === "replace" ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 text-slate-600 hover:bg-slate-50")}>
+                            Substituir tudo
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
+                <button type="button" onClick={() => setShowImportModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
+                <button type="button" onClick={handleImport} disabled={!selectedTemplate} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+                  Importar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
