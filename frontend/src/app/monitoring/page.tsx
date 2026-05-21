@@ -2,28 +2,28 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
+import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle, ClipboardList, ChevronDown, ChevronUp, AlertTriangle, Fuel } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import clsx from "clsx";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending:          { label: "Pendente",          color: "bg-slate-100 text-slate-600" },
-  assigned:         { label: "Atribuida",          color: "bg-blue-100 text-blue-700" },
-  in_progress:      { label: "Em Execucao",        color: "bg-yellow-100 text-yellow-700" },
-  paused:           { label: "Pausada",            color: "bg-orange-100 text-orange-700" },
-  completed:        { label: "Concluida",          color: "bg-green-100 text-green-700" },
-  cancelled:        { label: "Cancelada",          color: "bg-red-100 text-red-700" },
-  waiting_parts:    { label: "Aguard. Pecas",      color: "bg-purple-100 text-purple-700" },
-  waiting_approval: { label: "Aguard. Aprovacao",  color: "bg-indigo-100 text-indigo-700" },
+  pending:          { label: "Pendente",         color: "bg-slate-100 text-slate-600" },
+  assigned:         { label: "Atribuída",         color: "bg-blue-100 text-blue-700" },
+  in_progress:      { label: "Em Execução",       color: "bg-yellow-100 text-yellow-700" },
+  paused:           { label: "Pausada",           color: "bg-orange-100 text-orange-700" },
+  completed:        { label: "Concluída",         color: "bg-green-100 text-green-700" },
+  cancelled:        { label: "Cancelada",         color: "bg-red-100 text-red-700" },
+  waiting_parts:    { label: "Aguard. Peças",     color: "bg-purple-100 text-purple-700" },
+  waiting_approval: { label: "Aguard. Aprovação", color: "bg-indigo-100 text-indigo-700" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
   preventive:  "Preventiva",
   corrective:  "Corretiva",
   predictive:  "Preditiva",
-  inspection:  "Inspecao",
-  calibration: "Calibracao",
-  emergency:   "Emergencia",
+  inspection:  "Inspeção",
+  calibration: "Calibração",
+  emergency:   "Emergência",
 };
 
 function SubAssetHistory({ subAsset }: { subAsset: any }) {
@@ -41,29 +41,19 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors"
-      >
+      <button onClick={() => setOpen(!open)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-slate-50 transition-colors">
         <div className="flex items-center gap-2">
           <ClipboardList size={15} className="text-slate-500" />
           <span className="font-semibold text-slate-700 text-sm">{subAsset.name}</span>
           <span className="text-xs text-slate-400">{subAsset.tag}</span>
-          {!loading && (
-            <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">
-              {orders.length} OS
-            </span>
-          )}
+          {!loading && <span className="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">{orders.length} OS</span>}
         </div>
         {open ? <ChevronUp size={15} className="text-slate-400" /> : <ChevronDown size={15} className="text-slate-400" />}
       </button>
-
       {open && (
         <div className="border-t border-slate-100">
           {loading && <p className="text-center text-slate-400 py-6 text-sm">Carregando...</p>}
-          {!loading && orders.length === 0 && (
-            <p className="text-center text-slate-400 py-6 text-sm">Nenhuma OS encontrada para este subativo.</p>
-          )}
+          {!loading && orders.length === 0 && <p className="text-center text-slate-400 py-6 text-sm">Nenhuma OS encontrada para este subativo.</p>}
           {!loading && orders.length > 0 && (
             <div className="divide-y divide-slate-50">
               {orders.map((os) => {
@@ -75,32 +65,19 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-xs font-mono text-slate-400">{os.number}</span>
                           <span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", st.color)}>{st.label}</span>
-                          {os.maintenance_type && (
-                            <span className="text-xs text-slate-500">{TYPE_LABEL[os.maintenance_type] ?? os.maintenance_type}</span>
-                          )}
+                          {os.maintenance_type && <span className="text-xs text-slate-500">{TYPE_LABEL[os.maintenance_type] ?? os.maintenance_type}</span>}
                         </div>
                         <p className="text-sm font-medium text-slate-700 truncate">{os.title}</p>
-                        {os.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{os.description}</p>}
-                        {os.observations && (
-                          <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>
-                        )}
-                        {os.root_cause && (
-                          <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>
-                        )}
-                        {os.corrective_action && (
-                          <p className="text-xs text-slate-500 mt-0.5">Acao corretiva: {os.corrective_action}</p>
+                        {os.observations && <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>}
+                        {os.root_cause && <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>}
+                        {os.corrective_action && <p className="text-xs text-slate-500 mt-0.5">Ação corretiva: {os.corrective_action}</p>}
+                        {os.fuel_liters_added != null && (
+                          <p className="text-xs text-blue-600 mt-0.5 font-medium">⛽ Abastecimento: {os.fuel_liters_added}L</p>
                         )}
                       </div>
                       <div className="text-right text-xs text-slate-400 shrink-0">
-                        {os.scheduled_start && (
-                          <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>
-                        )}
-                        {os.actual_end && (
-                          <p className="text-green-600">Concluido: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>
-                        )}
-                        {os.actual_duration_h && (
-                          <p>{os.actual_duration_h}h</p>
-                        )}
+                        {os.scheduled_start && <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>}
+                        {os.actual_end && <p className="text-green-600">Concluído: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>}
                       </div>
                     </div>
                   </div>
@@ -121,6 +98,8 @@ export default function MonitoringPage() {
   const [latest, setLatest] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [simulating, setSimulating] = useState(false);
+  const [generatingFuelOS, setGeneratingFuelOS] = useState(false);
+  const [fuelOSMsg, setFuelOSMsg] = useState("");
 
   useEffect(() => {
     api.get("/assets", { params: { limit: 50 } }).then((r) => {
@@ -155,8 +134,31 @@ export default function MonitoringPage() {
     try {
       await api.post("/iot/simulate/" + selected.id);
       setTimeout(() => loadReadings(), 500);
-    } catch {}
-    finally { setSimulating(false); }
+    } catch { } finally { setSimulating(false); }
+  };
+
+  const generateFuelOS = async () => {
+    if (!selected) return;
+    setGeneratingFuelOS(true);
+    setFuelOSMsg("");
+    try {
+      const res = await api.post("/alerts/", {
+        title: `Combustivel baixo — ${selected.name}`,
+        description: `Nivel de combustivel abaixo de 50% (atual: ${fuelLevel}%). Necessario abastecimento urgente.`,
+        asset_id: selected.id,
+        severity: fuelLevel != null && fuelLevel <= 20 ? "critical" : "high",
+        source: "iot",
+        metric_name: "fuel_level",
+        metric_value: fuelLevel,
+        threshold_value: 50,
+      });
+      // Gera OS a partir do alerta
+      const woRes = await api.post(`/alerts/${res.data.id}/create-work-order`);
+      setFuelOSMsg(`OS ${woRes.data.number} gerada com sucesso!`);
+      setTimeout(() => setFuelOSMsg(""), 5000);
+    } catch (e: any) {
+      setFuelOSMsg("Erro ao gerar OS de abastecimento.");
+    } finally { setGeneratingFuelOS(false); }
   };
 
   const getVal = (sensorId: string) => latest[sensorId]?.value;
@@ -175,6 +177,7 @@ export default function MonitoringPage() {
   const fuelLevel = getVal("fuel_level");
   const mode = getVal("mode");
   const isSubAsset = !!selected?.parent_id;
+  const fuelLow = fuelLevel != null && fuelLevel < 50;
   const subAssets = selected && !isSubAsset ? assets.filter((a) => a.parent_id === selected.id) : [];
 
   return (
@@ -196,20 +199,49 @@ export default function MonitoringPage() {
           </div>
         </div>
 
+        {/* Banner alerta combustivel baixo */}
+        {fuelLow && !isSubAsset && (
+          <div className={clsx(
+            "rounded-xl border p-4 mb-4 flex items-start justify-between gap-4",
+            fuelLevel <= 20 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"
+          )}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={20} className={fuelLevel <= 20 ? "text-red-600 mt-0.5 shrink-0" : "text-amber-600 mt-0.5 shrink-0"} />
+              <div>
+                <p className={clsx("font-semibold text-sm", fuelLevel <= 20 ? "text-red-800" : "text-amber-800")}>
+                  {fuelLevel <= 20 ? "⚠️ Combustivel Critico!" : "⚠️ Combustivel Baixo"}
+                </p>
+                <p className={clsx("text-xs mt-0.5", fuelLevel <= 20 ? "text-red-600" : "text-amber-600")}>
+                  Nivel atual: <strong>{fuelLevel}%</strong> — abaixo de 50%. É necessário gerar uma OS de abastecimento.
+                </p>
+                {fuelOSMsg && (
+                  <p className={clsx("text-xs mt-1 font-medium", fuelOSMsg.includes("Erro") ? "text-red-700" : "text-green-700")}>
+                    {fuelOSMsg}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={generateFuelOS}
+              disabled={generatingFuelOS}
+              className={clsx(
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap disabled:opacity-50",
+                fuelLevel <= 20 ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"
+              )}
+            >
+              <Fuel size={14} />
+              {generatingFuelOS ? "Gerando..." : "Gerar OS Abastecimento"}
+            </button>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="bg-white rounded-xl border border-slate-200 p-4">
             <h2 className="font-semibold text-slate-700 mb-3 text-sm">Ativos</h2>
             <div className="space-y-1">
               {assets.map((a) => (
-                <button
-                  key={a.id}
-                  onClick={() => setSelected(a)}
-                  className={clsx(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-colors",
-                    a.parent_id ? "pl-6" : "",
-                    selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700"
-                  )}
-                >
+                <button key={a.id} onClick={() => setSelected(a)}
+                  className={clsx("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", a.parent_id ? "pl-6" : "", selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700")}>
                   <p className="font-medium truncate">{a.parent_id ? "↳ " : ""}{a.name}</p>
                   <p className={clsx("text-xs", selected?.id === a.id ? "text-blue-200" : "text-slate-400")}>{a.tag}</p>
                 </button>
@@ -267,15 +299,17 @@ export default function MonitoringPage() {
                           <p className="text-xs text-slate-500">Temperatura</p>
                         </div>
                       </div>
-                      <div className="bg-white rounded-xl border border-slate-200 p-4">
+                      <div className={clsx("rounded-xl border p-4", fuelLow ? (fuelLevel <= 20 ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50") : "border-slate-200 bg-white")}>
                         <div className="flex items-center gap-2 mb-2">
-                          <Droplets size={18} className="text-blue-500"/>
+                          <Droplets size={18} className={fuelLow ? (fuelLevel <= 20 ? "text-red-500" : "text-amber-500") : "text-blue-500"}/>
                           <p className="text-xs text-slate-500">Nivel Combustivel</p>
-                          <span className="ml-auto font-bold text-slate-800">{fmt(fuelLevel, "%")}</span>
+                          <span className={clsx("ml-auto font-bold", fuelLow ? (fuelLevel <= 20 ? "text-red-700" : "text-amber-700") : "text-slate-800")}>{fmt(fuelLevel, "%")}</span>
+                          {fuelLow && <AlertTriangle size={14} className={fuelLevel <= 20 ? "text-red-500" : "text-amber-500"} />}
                         </div>
                         <div className="w-full bg-slate-100 rounded-full h-3">
                           <div className={clsx("h-3 rounded-full transition-all", fuelLevel > 50 ? "bg-green-500" : fuelLevel > 20 ? "bg-amber-500" : "bg-red-500")} style={{ width: fuelLevel != null ? fuelLevel + "%" : "0%" }} />
                         </div>
+                        {fuelLow && <p className={clsx("text-xs mt-1 font-medium", fuelLevel <= 20 ? "text-red-600" : "text-amber-600")}>Abastecimento necessario!</p>}
                       </div>
                     </div>
 
@@ -313,17 +347,16 @@ export default function MonitoringPage() {
                     {subAssets.length > 0 && (
                       <div className="space-y-3">
                         <h2 className="font-semibold text-slate-700 flex items-center gap-2 text-sm">
-                          <ClipboardList size={15} className="text-slate-500" />
-                          Historico de Subativos
+                          <ClipboardList size={15} className="text-slate-500" /> Histórico de Subativos
                         </h2>
-                        {subAssets.map((sub) => (
-                          <SubAssetHistory key={sub.id} subAsset={sub} />
-                        ))}
+                        {subAssets.map((sub) => <SubAssetHistory key={sub.id} subAsset={sub} />)}
                       </div>
                     )}
                   </>
                 ) : (
-                  <SubAssetHistory subAsset={selected} />
+                  <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
+                    <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponível apenas no ativo principal.</p>
+                  </div>
                 )}
               </>
             )}

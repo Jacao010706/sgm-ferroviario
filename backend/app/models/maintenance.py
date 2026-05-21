@@ -8,12 +8,12 @@ from app.core.database import Base
 
 
 class MaintenanceType(str, enum.Enum):
-    PREVENTIVE = "preventive"       # Manutenção preventiva programada
-    CORRECTIVE = "corrective"       # Manutenção corretiva
-    PREDICTIVE = "predictive"       # Manutenção preditiva (baseada em IoT)
-    INSPECTION = "inspection"       # Inspeção periódica
-    CALIBRATION = "calibration"     # Calibração de instrumentos
-    EMERGENCY = "emergency"         # Emergência
+    PREVENTIVE = "preventive"
+    CORRECTIVE = "corrective"
+    PREDICTIVE = "predictive"
+    INSPECTION = "inspection"
+    CALIBRATION = "calibration"
+    EMERGENCY = "emergency"
 
 
 class Frequency(str, enum.Enum):
@@ -29,25 +29,24 @@ class Frequency(str, enum.Enum):
 
 
 class WorkOrderStatus(str, enum.Enum):
-    PENDING = "pending"             # Aguardando
-    ASSIGNED = "assigned"           # Atribuída
-    IN_PROGRESS = "in_progress"     # Em execução
-    PAUSED = "paused"              # Pausada
-    COMPLETED = "completed"         # Concluída
-    CANCELLED = "cancelled"         # Cancelada
-    WAITING_PARTS = "waiting_parts" # Aguardando peças
+    PENDING = "pending"
+    ASSIGNED = "assigned"
+    IN_PROGRESS = "in_progress"
+    PAUSED = "paused"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+    WAITING_PARTS = "waiting_parts"
     WAITING_APPROVAL = "waiting_approval"
 
 
 class Priority(str, enum.Enum):
-    CRITICAL = "critical"    # P1 - imediata
-    HIGH = "high"           # P2 - até 4h
-    MEDIUM = "medium"       # P3 - até 24h
-    LOW = "low"             # P4 - programada
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
 
 
 class MaintenancePlan(Base):
-    """Plano de Manutenção Preventiva (PMP)"""
     __tablename__ = "maintenance_plans"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -56,12 +55,12 @@ class MaintenancePlan(Base):
     asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"))
     maintenance_type: Mapped[MaintenanceType] = mapped_column(SAEnum(MaintenanceType))
     frequency: Mapped[Frequency] = mapped_column(SAEnum(Frequency))
-    frequency_days: Mapped[int | None] = mapped_column(Integer)   # para CUSTOM_DAYS
+    frequency_days: Mapped[int | None] = mapped_column(Integer)
     estimated_duration_h: Mapped[float] = mapped_column(Float, default=1.0)
     priority: Mapped[Priority] = mapped_column(SAEnum(Priority), default=Priority.MEDIUM)
-    checklist: Mapped[list | None] = mapped_column(JSON)           # lista de verificação
+    checklist: Mapped[list | None] = mapped_column(JSON)
     required_skills: Mapped[list | None] = mapped_column(JSON)
-    required_parts: Mapped[list | None] = mapped_column(JSON)      # peças necessárias
+    required_parts: Mapped[list | None] = mapped_column(JSON)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     last_executed: Mapped[datetime | None] = mapped_column(DateTime)
     next_due: Mapped[datetime | None] = mapped_column(DateTime, index=True)
@@ -74,14 +73,14 @@ class MaintenancePlan(Base):
 
 
 class WorkOrder(Base):
-    """Ordem de Serviço (OS)"""
     __tablename__ = "work_orders"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    number: Mapped[str] = mapped_column(String(20), unique=True, index=True)  # OS-2024-00001
+    number: Mapped[str] = mapped_column(String(20), unique=True, index=True)
     title: Mapped[str] = mapped_column(String(300))
     description: Mapped[str | None] = mapped_column(Text)
     asset_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"))
+    sub_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)
     maintenance_type: Mapped[MaintenanceType] = mapped_column(SAEnum(MaintenanceType))
     status: Mapped[WorkOrderStatus] = mapped_column(SAEnum(WorkOrderStatus), default=WorkOrderStatus.PENDING, index=True)
     priority: Mapped[Priority] = mapped_column(SAEnum(Priority), default=Priority.MEDIUM)
@@ -100,9 +99,9 @@ class WorkOrder(Base):
     observations: Mapped[str | None] = mapped_column(Text)
     root_cause: Mapped[str | None] = mapped_column(Text)
     corrective_action: Mapped[str | None] = mapped_column(Text)
-    photos: Mapped[list | None] = mapped_column(JSON)               # paths das fotos
+    photos: Mapped[list | None] = mapped_column(JSON)
     signature_url: Mapped[str | None] = mapped_column(String(500))
-    erp_wo_id: Mapped[str | None] = mapped_column(String(100))     # ID no ERP
+    erp_wo_id: Mapped[str | None] = mapped_column(String(100))
     synced_erp: Mapped[bool] = mapped_column(Boolean, default=False)
     synced_at: Mapped[datetime | None] = mapped_column(DateTime)
     team_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("teams.id"), nullable=True)
@@ -110,11 +109,13 @@ class WorkOrder(Base):
     contractor_document: Mapped[str | None] = mapped_column(String(20))
     internal_hours: Mapped[float | None] = mapped_column(Float)
     contractor_hours: Mapped[float | None] = mapped_column(Float)
+    # Campo para abastecimento de combustivel
+    fuel_liters_added: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    asset: Mapped["Asset"] = relationship("Asset", back_populates="work_orders")
+    asset: Mapped["Asset"] = relationship("Asset", back_populates="work_orders", foreign_keys="[WorkOrder.asset_id]")
     maintenance_plan: Mapped["MaintenancePlan | None"] = relationship("MaintenancePlan", back_populates="work_orders")
     assigned_to: Mapped["User | None"] = relationship("User", back_populates="work_orders", foreign_keys="[WorkOrder.assigned_to_id]")
     alert: Mapped["Alert | None"] = relationship("Alert", back_populates="work_order")
-team: Mapped["Team | None"] = relationship("Team", back_populates="work_orders")
+    team: Mapped["Team | None"] = relationship("Team", back_populates="work_orders")
