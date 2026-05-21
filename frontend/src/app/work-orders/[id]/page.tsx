@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package, Download } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package, Download, Printer } from "lucide-react";
 import clsx from "clsx";
 
 const PRIORITY_BADGE: Record<string, string> = { critical: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", medium: "bg-amber-100 text-amber-700", low: "bg-green-100 text-green-700" };
@@ -17,6 +17,281 @@ const lbl = "block text-sm font-medium text-slate-700 mb-1";
 
 interface ChecklistItem { id: string; text: string; done: boolean; }
 interface Material { id: string; name: string; quantity: string; unit: string; }
+
+function PrintView({ order, asset, subAsset, form, checklist, materials }: any) {
+  const now = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  const checklistDone = checklist.filter((i: ChecklistItem) => i.done).length;
+
+  return (
+    <div id="print-area" style={{ display: "none" }}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #print-area, #print-area * { visibility: visible !important; }
+          #print-area { position: fixed; left: 0; top: 0; width: 100%; }
+          @page { margin: 15mm; size: A4; }
+        }
+        #print-area {
+          font-family: 'Segoe UI', Arial, sans-serif;
+          color: #1e293b;
+          background: white;
+          padding: 0;
+          font-size: 11px;
+          line-height: 1.5;
+        }
+        .print-header {
+          background: #1E3A5F;
+          color: white;
+          padding: 16px 24px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 16px;
+          border-radius: 6px;
+        }
+        .print-header h1 { margin: 0; font-size: 20px; font-weight: 700; }
+        .print-header p { margin: 2px 0 0; font-size: 11px; opacity: 0.8; }
+        .print-header .os-number { font-size: 28px; font-weight: 800; font-family: monospace; }
+        .print-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+        .print-subtitle { font-size: 11px; color: #64748b; margin-bottom: 16px; }
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
+        .badge-critical { background: #fee2e2; color: #dc2626; }
+        .badge-high { background: #ffedd5; color: #ea580c; }
+        .badge-medium { background: #fef3c7; color: #d97706; }
+        .badge-low { background: #dcfce7; color: #16a34a; }
+        .badge-completed { background: #dcfce7; color: #16a34a; }
+        .badge-in_progress { background: #e0e7ff; color: #4338ca; }
+        .badge-pending { background: #f1f5f9; color: #64748b; }
+        .badge-default { background: #f1f5f9; color: #64748b; }
+        .print-section { border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+        .print-section-header { background: #f8fafc; padding: 8px 14px; font-weight: 700; font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
+        .print-section-body { padding: 12px 14px; }
+        .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .print-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .print-field label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px; }
+        .print-field span { font-size: 12px; font-weight: 600; color: #1e293b; }
+        .print-field span.empty { color: #cbd5e1; font-weight: 400; font-style: italic; }
+        .checklist-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; }
+        .checklist-item:last-child { border-bottom: none; }
+        .checkbox { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .checkbox.done { background: #22c55e; border-color: #22c55e; color: white; font-size: 9px; }
+        .checklist-text { font-size: 11px; }
+        .checklist-text.done { text-decoration: line-through; color: #94a3b8; }
+        .material-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .material-table th { background: #f8fafc; padding: 6px 10px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+        .material-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+        .material-table tr:last-child td { border-bottom: none; }
+        .print-signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px; }
+        .signature-box { border-top: 2px solid #334155; padding-top: 8px; text-align: center; }
+        .signature-box p { font-size: 9px; color: #64748b; margin: 0; }
+        .print-footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; }
+        .divider { height: 1px; background: #e2e8f0; margin: 8px 0; }
+        .progress-bar-bg { background: #f1f5f9; border-radius: 4px; height: 6px; margin-top: 4px; }
+        .progress-bar-fill { background: #22c55e; border-radius: 4px; height: 6px; }
+        .info-banner { background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px; padding: 8px 12px; margin-bottom: 12px; font-size: 11px; color: #0369a1; }
+      `}</style>
+
+      {/* Header */}
+      <div className="print-header">
+        <div>
+          <h1>SGM Ferroviario</h1>
+          <p>Sistema de Gestao de Manutencao Ferroviaria</p>
+          <p style={{ marginTop: 6, fontSize: 10, opacity: 0.6 }}>Emitido em: {now}</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 4 }}>ORDEM DE SERVICO</div>
+          <div className="os-number">{order.number}</div>
+          <div style={{ marginTop: 6, display: "flex", gap: 6, justifyContent: "flex-end" }}>
+            <span className={`badge badge-${form.priority}`}>{PRIORITY_LABEL[form.priority] || form.priority}</span>
+            <span className={`badge badge-${form.status} badge-default`}>{STATUS_LABEL[form.status] || form.status}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Titulo e descricao */}
+      <div className="print-title">{order.title}</div>
+      <div className="print-subtitle">
+        {MAINTENANCE_LABEL[order.maintenance_type] || order.maintenance_type}
+        {asset ? ` — ${asset.name} (${asset.tag})` : ""}
+        {subAsset ? ` › ${subAsset.name}` : ""}
+        {order.description ? ` · ${order.description}` : ""}
+      </div>
+
+      {/* Informacoes gerais */}
+      <div className="print-section">
+        <div className="print-section-header">Informacoes Gerais</div>
+        <div className="print-section-body">
+          <div className="print-grid-3">
+            <div className="print-field">
+              <label>Tipo de Manutencao</label>
+              <span>{MAINTENANCE_LABEL[order.maintenance_type] || order.maintenance_type || "—"}</span>
+            </div>
+            <div className="print-field">
+              <label>Ativo</label>
+              <span>{asset ? `${asset.name} (${asset.tag})` : "—"}</span>
+            </div>
+            <div className="print-field">
+              <label>Subativo</label>
+              <span>{subAsset ? subAsset.name : <span className="empty">Nao informado</span>}</span>
+            </div>
+          </div>
+          <div className="divider" />
+          <div className="print-grid" style={{ gridTemplateColumns: "1fr 1fr 1fr 1fr" }}>
+            <div className="print-field">
+              <label>Inicio Previsto</label>
+              <span>{form.scheduled_start ? new Date(form.scheduled_start).toLocaleString("pt-BR") : <span className="empty">—</span>}</span>
+            </div>
+            <div className="print-field">
+              <label>Fim Previsto</label>
+              <span>{form.scheduled_end ? new Date(form.scheduled_end).toLocaleString("pt-BR") : <span className="empty">—</span>}</span>
+            </div>
+            <div className="print-field">
+              <label>Inicio Real</label>
+              <span>{form.actual_start ? new Date(form.actual_start).toLocaleString("pt-BR") : <span className="empty">—</span>}</span>
+            </div>
+            <div className="print-field">
+              <label>Fim Real</label>
+              <span>{form.actual_end ? new Date(form.actual_end).toLocaleString("pt-BR") : <span className="empty">—</span>}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Execucao */}
+      <div className="print-section">
+        <div className="print-section-header">Execucao</div>
+        <div className="print-section-body">
+          <div className="print-grid">
+            <div className="print-field">
+              <label>Empresa Terceirizada</label>
+              <span>{form.contractor_name || <span className="empty">Nao informado</span>}</span>
+            </div>
+            <div className="print-field">
+              <label>CNPJ</label>
+              <span>{form.contractor_document || <span className="empty">Nao informado</span>}</span>
+            </div>
+            <div className="print-field">
+              <label>Horas Internas</label>
+              <span>{form.internal_hours ? `${form.internal_hours}h` : <span className="empty">—</span>}</span>
+            </div>
+            <div className="print-field">
+              <label>Horas Terceirizadas</label>
+              <span>{form.contractor_hours ? `${form.contractor_hours}h` : <span className="empty">—</span>}</span>
+            </div>
+          </div>
+          {form.observations && (
+            <>
+              <div className="divider" />
+              <div className="print-field">
+                <label>Observacoes</label>
+                <span style={{ whiteSpace: "pre-wrap", fontWeight: 400, fontSize: 11 }}>{form.observations}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Analise Tecnica */}
+      {(form.root_cause || form.corrective_action) && (
+        <div className="print-section">
+          <div className="print-section-header">Analise Tecnica</div>
+          <div className="print-section-body">
+            <div className="print-grid">
+              {form.root_cause && (
+                <div className="print-field">
+                  <label>Causa Raiz</label>
+                  <span style={{ whiteSpace: "pre-wrap", fontWeight: 400, fontSize: 11 }}>{form.root_cause}</span>
+                </div>
+              )}
+              {form.corrective_action && (
+                <div className="print-field">
+                  <label>Acao Corretiva</label>
+                  <span style={{ whiteSpace: "pre-wrap", fontWeight: 400, fontSize: 11 }}>{form.corrective_action}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Checklist */}
+      {checklist.length > 0 && (
+        <div className="print-section">
+          <div className="print-section-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>Checklist de Atividades</span>
+            <span style={{ fontWeight: 600, color: checklistDone === checklist.length ? "#16a34a" : "#475569" }}>
+              {checklistDone}/{checklist.length} concluidos
+            </span>
+          </div>
+          <div className="print-section-body" style={{ paddingBottom: 8 }}>
+            <div className="progress-bar-bg">
+              <div className="progress-bar-fill" style={{ width: `${checklist.length > 0 ? (checklistDone / checklist.length) * 100 : 0}%` }} />
+            </div>
+            <div style={{ marginTop: 10 }}>
+              {checklist.map((item: ChecklistItem) => (
+                <div key={item.id} className="checklist-item">
+                  <div className={`checkbox ${item.done ? "done" : ""}`}>{item.done ? "✓" : ""}</div>
+                  <span className={`checklist-text ${item.done ? "done" : ""}`}>{item.text}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Materiais */}
+      {materials.length > 0 && (
+        <div className="print-section">
+          <div className="print-section-header">Materiais Utilizados</div>
+          <div className="print-section-body" style={{ padding: 0 }}>
+            <table className="material-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Material / Peca</th>
+                  <th>Quantidade</th>
+                  <th>Unidade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {materials.map((mat: Material, i: number) => (
+                  <tr key={mat.id}>
+                    <td style={{ color: "#94a3b8", width: 30 }}>{i + 1}</td>
+                    <td style={{ fontWeight: 600 }}>{mat.name}</td>
+                    <td>{mat.quantity}</td>
+                    <td>{mat.unit}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Assinaturas */}
+      <div className="print-signatures">
+        <div className="signature-box">
+          <p>Responsavel pela Execucao</p>
+          <p style={{ marginTop: 2, fontWeight: 600, color: "#334155" }}>&nbsp;</p>
+        </div>
+        <div className="signature-box">
+          <p>Supervisor / Aprovador</p>
+          <p style={{ marginTop: 2, fontWeight: 600, color: "#334155" }}>&nbsp;</p>
+        </div>
+        <div className="signature-box">
+          <p>Data de Conclusao</p>
+          <p style={{ marginTop: 2, fontWeight: 600, color: "#334155" }}>&nbsp;</p>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="print-footer">
+        <span>SGM Ferroviario — Sistema de Gestao de Manutencao</span>
+        <span>OS: {order.number} | Impresso em: {now}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function WorkOrderDetailPage() {
   const { id } = useParams();
@@ -33,8 +308,6 @@ export default function WorkOrderDetailPage() {
   const [newTask, setNewTask] = useState("");
   const [materials, setMaterials] = useState<Material[]>([]);
   const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
-
-  // Modal importar checklist
   const [showImportModal, setShowImportModal] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -64,20 +337,17 @@ export default function WorkOrderDetailPage() {
         root_cause: o.root_cause || "",
         corrective_action: o.corrective_action || "",
       });
-
       if (o.checklist_progress && typeof o.checklist_progress === "object") {
         const items = Object.entries(o.checklist_progress).map(([key, val]: any) => ({
           id: key, text: val.text || key, done: val.done || false,
         }));
         setChecklist(items);
       }
-
       if (o.parts_used && Array.isArray(o.parts_used)) {
         setMaterials(o.parts_used.map((p: any, i: number) => ({
           id: p.id || `mat_${i}`, name: p.name || p, quantity: p.quantity || "1", unit: p.unit || "un",
         })));
       }
-
       const allAssets = assetsRes.data;
       const found = allAssets.find((a: any) => a.id === o.asset_id);
       if (found) setAsset(found);
@@ -87,6 +357,15 @@ export default function WorkOrderDetailPage() {
       }
     }).catch(console.error).finally(() => setLoading(false));
   }, [id]);
+
+  const handlePrint = () => {
+    const printArea = document.getElementById("print-area");
+    if (printArea) {
+      printArea.style.display = "block";
+      window.print();
+      setTimeout(() => { printArea.style.display = "none"; }, 500);
+    }
+  };
 
   const openImportModal = () => {
     setShowImportModal(true);
@@ -103,14 +382,10 @@ export default function WorkOrderDetailPage() {
     if (!template) return;
     const newItems: ChecklistItem[] = template.items.map((item: any) => ({
       id: Date.now().toString() + Math.random().toString(36).slice(2),
-      text: item.text || item,
-      done: false,
+      text: item.text || item, done: false,
     }));
-    if (importMode === "replace") {
-      setChecklist(newItems);
-    } else {
-      setChecklist(prev => [...prev, ...newItems]);
-    }
+    if (importMode === "replace") setChecklist(newItems);
+    else setChecklist(prev => [...prev, ...newItems]);
     setShowImportModal(false);
     setMsg(`Checklist "${template.name}" importado com sucesso!`);
     setTimeout(() => setMsg(""), 3000);
@@ -126,10 +401,8 @@ export default function WorkOrderDetailPage() {
     setSaving(true); setMsg("");
     try {
       const payload: any = { ...form };
-      if (payload.internal_hours !== "") payload.internal_hours = parseFloat(payload.internal_hours);
-      else delete payload.internal_hours;
-      if (payload.contractor_hours !== "") payload.contractor_hours = parseFloat(payload.contractor_hours);
-      else delete payload.contractor_hours;
+      if (payload.internal_hours !== "") payload.internal_hours = parseFloat(payload.internal_hours); else delete payload.internal_hours;
+      if (payload.contractor_hours !== "") payload.contractor_hours = parseFloat(payload.contractor_hours); else delete payload.contractor_hours;
       if (!payload.scheduled_start) delete payload.scheduled_start;
       if (!payload.scheduled_end) delete payload.scheduled_end;
       if (!payload.actual_start) delete payload.actual_start;
@@ -154,10 +427,8 @@ export default function WorkOrderDetailPage() {
     setSaving(true); setMsg("");
     try {
       const payload: any = { ...form, status: "completed", actual_end: new Date().toISOString() };
-      if (payload.internal_hours !== "") payload.internal_hours = parseFloat(payload.internal_hours);
-      else delete payload.internal_hours;
-      if (payload.contractor_hours !== "") payload.contractor_hours = parseFloat(payload.contractor_hours);
-      else delete payload.contractor_hours;
+      if (payload.internal_hours !== "") payload.internal_hours = parseFloat(payload.internal_hours); else delete payload.internal_hours;
+      if (payload.contractor_hours !== "") payload.contractor_hours = parseFloat(payload.contractor_hours); else delete payload.contractor_hours;
       payload.checklist_progress = buildChecklistPayload(checklist);
       payload.parts_used = materials.map(m => ({ id: m.id, name: m.name, quantity: m.quantity, unit: m.unit }));
       await api.patch("/work-orders/" + id, payload);
@@ -177,10 +448,8 @@ export default function WorkOrderDetailPage() {
       formData.append("file", file);
       const res = await api.post("/work-orders/" + id + "/photos", formData, { headers: { "Content-Type": "multipart/form-data" } });
       setOrder((prev: any) => ({ ...prev, photos: res.data.photos }));
-      setMsg("Foto enviada!");
-      setTimeout(() => setMsg(""), 3000);
-    } catch { setMsg("Erro ao enviar foto"); }
-    finally { setUploading(false); }
+      setMsg("Foto enviada!"); setTimeout(() => setMsg(""), 3000);
+    } catch { setMsg("Erro ao enviar foto"); } finally { setUploading(false); }
   };
 
   const handlePhotoDelete = async (publicId: string) => {
@@ -198,16 +467,13 @@ export default function WorkOrderDetailPage() {
   };
   const toggleChecklistItem = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i));
   const removeChecklistItem = (itemId: string) => setChecklist(checklist.filter(i => i.id !== itemId));
-
   const addMaterial = () => {
     if (!newMaterial.name.trim()) return;
     setMaterials([...materials, { id: Date.now().toString(), ...newMaterial }]);
     setNewMaterial({ name: "", quantity: "1", unit: "un" });
   };
   const removeMaterial = (matId: string) => setMaterials(materials.filter(m => m.id !== matId));
-  const updateMaterial = (matId: string, field: string, value: string) => {
-    setMaterials(materials.map(m => m.id === matId ? { ...m, [field]: value } : m));
-  };
+  const updateMaterial = (matId: string, field: string, value: string) => setMaterials(materials.map(m => m.id === matId ? { ...m, [field]: value } : m));
 
   const checklistDone = checklist.filter(i => i.done).length;
   const checklistTotal = checklist.length;
@@ -219,6 +485,15 @@ export default function WorkOrderDetailPage() {
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-6 overflow-auto">
+
+        {/* PrintView oculto */}
+        {order && (
+          <PrintView
+            order={order} asset={asset} subAsset={subAsset}
+            form={form} checklist={checklist} materials={materials}
+          />
+        )}
+
         <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 text-sm">
           <ArrowLeft size={16} /> Voltar
         </button>
@@ -235,6 +510,12 @@ export default function WorkOrderDetailPage() {
             {order.description && <p className="text-slate-400 text-sm mt-1">{order.description}</p>}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <Printer size={15} /> Imprimir OS
+            </button>
             <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", PRIORITY_BADGE[form.priority])}>{PRIORITY_LABEL[form.priority] || form.priority}</span>
             <span className={clsx("px-3 py-1 rounded-full text-sm font-medium", STATUS_BADGE[form.status])}>{STATUS_LABEL[form.status] || form.status}</span>
           </div>
@@ -304,15 +585,10 @@ export default function WorkOrderDetailPage() {
                 </span>
               )}
             </h2>
-            <button
-              type="button"
-              onClick={openImportModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors"
-            >
+            <button type="button" onClick={openImportModal} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium transition-colors">
               <Download size={13} /> Importar Template
             </button>
           </div>
-
           {checklistTotal > 0 && (
             <div className="w-full bg-slate-100 rounded-full h-2 mb-3">
               <div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(checklistDone / checklistTotal) * 100}%` }} />
@@ -326,7 +602,7 @@ export default function WorkOrderDetailPage() {
                 <button onClick={() => removeChecklistItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
               </div>
             ))}
-            {checklist.length === 0 && <p className="text-slate-400 text-sm py-2">Nenhuma tarefa adicionada. Use "Importar Template" ou adicione manualmente.</p>}
+            {checklist.length === 0 && <p className="text-slate-400 text-sm py-2">Nenhuma tarefa adicionada.</p>}
           </div>
           <div className="flex gap-2">
             <input className={clsx(inp, "flex-1")} value={newTask} onChange={e => setNewTask(e.target.value)}
@@ -336,7 +612,7 @@ export default function WorkOrderDetailPage() {
           </div>
         </div>
 
-        {/* Materiais Utilizados */}
+        {/* Materiais */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
           <h2 className="font-semibold text-slate-700 flex items-center gap-2 mb-3">
             <Package size={15} className="text-slate-500" /> Materiais Utilizados
@@ -408,6 +684,9 @@ export default function WorkOrderDetailPage() {
         </div>
 
         <div className="flex gap-3 justify-end">
+          <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm font-medium">
+            <Printer size={15} /> Imprimir OS
+          </button>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
             <Save size={15} />{saving ? "Salvando..." : "Salvar Alteracoes"}
           </button>
@@ -432,24 +711,15 @@ export default function WorkOrderDetailPage() {
                 {loadingTemplates ? (
                   <p className="text-center text-slate-400 py-8">Carregando templates...</p>
                 ) : templates.length === 0 ? (
-                  <p className="text-center text-slate-400 py-8">Nenhum checklist cadastrado. Acesse o menu Checklists para criar.</p>
+                  <p className="text-center text-slate-400 py-8">Nenhum checklist cadastrado.</p>
                 ) : (
                   <>
                     <div>
                       <label className={lbl}>Selecione o template</label>
                       <div className="space-y-2">
                         {templates.map(t => (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setSelectedTemplate(t.id)}
-                            className={clsx(
-                              "w-full text-left p-3 rounded-xl border transition-all",
-                              selectedTemplate === t.id
-                                ? "border-indigo-500 bg-indigo-50"
-                                : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
-                            )}
-                          >
+                          <button key={t.id} type="button" onClick={() => setSelectedTemplate(t.id)}
+                            className={clsx("w-full text-left p-3 rounded-xl border transition-all", selectedTemplate === t.id ? "border-indigo-500 bg-indigo-50" : "border-slate-200 hover:border-slate-300 hover:bg-slate-50")}>
                             <div className="flex items-center justify-between">
                               <span className="font-medium text-sm text-slate-800">{t.name}</span>
                               <span className="text-xs text-slate-400">{t.items.length} tarefas</span>
@@ -460,7 +730,6 @@ export default function WorkOrderDetailPage() {
                         ))}
                       </div>
                     </div>
-
                     {checklist.length > 0 && (
                       <div>
                         <label className={lbl}>Modo de importacao</label>
@@ -481,9 +750,7 @@ export default function WorkOrderDetailPage() {
               </div>
               <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
                 <button type="button" onClick={() => setShowImportModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
-                <button type="button" onClick={handleImport} disabled={!selectedTemplate} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
-                  Importar
-                </button>
+                <button type="button" onClick={handleImport} disabled={!selectedTemplate} className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">Importar</button>
               </div>
             </div>
           </div>
