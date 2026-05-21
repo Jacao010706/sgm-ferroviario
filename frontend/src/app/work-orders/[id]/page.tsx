@@ -228,10 +228,10 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
               <div className="progress-bar-fill" style={{ width: `${checklist.length > 0 ? (checklistDone / checklist.length) * 100 : 0}%` }} />
             </div>
             <div style={{ marginTop: 10 }}>
-              {checklist.map((item: ChecklistItem) => (
+              {checklist.filter((item: ChecklistItem) => item.done).map((item: ChecklistItem) => (
                 <div key={item.id} className="checklist-item">
-                  <div className={`checkbox ${item.done ? "done" : ""}`}>{item.done ? "✓" : ""}</div>
-                  <span className={`checklist-text ${item.done ? "done" : ""}`}>{item.text}</span>
+                  <div className="checkbox done">✓</div>
+                  <span className="checklist-text">{item.text}</span>
                 </div>
               ))}
             </div>
