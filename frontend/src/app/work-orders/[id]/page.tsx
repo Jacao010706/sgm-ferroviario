@@ -28,7 +28,7 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
         @media print {
           body * { visibility: hidden !important; }
           #print-area, #print-area * { visibility: visible !important; }
-          #print-area { position: fixed; left: 0; top: 0; width: 100%; }
+          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
           @page { margin: 15mm; size: A4; }
         }
         #print-area {
