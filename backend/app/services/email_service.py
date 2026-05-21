@@ -27,11 +27,20 @@ def send_email(to: str, subject: str, html_body: str) -> bool:
         msg["To"] = to
         msg.attach(MIMEText(html_body, "html"))
 
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, to, msg.as_string())
+        if SMTP_PORT == 465:
+            # SSL direto
+            import ssl
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, context=context) as server:
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_USER, to, msg.as_string())
+        else:
+            # STARTTLS (porta 587)
+            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
+                server.ehlo()
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.sendmail(SMTP_USER, to, msg.as_string())
 
         logger.info(f"Email enviado para {to} | Assunto: {subject}")
         return True
