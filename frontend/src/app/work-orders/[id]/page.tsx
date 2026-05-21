@@ -362,8 +362,10 @@ export default function WorkOrderDetailPage() {
     const printArea = document.getElementById("print-area");
     if (printArea) {
       printArea.style.display = "block";
-      window.print();
-      setTimeout(() => { printArea.style.display = "none"; }, 500);
+      setTimeout(() => {
+        window.print();
+        printArea.style.display = "none";
+      }, 100);
     }
   };
 
