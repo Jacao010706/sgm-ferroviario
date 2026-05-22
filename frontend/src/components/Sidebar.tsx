@@ -161,7 +161,7 @@ export default function Sidebar() {
   const userName = typeof window !== "undefined" ? localStorage.getItem("user_name") || "" : "";
   const userRole = typeof window !== "undefined" ? localStorage.getItem("user_role") || "" : "";
 
-<<<<<<< HEAD
+
   const totalNotifications = alertCount + fuelAlerts.length;
 
   return (
