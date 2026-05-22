@@ -68,7 +68,6 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
                           {os.maintenance_type && <span className="text-xs text-slate-500">{TYPE_LABEL[os.maintenance_type] ?? os.maintenance_type}</span>}
                         </div>
                         <p className="text-sm font-medium text-slate-700 truncate">{os.title}</p>
-<<<<<<< HEAD
                         {os.observations && <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>}
                         {os.root_cause && <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>}
                         {os.corrective_action && <p className="text-xs text-slate-500 mt-0.5">Ação corretiva: {os.corrective_action}</p>}
@@ -79,17 +78,6 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
                       <div className="text-right text-xs text-slate-400 shrink-0">
                         {os.scheduled_start && <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>}
                         {os.actual_end && <p className="text-green-600">Concluído: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>}
-=======
-                        {os.description && <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{os.description}</p>}
-                        {os.observations && <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>}
-                        {os.root_cause && <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>}
-                        {os.corrective_action && <p className="text-xs text-slate-500 mt-0.5">Acao corretiva: {os.corrective_action}</p>}
-                      </div>
-                      <div className="text-right text-xs text-slate-400 shrink-0">
-                        {os.scheduled_start && <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>}
-                        {os.actual_end && <p className="text-green-600">Concluido: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>}
-                        {os.actual_duration_h && <p>{os.actual_duration_h}h</p>}
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
                       </div>
                     </div>
                   </div>
@@ -189,12 +177,7 @@ export default function MonitoringPage() {
   const fuelLevel = getVal("fuel_level");
   const mode = getVal("mode");
   const isSubAsset = !!selected?.parent_id;
-<<<<<<< HEAD
   const fuelLow = fuelLevel != null && fuelLevel < 50;
-=======
-  const isGenerator = selected?.asset_type === "generator";
-  const showTelemetry = !isSubAsset && isGenerator;
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
   const subAssets = selected && !isSubAsset ? assets.filter((a) => a.parent_id === selected.id) : [];
 
   return (
@@ -207,7 +190,7 @@ export default function MonitoringPage() {
             <p className="text-slate-500 text-sm">Telemetria em tempo real</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={simulate} disabled={simulating || !selected || !showTelemetry} className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm">
+            <button onClick={simulate} disabled={simulating || !selected || isSubAsset} className="flex items-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm">
               <PlayCircle size={15} />{simulating ? "Simulando..." : "Simular Dados"}
             </button>
             <button onClick={loadReadings} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">
@@ -276,7 +259,7 @@ export default function MonitoringPage() {
                     <p className="text-xs text-slate-500">Tag: {selected.tag} | Tipo: {selected.asset_type}</p>
                   </div>
                   <div className="flex items-center gap-3">
-                    {showTelemetry && (
+                    {!isSubAsset && (
                       <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", mode === 1 ? "bg-blue-100 text-blue-700" : mode === 0 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500")}>
                         {mode === 1 ? "Automatico" : mode === 0 ? "Manual" : "-- Modo"}
                       </span>
@@ -287,7 +270,7 @@ export default function MonitoringPage() {
                   </div>
                 </div>
 
-                {showTelemetry ? (
+                {!isSubAsset ? (
                   <>
                     <div className="grid grid-cols-3 gap-3">
                       {[
@@ -370,28 +353,9 @@ export default function MonitoringPage() {
                       </div>
                     )}
                   </>
-<<<<<<< HEAD
                 ) : (
                   <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
                     <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponível apenas no ativo principal.</p>
-=======
-                ) : isSubAsset ? (
-                  <SubAssetHistory subAsset={selected} />
-                ) : (
-                  <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                    <p className="text-slate-400 text-sm">Telemetria nao disponivel para este tipo de ativo.</p>
-                    {subAssets.length > 0 && (
-                      <div className="mt-6 space-y-3 text-left">
-                        <h2 className="font-semibold text-slate-700 flex items-center gap-2 text-sm">
-                          <ClipboardList size={15} className="text-slate-500" />
-                          Historico de Subativos
-                        </h2>
-                        {subAssets.map((sub) => (
-                          <SubAssetHistory key={sub.id} subAsset={sub} />
-                        ))}
-                      </div>
-                    )}
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
                   </div>
                 )}
               </>
