@@ -161,4 +161,4 @@ async def simulate_readings(
     }
     await r_client.publish(f"telemetry:{asset_id}", json.dumps(payload))
     await r_client.aclose()
-    return {"simulated": len(readings), "readings": payload["readings"]}cd
+    return {"simulated": len(readings), "readings": payload["readings"]}
