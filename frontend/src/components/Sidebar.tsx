@@ -1,15 +1,15 @@
 "use client";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-<<<<<<< HEAD
+
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, Fuel, AlertTriangle } from "lucide-react";
-=======
+
 import { useEffect, useState, useRef } from "react";
 import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, CalendarClock, CheckSquare, Users, X, AlertTriangle, Clock, Wrench } from "lucide-react";
 import { api } from "@/lib/api";
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
+ f9671f6a567491b8723dabebc69e1b52e8673e1e
 import clsx from "clsx";
 
 const nav = [
@@ -17,15 +17,15 @@ const nav = [
   { href: "/monitoring", label: "Monitoramento", icon: Radio },
   { href: "/assets", label: "Ativos", icon: Layers },
   { href: "/work-orders", label: "Ordens de Servico", icon: ClipboardList },
-<<<<<<< HEAD
+
   { href: "/maintenance-plans", label: "Planos de Manutencao", icon: Fuel },
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
-=======
+
   { href: "/maintenance-plans", label: "Planos de Manutencao", icon: CalendarClock },
   { href: "/checklists", label: "Checklists", icon: CheckSquare },
   { href: "/teams", label: "Equipes e Tecnicos", icon: Users },
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
+ f9671f6a567491b8723dabebc69e1b52e8673e1e
   { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/settings", label: "Configuracoes", icon: Settings },
@@ -45,7 +45,7 @@ interface Notification {
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-<<<<<<< HEAD
+
   const [alertCount, setAlertCount] = useState(0);
   const [fuelAlerts, setFuelAlerts] = useState<any[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -69,7 +69,7 @@ export default function Sidebar() {
     const interval = setInterval(loadAlerts, 30000);
     return () => clearInterval(interval);
   }, []);
-=======
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
@@ -150,7 +150,7 @@ export default function Sidebar() {
   const markAllRead = () => {
     setNotifications(notifications.map(n => ({ ...n, read: true })));
   };
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
+ f9671f6a567491b8723dabebc69e1b52e8673e1e
 
   const handleLogout = () => {
     localStorage.clear();
@@ -260,7 +260,7 @@ export default function Sidebar() {
         <LogOut size={16} /> Sair
       </button>
     </aside>
-=======
+
   const severityColor: Record<string, string> = {
     critical: "text-red-600", high: "text-orange-500", medium: "text-amber-500", low: "text-green-500",
   };
@@ -382,6 +382,6 @@ export default function Sidebar() {
         </button>
       </aside>
     </>
->>>>>>> f9671f6a567491b8723dabebc69e1b52e8673e1e
+ f9671f6a567491b8723dabebc69e1b52e8673e1e
   );
 }
