@@ -4,10 +4,34 @@ import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Plus, RefreshCw, X, ClipboardList, Pencil, Trash2, Download, Upload, FileText } from "lucide-react";
 import clsx from "clsx";
-import * as XLSX from "xlsx";
 
 const CATEGORIES = ["Gerador", "Transformador", "Subestacao", "Retificador", "Geral", "Outro"];
 const emptyForm = { name: "", description: "", category: "", items: [] as string[] };
+
+// Parse CSV simples sem biblioteca externa
+function parseCSV(text: string): string[] {
+  return text.split("\n").map(line => {
+    const col = line.split(",")[0];
+    return col.replace(/^"|"$/g, "").trim();
+  }).filter(l => l.length > 0);
+}
+
+// Parse XLSX binario usando base64 + heuristica simples
+function parseXLSXBasic(buffer: ArrayBuffer): string[] {
+  // Extrai strings do binario xlsx (strings sao armazenadas em sharedStrings.xml)
+  const bytes = new Uint8Array(buffer);
+  const decoder = new TextDecoder("utf-8", { fatal: false });
+  const text = decoder.decode(bytes);
+  
+  // Tenta extrair strings do XML interno do xlsx
+  const matches = text.match(/<t[^>]*>([^<]+)<\/t>/g);
+  if (matches && matches.length > 0) {
+    return matches
+      .map(m => m.replace(/<[^>]+>/g, "").trim())
+      .filter(s => s.length > 0 && s.length < 500);
+  }
+  return [];
+}
 
 export default function ChecklistsPage() {
   const [checklists, setChecklists] = useState<any[]>([]);
@@ -71,36 +95,34 @@ export default function ChecklistsPage() {
     setFileImportMsg("");
     const ext = file.name.split(".").pop()?.toLowerCase();
 
-    const processLines = (lines: string[]) => {
-      const items = lines.map(l => l.trim()).filter(l => l.length > 0);
+    const applyItems = (items: string[]) => {
       if (items.length === 0) { setFileImportMsg("Nenhuma tarefa encontrada no arquivo."); return; }
       setForm((prev: any) => ({ ...prev, items: [...prev.items, ...items] }));
-      setFileImportMsg(`${items.length} tarefa(s) importada(s) do arquivo!`);
+      setFileImportMsg(`${items.length} tarefa(s) importada(s) com sucesso!`);
       setTimeout(() => setFileImportMsg(""), 4000);
     };
 
-    if (ext === "txt" || ext === "csv") {
+    if (ext === "txt") {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        const lines = ext === "csv"
-          ? text.split("\n").map(l => l.split(",")[0].replace(/"/g, ""))
-          : text.split("\n");
-        processLines(lines);
+        const lines = (ev.target?.result as string).split("\n").map(l => l.trim()).filter(l => l);
+        applyItems(lines);
+      };
+      reader.readAsText(file);
+    } else if (ext === "csv") {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        applyItems(parseCSV(ev.target?.result as string));
       };
       reader.readAsText(file);
     } else if (ext === "xlsx" || ext === "xls") {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        try {
-          const data = new Uint8Array(ev.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: "array" });
-          const sheet = workbook.Sheets[workbook.SheetNames[0]];
-          const rows: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-          const lines = rows.map((row: any[]) => String(row[0] || "")).filter(l => l.trim());
-          processLines(lines);
-        } catch {
-          setFileImportMsg("Erro ao ler o arquivo Excel.");
+        const items = parseXLSXBasic(ev.target?.result as ArrayBuffer);
+        if (items.length === 0) {
+          setFileImportMsg("Nao foi possivel ler o Excel. Use .txt ou .csv para melhor compatibilidade.");
+        } else {
+          applyItems(items);
         }
       };
       reader.readAsArrayBuffer(file);
@@ -108,7 +130,6 @@ export default function ChecklistsPage() {
       setFileImportMsg("Formato nao suportado. Use .txt, .csv ou .xlsx");
     }
 
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -205,7 +226,6 @@ export default function ChecklistsPage() {
           </div>
         )}
 
-        {/* Modal criar/editar */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -230,18 +250,10 @@ export default function ChecklistsPage() {
                       Tarefas * <span className="font-normal text-slate-400">({form.items.length} adicionadas)</span>
                     </p>
                     <div className="flex gap-2">
-                      {/* Botao importar de arquivo */}
                       <label className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg text-xs font-medium cursor-pointer">
                         <Upload size={12} /> Importar arquivo
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          accept=".txt,.csv,.xlsx,.xls"
-                          className="hidden"
-                          onChange={handleFileImport}
-                        />
+                        <input ref={fileInputRef} type="file" accept=".txt,.csv,.xlsx,.xls" className="hidden" onChange={handleFileImport} />
                       </label>
-                      {/* Botao importar de checklist */}
                       {checklists.filter(c => !editing || c.id !== editing.id).length > 0 && (
                         <button type="button" onClick={() => setShowImportModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-medium">
                           <Download size={12} /> Importar checklist
@@ -250,14 +262,13 @@ export default function ChecklistsPage() {
                     </div>
                   </div>
 
-                  {/* Info formatos suportados */}
                   <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
                     <FileText size={13} className="text-slate-400 shrink-0" />
-                    <p className="text-xs text-slate-500">Formatos aceitos: <strong>.txt</strong>, <strong>.csv</strong>, <strong>.xlsx</strong> — uma tarefa por linha/célula</p>
+                    <p className="text-xs text-slate-500">Formatos aceitos: <strong>.txt</strong>, <strong>.csv</strong>, <strong>.xlsx</strong> — uma tarefa por linha</p>
                   </div>
 
                   {fileImportMsg && (
-                    <div className={clsx("px-3 py-2 rounded-lg text-xs font-medium mb-3", fileImportMsg.includes("Erro") || fileImportMsg.includes("nao") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700")}>
+                    <div className={clsx("px-3 py-2 rounded-lg text-xs font-medium mb-3", fileImportMsg.includes("Erro") || fileImportMsg.includes("Nao") || fileImportMsg.includes("nao") ? "bg-red-50 text-red-700" : "bg-green-50 text-green-700")}>
                       {fileImportMsg}
                     </div>
                   )}
@@ -273,13 +284,9 @@ export default function ChecklistsPage() {
                     {form.items.length === 0 && <p className="text-slate-400 text-sm py-2 text-center">Nenhuma tarefa adicionada ainda</p>}
                   </div>
                   <div className="flex gap-2">
-                    <input
-                      className={clsx(inp, "flex-1")}
-                      value={newItem}
-                      onChange={e => setNewItem(e.target.value)}
+                    <input className={clsx(inp, "flex-1")} value={newItem} onChange={e => setNewItem(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addItem(); }}}
-                      placeholder="Nova tarefa... (Enter para adicionar)"
-                    />
+                      placeholder="Nova tarefa... (Enter para adicionar)" />
                     <button type="button" onClick={addItem} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"><Plus size={14} /></button>
                   </div>
                 </div>
@@ -296,7 +303,6 @@ export default function ChecklistsPage() {
           </div>
         )}
 
-        {/* Modal importar de checklist existente */}
         {showImportModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto">
