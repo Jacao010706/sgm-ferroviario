@@ -58,3 +58,4 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 async def health():
     return {"status": "ok", "version": settings.VERSION, "env": settings.ENVIRONMENT}
 
+
