@@ -47,16 +47,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
@@ -64,3 +57,4 @@ Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": settings.VERSION, "env": settings.ENVIRONMENT}
+
