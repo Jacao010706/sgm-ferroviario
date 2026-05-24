@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -61,6 +61,9 @@ export default function MaintenancePlansPage() {
   const [newCheckItem, setNewCheckItem] = useState("");
   const [requiredParts, setRequiredParts] = useState<string[]>([]);
   const [newPart, setNewPart] = useState("");
+  const [showPartsSelector, setShowPartsSelector] = useState(false);
+  const [availableParts, setAvailableParts] = useState<any[]>([]);
+  const [partsSearch, setPartsSearch] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -78,6 +81,15 @@ export default function MaintenancePlansPage() {
     setNewCheckItem("");
   };
 
+  const openPartsSelector = () => {
+    api.get("/parts/", { params: { limit: 500 } }).then(r => setAvailableParts(r.data));
+    setPartsSearch("");
+    setShowPartsSelector(true);
+  };
+  const addPartFromSelector = (part: any) => {
+    const partStr = part.code + " - " + part.name;
+    if (!requiredParts.includes(partStr)) setRequiredParts(prev => [...prev, partStr]);
+  };
   const addPart = () => {
     if (!newPart.trim()) return;
     setRequiredParts(prev => [...prev, newPart.trim()]);
@@ -184,7 +196,7 @@ export default function MaintenancePlansPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
             <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Atencao — planos precisam de acao</p>
+              <p className="text-sm font-semibold text-amber-800">Atencao â€” planos precisam de acao</p>
               <p className="text-xs text-amber-600 mt-0.5">
                 {overdueCount > 0 && `${overdueCount} plano(s) vencido(s). `}
                 {dueSoon7 > 0 && `${dueSoon7} plano(s) vencendo nos proximos 7 dias.`}
@@ -343,3 +355,7 @@ export default function MaintenancePlansPage() {
     </div>
   );
 }
+
+
+
+
