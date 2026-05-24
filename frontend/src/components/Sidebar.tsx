@@ -1,84 +1,158 @@
 ﻿"use client";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import Sidebar from "@/components/Sidebar";
-import { Plus, Search, RefreshCw, X, Package } from "lucide-react";
+import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, Fuel, AlertTriangle, Package } from "lucide-react";
 import clsx from "clsx";
 
-const emptyForm = { code: "", name: "", description: "", unit: "un", quantity_stock: 0, quantity_minimum: 0, unit_cost: "", supplier: "" };
+const nav = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/monitoring", label: "Monitoramento", icon: Radio },
+  { href: "/assets", label: "Ativos", icon: Layers },
+  { href: "/work-orders", label: "Ordens de Servico", icon: ClipboardList },
+  { href: "/maintenance-plans", label: "Planos de Manutencao", icon: Fuel },
+  { href: "/checklists", label: "Checklists", icon: ClipboardList },
+  { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
+  { href: "/alerts", label: "Alertas", icon: Bell },
+  { href: "/reports", label: "Relatorios", icon: BarChart2 },
+  { href: "/parts", label: "Pecas e Materiais", icon: Package },
+  { href: "/settings", label: "Configuracoes", icon: Settings },
+];
 
-export default function PartsPage() {
-  const [parts, setParts] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState<any>({ ...emptyForm });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+export default function Sidebar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [alertCount, setAlertCount] = useState(0);
+  const [fuelAlerts, setFuelAlerts] = useState<any[]>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
-  const load = () => { setLoading(true); api.get("/parts/", { params: { limit: 100 } }).then((r) => setParts(r.data)).finally(() => setLoading(false)); };
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const loadAlerts = () => {
+      api.get("/alerts/active-count").then((r) => {
+        setAlertCount(r.data.total || 0);
+      }).catch(() => {});
 
-  const filtered = parts.filter(p => !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.code.toLowerCase().includes(search.toLowerCase()));
+      // Busca alertas ativos de combustivel
+      api.get("/alerts/", { params: { status: "active", limit: 20 } }).then((r) => {
+        const fuel = r.data.filter((a: any) =>
+          a.metric_name === "fuel_level" || a.title?.toLowerCase().includes("combustivel")
+        );
+        setFuelAlerts(fuel);
+      }).catch(() => {});
+    };
 
-  const handleSubmit = async () => {
-    if (!form.code || !form.name) { setError("Preencha Codigo e Nome"); return; }
-    setSaving(true); setError("");
-    try {
-      const payload: any = { ...form };
-      if (!payload.description) delete payload.description;
-      if (!payload.unit_cost) delete payload.unit_cost;
-      if (!payload.supplier) delete payload.supplier;
-      payload.quantity_stock = parseFloat(payload.quantity_stock) || 0;
-      payload.quantity_minimum = parseFloat(payload.quantity_minimum) || 0;
-      if (payload.unit_cost) payload.unit_cost = parseFloat(payload.unit_cost);
-      await api.post("/parts/", payload);
-      setShowModal(false); setForm({ ...emptyForm }); load();
-    } catch (e: any) { setError(e?.response?.data?.detail || "Erro ao criar peca");
-    } finally { setSaving(false); }
+    loadAlerts();
+    const interval = setInterval(loadAlerts, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.clear();
+    document.cookie = "access_token=; path=/; max-age=0";
+    router.push("/login");
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Desativar esta peca?")) return;
-    try { await api.delete(`/parts/${id}`); load(); } catch { alert("Erro ao excluir peca"); }
-  };
+  const userName = typeof window !== "undefined" ? localStorage.getItem("user_name") || "" : "";
+  const userRole = typeof window !== "undefined" ? localStorage.getItem("user_role") || "" : "";
 
-  const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-  const lbl = "block text-sm font-medium text-slate-700 mb-1";
+  const totalNotifications = alertCount + fuelAlerts.length;
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <Sidebar />
-      <main className="flex-1 p-6 overflow-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div><h1 className="text-2xl font-bold text-slate-800">Pecas e Materiais</h1><p className="text-slate-500 text-sm">{parts.length} registros</p></div>
-          <button onClick={() => { setForm({ ...emptyForm }); setError(""); setShowModal(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium"><Plus size={16} /> Nova Peca</button>
+    <aside className="w-64 min-h-screen bg-[#1E3A5F] flex flex-col relative">
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-blue-900">
+        <Zap className="text-yellow-400" size={28} />
+        <div className="flex-1">
+          <p className="text-white font-bold text-sm leading-tight">SGM Ferroviario</p>
+          <p className="text-blue-300 text-xs">Gestao de Manutencao</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 mb-4 flex gap-3">
-          <div className="relative flex-1"><Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none" placeholder="Buscar por nome ou codigo..." value={search} onChange={(e) => setSearch(e.target.value)} /></div>
-          <button onClick={load} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50"><RefreshCw size={15} className="text-slate-500" /></button>
+        {/* Sino de notificacoes */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-1.5 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Bell size={18} className="text-blue-200" />
+            {totalNotifications > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                {totalNotifications > 9 ? "9+" : totalNotifications}
+              </span>
+            )}
+          </button>
+
+          {/* Dropdown notificacoes */}
+          {showNotifications && (
+            <div className="absolute left-0 top-10 w-72 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <p className="font-semibold text-slate-800 text-sm">Notificacoes</p>
+                <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600 text-xs">Fechar</button>
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {fuelAlerts.length === 0 && alertCount === 0 && (
+                  <p className="text-center text-slate-400 text-sm py-6">Nenhuma notificacao</p>
+                )}
+                {fuelAlerts.map((alert: any) => (
+                  <div key={alert.id} className="px-4 py-3 border-b border-slate-50 hover:bg-slate-50">
+                    <div className="flex items-start gap-2">
+                      <Fuel size={14} className={alert.metric_value <= 20 ? "text-red-500 mt-0.5 shrink-0" : "text-amber-500 mt-0.5 shrink-0"} />
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-slate-800">{alert.title}</p>
+                        <p className="text-xs text-slate-500 mt-0.5">{alert.description}</p>
+                        <Link
+                          href="/monitoring"
+                          onClick={() => setShowNotifications(false)}
+                          className="text-xs text-blue-600 hover:underline mt-1 block"
+                        >
+                          Ver monitoramento â†’
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {alertCount > 0 && (
+                  <div className="px-4 py-3 hover:bg-slate-50">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                      <div className="flex-1">
+                        <p className="text-xs font-semibold text-slate-800">{alertCount} alerta(s) ativo(s)</p>
+                        <Link
+                          href="/alerts"
+                          onClick={() => setShowNotifications(false)}
+                          className="text-xs text-blue-600 hover:underline mt-1 block"
+                        >
+                          Ver alertas â†’
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Codigo</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Nome</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Unidade</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Estoque</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Minimo</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Custo Unit.</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Fornecedor</th>
-                <th className="px-4 py-3 text-left font-semibold text-slate-600">Acoes</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400">Carregando...</td></tr>
-              : filtered.length === 0 ? <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400"><div className="flex flex-col items-center gap-2"><Package size={32} className="text-slate-300" /><span>Nenhuma peca cadastrada</span></div></td></tr>
-              : filtered.map(p => (
-                <tr key={p.id} className={clsx("hover:bg-slate-50", p.quantity_stock <= p.quantity_minimum && p.quantity_minimum > 0 && "bg-red-50")}>
-                  <td className="px-4 py-3 font-mono font-semibold text-blue-700">{p.code}</td>
-                  <td className="px-4 py-3 font-medium text-slate-800">{p.name}{p.description && <p className="text-xs text-slate-400 truncate max-w-xs">{p.description}</p>}</td>
-                  <td className="px-4 py-3 text-slate-500">{p.unit}</td>
-                  <td className="px-4 py-3"><span className={clsx("font-semibold", p.quantity_stock <= p.quantity_minimum && p.quantity_minimum > 0 ? "text-red-600" : "text-slate-800")}>{p.quantity_stock}</span></td>
-                  <td cl
+      </div>
+
+      <nav className="flex-1 py-4">
+        {nav.map(({ href, label, icon: Icon }) => (
+          <Link key={href} href={href} className={clsx("flex items-center gap-3 px-6 py-3 text-sm font-medium transition-colors", pathname.startsWith(href) ? "bg-blue-700 text-white" : "text-blue-200 hover:bg-blue-800 hover:text-white")}>
+            <Icon size={18} />
+            {label}
+            {href === "/alerts" && alertCount > 0 && (
+              <span className="ml-auto bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 font-bold">{alertCount}</span>
+            )}
+          </Link>
+        ))}
+      </nav>
+
+      {userName && (
+        <div className="px-6 py-3 border-t border-blue-900">
+          <p className="text-white text-xs font-medium truncate">{userName}</p>
+          <p className="text-blue-300 text-xs capitalize">{userRole}</p>
+        </div>
+      )}
+      <button onClick={handleLogout} className="flex items-center gap-3 px-6 py-4 text-blue-300 hover:text-white text-sm border-t border-blue-900 transition-colors">
+        <LogOut size={16} /> Sair
+      </button>
+    </aside>
+  );
+}
