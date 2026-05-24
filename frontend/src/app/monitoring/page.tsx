@@ -102,7 +102,7 @@ export default function MonitoringPage() {
   const [fuelOSMsg, setFuelOSMsg] = useState("");
 
   useEffect(() => {
-    api.get("/assets", { params: { limit: 50 } }).then((r) => {
+    api.get("/assets/", { params: { limit: 50 } }).then((r) => {
       setAssets(r.data);
       if (r.data.length > 0) setSelected(r.data[0]);
     });

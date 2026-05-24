@@ -21,7 +21,7 @@ export default function AssetsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const load = () => { setLoading(true); api.get("/assets", { params: { limit: 200 } }).then((r) => setAssets(r.data)).finally(() => setLoading(false)); };
+  const load = () => { setLoading(true); api.get("/assets/", { params: { limit: 200 } }).then((r) => setAssets(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
   const roots = assets.filter(a => !a.parent_id).filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.tag.toLowerCase().includes(search.toLowerCase())).filter(a => !statusFilter || a.status === statusFilter).filter(a => !typeFilter || a.asset_type === typeFilter);
   const children = (parentId: string) => assets.filter(a => a.parent_id === parentId);
@@ -42,7 +42,7 @@ export default function AssetsPage() {
       if (!payload.serial_number) delete payload.serial_number;
       if (!payload.notes) delete payload.notes;
       if (!payload.parent_id) delete payload.parent_id;
-      await api.post("/assets", payload);
+      await api.post("/assets/", payload);
       setShowModal(false); setForm({...emptyForm}); load();
     } catch (e: any) { setError(e?.response?.data?.detail || "Erro ao criar ativo");
     } finally { setSaving(false); }
