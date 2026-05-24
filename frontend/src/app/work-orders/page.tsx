@@ -38,7 +38,7 @@ export default function WorkOrdersPage() {
     setLoading(true);
     Promise.all([
       api.get("/work-orders/", { params: { status: statusFilter || undefined, limit: 100 } }).then((r) => setOrders(r.data)),
-      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/assets/"), { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
 
