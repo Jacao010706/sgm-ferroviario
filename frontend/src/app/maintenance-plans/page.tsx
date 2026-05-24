@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -62,6 +62,9 @@ export default function MaintenancePlansPage() {
   const [requiredParts, setRequiredParts] = useState<string[]>([]);
   const [newPart, setNewPart] = useState("");
   const [showPartsSelector, setShowPartsSelector] = useState(false);
+  const [showChecklistSelector, setShowChecklistSelector] = useState(false);
+  const [availableChecklists, setAvailableChecklists] = useState<any[]>([]);
+  const [checklistSearch, setChecklistSearch] = useState("");
   const [availableParts, setAvailableParts] = useState<any[]>([]);
   const [partsSearch, setPartsSearch] = useState("");
 
@@ -74,6 +77,19 @@ export default function MaintenancePlansPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const openChecklistSelector = () => {
+    api.get("/checklists/", { params: { limit: 100 } }).then((r) => setAvailableChecklists(r.data));
+    setChecklistSearch("");
+    setShowChecklistSelector(true);
+  };
+
+  const importChecklist = (cl: any) => {
+    const newItems = (cl.items || []).map((item: any) => typeof item === "string" ? item : item.text);
+    const toAdd = newItems.filter((item: string) => !checklist.includes(item));
+    setChecklist(prev => [...prev, ...toAdd]);
+    setShowChecklistSelector(false);
+  };
 
   const openPartsSelector = () => {
     api.get("/parts/", { params: { limit: 500 } }).then((r) => setAvailableParts(r.data));
@@ -316,6 +332,7 @@ export default function MaintenancePlansPage() {
                       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCheckItem(); }}}
                       placeholder="Nova tarefa... (Enter para adicionar)" />
                     <button type="button" onClick={addCheckItem} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"><Plus size={14} /></button>
+                    <button type="button" onClick={openChecklistSelector} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium"><Search size={14} /> Buscar</button>
                   </div>
                 </div>
 
@@ -348,6 +365,38 @@ export default function MaintenancePlansPage() {
           </div>
         )}
 
+        {showChecklistSelector && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{maxHeight: "80vh"}}>
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <h3 className="font-bold text-slate-800">Importar Checklist</h3>
+                <button onClick={() => setShowChecklistSelector(false)}><X size={18} className="text-slate-400 hover:text-slate-600" /></button>
+              </div>
+              <div className="p-4 border-b border-slate-100">
+                <div className="relative">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Buscar checklist..." value={checklistSearch} onChange={e => setChecklistSearch(e.target.value)} autoFocus />
+                </div>
+              </div>
+              <div className="overflow-auto flex-1 p-2">
+                {availableChecklists.filter(cl => !checklistSearch || cl.name.toLowerCase().includes(checklistSearch.toLowerCase()) || (cl.category || "").toLowerCase().includes(checklistSearch.toLowerCase())).map(cl => (
+                  <div key={cl.id} onClick={() => importChecklist(cl)} className="flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer hover:bg-slate-50 border border-transparent hover:border-slate-200 mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-semibold text-slate-800">{cl.name}</p>
+                        {cl.category && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{cl.category}</span>}
+                      </div>
+                      {cl.description && <p className="text-xs text-slate-400 mb-1">{cl.description}</p>}
+                      <p className="text-xs text-slate-500">{(cl.items || []).length} tarefas</p>
+                    </div>
+                    <span className="text-xs text-blue-600 font-medium mt-1 shrink-0">Importar</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {showPartsSelector && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{maxHeight: "80vh"}}>
@@ -370,11 +419,11 @@ export default function MaintenancePlansPage() {
                   return (
                     <div key={p.id} onClick={() => togglePart(p)} className={clsx("flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors", selected && "bg-blue-50")}>
                       <div className={clsx("w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors", selected ? "bg-blue-600 border-blue-600" : "border-slate-300")}>
-                        {selected && <span className="text-white text-xs font-bold">✓</span>}
+                        {selected && <span className="text-white text-xs font-bold">âœ“</span>}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-slate-800 truncate">{p.name}</p>
-                        <p className="text-xs text-slate-400">{p.code}{p.category ? " · " + p.category : ""}{p.description ? " · " + p.description.slice(0, 50) : ""}</p>
+                        <p className="text-xs text-slate-400">{p.code}{p.category ? " Â· " + p.category : ""}{p.description ? " Â· " + p.description.slice(0, 50) : ""}</p>
                       </div>
                     </div>
                   );
@@ -391,3 +440,7 @@ export default function MaintenancePlansPage() {
     </div>
   );
 }
+
+
+
+
