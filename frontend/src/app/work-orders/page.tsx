@@ -65,7 +65,7 @@ export default function WorkOrdersPage() {
     setSaving(true); setError("");
     try {
       const payload: any = { ...form };
-      if (payload.estimated_duration_h) payload.estimated_duration_h = parseFloat(payload.estimated_duration_h);
+      if (payload.estimated_duration_h) payload.estimated_duration_h = parseFloat(payload.estimated_duration_h);else delete
       if (payload.internal_hours) payload.internal_hours = parseFloat(payload.internal_hours);
       if (payload.contractor_hours) payload.contractor_hours = parseFloat(payload.contractor_hours);
       if (!payload.scheduled_start) delete payload.scheduled_start;
