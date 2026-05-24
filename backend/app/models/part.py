@@ -17,6 +17,7 @@ class Part(Base):
     quantity_minimum: Mapped[float] = mapped_column(Float, default=0)
     unit_cost: Mapped[float | None] = mapped_column(Float)
     supplier: Mapped[str | None] = mapped_column(String(200))
+    category: Mapped[str | None] = mapped_column(String(100))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

@@ -20,6 +20,7 @@ class PartCreate(BaseModel):
     quantity_minimum: float = 0
     unit_cost: Optional[float] = None
     supplier: Optional[str] = None
+    category: Optional[str] = None
 
 class PartUpdate(BaseModel):
     name: Optional[str] = None
@@ -29,6 +30,7 @@ class PartUpdate(BaseModel):
     quantity_minimum: Optional[float] = None
     unit_cost: Optional[float] = None
     supplier: Optional[str] = None
+    category: Optional[str] = None
     is_active: Optional[bool] = None
 
 class PartOut(BaseModel):
@@ -41,14 +43,17 @@ class PartOut(BaseModel):
     quantity_minimum: float
     unit_cost: Optional[float]
     supplier: Optional[str]
+    category: Optional[str]
     is_active: bool
 
     class Config:
         from_attributes = True
 
 @router.get("/", response_model=list[PartOut])
-async def list_parts(search: Optional[str] = Query(None), skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
+async def list_parts(search: Optional[str] = Query(None), category: Optional[str] = Query(None), skip: int = 0, limit: int = 100, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     q = select(Part).where(Part.is_active == True)
+    if category:
+        q = q.where(Part.category == category)
     if search:
         q = q.where(or_(Part.name.ilike(f"%{search}%"), Part.code.ilike(f"%{search}%")))
     q = q.offset(skip).limit(limit).order_by(Part.name)
@@ -86,3 +91,4 @@ async def delete_part(part_id: UUID, db: AsyncSession = Depends(get_db), _: User
         raise HTTPException(404, "Peca nao encontrada")
     part.is_active = False
     await db.commit()
+
