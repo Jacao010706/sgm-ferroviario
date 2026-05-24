@@ -1,5 +1,4 @@
-$page = @'
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
