@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -64,7 +64,7 @@ export default function AlertsPage() {
     Promise.all([
       api.get("/alerts", { params: { status: statusFilter || undefined, severity: severityFilter || undefined, limit: 100 } })
         .then((r) => setAlerts(r.data)),
-      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
 
@@ -202,7 +202,7 @@ export default function AlertsPage() {
                   </p>
                 )}
                 <p className="text-xs opacity-60">
-                  {new Date(a.triggered_at).toLocaleString("pt-BR")} — {assets.find(x => x.id === a.asset_id)?.name || "Ativo"}
+                  {new Date(a.triggered_at).toLocaleString("pt-BR")} � {assets.find(x => x.id === a.asset_id)?.name || "Ativo"}
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0 flex-wrap justify-end">

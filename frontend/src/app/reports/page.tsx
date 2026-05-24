@@ -1,4 +1,4 @@
-ï»¿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -56,7 +56,7 @@ export default function ReportsPage() {
           limit: 200,
         }
       }).then((r) => setOrders(r.data)),
-      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
 
@@ -122,7 +122,7 @@ export default function ReportsPage() {
       <body>
         <div class="header">
           <div>
-            <h1>SGM Ferroviario â€” Gestao de Manutencao</h1>
+            <h1>SGM Ferroviario — Gestao de Manutencao</h1>
             <p>Relatorio de Ordens de Servico</p>
             <p>Gerado em: ${now}</p>
           </div>
@@ -162,7 +162,7 @@ export default function ReportsPage() {
         </table>
 
         <div class="footer">
-          SGM Ferroviario â€” Gestao de Manutencao Ferroviaria | Relatorio gerado automaticamente em ${now}
+          SGM Ferroviario — Gestao de Manutencao Ferroviaria | Relatorio gerado automaticamente em ${now}
         </div>
       </body>
       </html>

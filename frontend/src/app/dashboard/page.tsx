@@ -101,7 +101,7 @@ export default function DashboardPage() {
       api.get("/work-orders/kpis").then((r) => setWoKpis(r.data)),
       api.get("/alerts/active-count").then((r) => setActiveAlerts(r.data)),
       api.get("/work-orders", { params: { limit: 5 } }).then((r) => setRecentWO(r.data)),
-      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
 
