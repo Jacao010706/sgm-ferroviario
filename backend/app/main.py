@@ -11,6 +11,7 @@ log = structlog.get_logger()
 async def lifespan(app: FastAPI):
     log.info("Iniciando SGM Ferroviario", version=settings.VERSION, env=settings.ENVIRONMENT)
     import asyncio
+    from app.models import part
     for attempt in range(5):
         try:
             await create_tables()

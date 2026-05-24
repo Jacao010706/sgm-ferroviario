@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1 import auth, assets, work_orders, maintenance, alerts, iot, admin, checklists, teams, notifications
+from app.api.v1 import auth, assets, work_orders, maintenance, alerts, iot, admin, checklists, teams, notifications, parts
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -13,3 +13,4 @@ api_router.include_router(admin.router)
 api_router.include_router(checklists.router)
 api_router.include_router(teams.router)
 api_router.include_router(notifications.router)
+api_router.include_router(parts.router)
