@@ -43,7 +43,12 @@ app = FastAPI(
     redoc_url="/api/redoc",
     lifespan=lifespan,
 )
-app.add_middleware(CORSMiddleware, allow_origins=["https://laudable-peace-production-09cd.up.railway.app"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+origins = [
+    "https://laudable-peace-production-09cd.up.railway.app",
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"], allow_headers=["*"], expose_headers=["*"])
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 @app.get("/health")
