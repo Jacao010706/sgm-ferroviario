@@ -66,7 +66,7 @@ export default function MaintenancePlansPage() {
     setLoading(true);
     Promise.all([
       api.get("/maintenance-plans/", { params: { is_active: true } }).then((r) => setPlans(r.data)),
-      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
 
