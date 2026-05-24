@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, Fuel, AlertTriangle, Package } from "lucide-react";
+import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, Fuel, AlertTriangle, Package, FileText } from "lucide-react";
 import clsx from "clsx";
 
 const nav = [
@@ -15,6 +15,7 @@ const nav = [
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
   { href: "/alerts", label: "Alertas", icon: Bell },
+  { href: "/daily-report", label: "Relatorio Diario", icon: FileText },
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/parts", label: "Pecas e Materiais", icon: Package },
   { href: "/settings", label: "Configuracoes", icon: Settings },
