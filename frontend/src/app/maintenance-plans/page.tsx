@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { Plus, RefreshCw, X, PlayCircle, Calendar, Clock, CheckCircle, AlertTriangle } from "lucide-react";
+import { Plus, RefreshCw, X, PlayCircle, Calendar, Clock, CheckCircle, AlertTriangle, Search } from "lucide-react";
 import clsx from "clsx";
 
 const FREQUENCY_LABEL: Record<string, string> = {
@@ -75,21 +75,27 @@ export default function MaintenancePlansPage() {
 
   useEffect(() => { load(); }, []);
 
+  const openPartsSelector = () => {
+    api.get("/parts/", { params: { limit: 500 } }).then((r) => setAvailableParts(r.data));
+    setPartsSearch("");
+    setShowPartsSelector(true);
+  };
+
+  const togglePart = (part: any) => {
+    const partStr = part.code + " - " + part.name;
+    if (requiredParts.includes(partStr)) {
+      setRequiredParts(requiredParts.filter(p => p !== partStr));
+    } else {
+      setRequiredParts(prev => [...prev, partStr]);
+    }
+  };
+
   const addCheckItem = () => {
     if (!newCheckItem.trim()) return;
     setChecklist(prev => [...prev, newCheckItem.trim()]);
     setNewCheckItem("");
   };
 
-  const openPartsSelector = () => {
-    api.get("/parts/", { params: { limit: 500 } }).then(r => setAvailableParts(r.data));
-    setPartsSearch("");
-    setShowPartsSelector(true);
-  };
-  const addPartFromSelector = (part: any) => {
-    const partStr = part.code + " - " + part.name;
-    if (!requiredParts.includes(partStr)) setRequiredParts(prev => [...prev, partStr]);
-  };
   const addPart = () => {
     if (!newPart.trim()) return;
     setRequiredParts(prev => [...prev, newPart.trim()]);
@@ -154,6 +160,10 @@ export default function MaintenancePlansPage() {
     return days >= 0 && days <= 7;
   }).length;
 
+  const filteredAvailableParts = availableParts.filter(p =>
+    !partsSearch || p.name.toLowerCase().includes(partsSearch.toLowerCase()) || p.code.toLowerCase().includes(partsSearch.toLowerCase())
+  );
+
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
@@ -191,19 +201,6 @@ export default function MaintenancePlansPage() {
             <div><p className="text-2xl font-bold text-slate-800">{plans.length - overdueCount - dueSoon7}</p><p className="text-xs text-slate-500">Em Dia</p></div>
           </div>
         </div>
-
-        {(overdueCount > 0 || dueSoon7 > 0) && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-            <AlertTriangle size={18} className="text-amber-600 mt-0.5 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-amber-800">Atencao â€” planos precisam de acao</p>
-              <p className="text-xs text-amber-600 mt-0.5">
-                {overdueCount > 0 && `${overdueCount} plano(s) vencido(s). `}
-                {dueSoon7 > 0 && `${dueSoon7} plano(s) vencendo nos proximos 7 dias.`}
-              </p>
-            </div>
-          </div>
-        )}
 
         <div className="space-y-3">
           {loading ? (
@@ -304,7 +301,6 @@ export default function MaintenancePlansPage() {
                   </div>
                 </div>
 
-                {/* Checklist */}
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-2">Checklist de Tarefas</p>
                   <div className="space-y-1 mb-2">
@@ -323,8 +319,7 @@ export default function MaintenancePlansPage() {
                   </div>
                 </div>
 
-                {/* Pecas */}
-                <div>
+                <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-2">Pecas Necessarias</p>
                   <div className="space-y-1 mb-2">
                     {requiredParts.map((part, i) => (
@@ -337,8 +332,9 @@ export default function MaintenancePlansPage() {
                   <div className="flex gap-2">
                     <input className={clsx(inp, "flex-1")} value={newPart} onChange={e => setNewPart(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addPart(); }}}
-                      placeholder="Ex: Filtro de oleo (Enter para adicionar)" />
+                      placeholder="Digite manualmente ou use Buscar..." />
                     <button type="button" onClick={addPart} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"><Plus size={14} /></button>
+                    <button type="button" onClick={openPartsSelector} className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium"><Search size={14} /> Buscar</button>
                   </div>
                 </div>
 
@@ -351,11 +347,47 @@ export default function MaintenancePlansPage() {
             </div>
           </div>
         )}
+
+        {showPartsSelector && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg flex flex-col" style={{maxHeight: "80vh"}}>
+              <div className="flex items-center justify-between p-4 border-b border-slate-100">
+                <h3 className="font-bold text-slate-800">Selecionar Pecas</h3>
+                <button onClick={() => setShowPartsSelector(false)}><X size={18} className="text-slate-400 hover:text-slate-600" /></button>
+              </div>
+              <div className="p-4 border-b border-slate-100">
+                <div className="relative">
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Buscar peca por nome ou codigo..." value={partsSearch} onChange={e => setPartsSearch(e.target.value)} autoFocus />
+                </div>
+              </div>
+              <div className="overflow-auto flex-1 p-2">
+                {filteredAvailableParts.length === 0 ? (
+                  <p className="text-center text-slate-400 py-8 text-sm">Nenhuma peca encontrada</p>
+                ) : filteredAvailableParts.map(p => {
+                  const partStr = p.code + " - " + p.name;
+                  const selected = requiredParts.includes(partStr);
+                  return (
+                    <div key={p.id} onClick={() => togglePart(p)} className={clsx("flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors", selected && "bg-blue-50")}>
+                      <div className={clsx("w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors", selected ? "bg-blue-600 border-blue-600" : "border-slate-300")}>
+                        {selected && <span className="text-white text-xs font-bold">✓</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-slate-800 truncate">{p.name}</p>
+                        <p className="text-xs text-slate-400">{p.code}{p.category ? " · " + p.category : ""}{p.description ? " · " + p.description.slice(0, 50) : ""}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="p-4 border-t border-slate-100 flex justify-between items-center">
+                <span className="text-sm text-slate-500">{requiredParts.length} peca(s) selecionada(s)</span>
+                <button onClick={() => setShowPartsSelector(false)} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium">Confirmar</button>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
 }
-
-
-
-
