@@ -76,7 +76,7 @@ export default function WorkOrdersPage() {
       if (!payload.internal_hours) delete payload.internal_hours;
       if (!payload.contractor_hours) delete payload.contractor_hours;
       if (!payload.sub_asset_id) delete payload.sub_asset_id;
-      await api.post("/work-orders", payload);
+      await api.post("/work-orders/", payload);
       setShowModal(false); setForm({ ...emptyForm }); load();
     } catch (e: any) {
       setError(e?.response?.data?.detail || "Erro ao criar OS");
