@@ -56,8 +56,9 @@ export default function WorkOrdersPage() {
   );
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta OS?")) return;
-    try { await api.delete(`/work-orders/${id}`); window.location.reload(); } catch { alert("Erro ao excluir OS"); }
+    const ok = window.confirm("Tem certeza que deseja excluir esta OS?");
+    if (!ok) return;
+    await api.delete(`/work-orders/${id}`).then(() => window.location.reload()).catch(() => window.alert("Erro ao excluir OS"));
   };
 
   const handleSubmit = async () => {
@@ -235,4 +236,5 @@ export default function WorkOrdersPage() {
     </div>
   );
 }
+
 
