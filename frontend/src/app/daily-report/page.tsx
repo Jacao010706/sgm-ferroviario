@@ -212,16 +212,8 @@ export default function DailyReportPage() {
           </div>
         </div>
       </main>
-
-      <style jsx global>{
-        @media print {
-          .no-print { display: none !important; }
-          .sidebar { display: none !important; }
-          main { padding: 0 !important; }
-          body { background: white !important; }
-        }
-      }</style>
     </div>
   );
 }
+
 
