@@ -15,6 +15,7 @@ const nav = [
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
   { href: "/alerts", label: "Alertas", icon: Bell },
+  { href: "/pending-list", label: "Pendencias SAEE", icon: AlertTriangle },
   { href: "/daily-report", label: "Relatorio Diario", icon: FileText }, // v2
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/parts", label: "Pecas e Materiais", icon: Package },
@@ -157,4 +158,5 @@ export default function Sidebar() {
     </aside>
   );
 }
+
 
