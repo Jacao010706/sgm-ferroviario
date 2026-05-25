@@ -50,6 +50,17 @@ origins = [
     "http://localhost:3001",
 ]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"], allow_headers=["*"], expose_headers=["*"])
+from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["Content-Security-Policy"] = "upgrade-insecure-requests"
+        return response
+
+app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
 @app.get("/health")
