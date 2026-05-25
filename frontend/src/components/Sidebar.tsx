@@ -15,7 +15,7 @@ const nav = [
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
   { href: "/alerts", label: "Alertas", icon: Bell },
-  { href: "/daily-report", label: "Relatorio Diario", icon: FileText },
+  { href: "/daily-report", label: "Relatorio Diario", icon: FileText }, // v2
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/parts", label: "Pecas e Materiais", icon: Package },
   { href: "/settings", label: "Configuracoes", icon: Settings },
@@ -157,3 +157,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+
