@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -9,4 +9,17 @@
   --red: #DC2626;
   --orange: #EA580C;
   --amber: #D97706;
+}
+
+@media print {
+  nav, aside, [data-sidebar] { display: none !important; }
+  .no-print { display: none !important; }
+  main { padding: 0 !important; margin: 0 !important; }
+}
+
+@media print {
+  aside { display: none !important; }
+  .no-print { display: none !important; }
+  main { padding: 0 !important; margin-left: 0 !important; }
+  body { background: white !important; }
 }
