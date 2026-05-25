@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -27,7 +27,7 @@ export default function AssetsPage() {
   const children = (parentId: string) => assets.filter(a => a.parent_id === parentId);
   const toggleExpand = (id: string) => { const s = new Set(expanded); s.has(id) ? s.delete(id) : s.add(id); setExpanded(s); };
   const handleDelete = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir este ativo?")) return;
+    if (!window.confirm("Tem certeza que deseja excluir este ativo?")) return;
     try { await api.delete(`/assets/${id}`); load(); } catch { alert("Erro ao excluir ativo"); }
   };
   const openNew = (parentId?: string) => { setForm({...emptyForm, parent_id: parentId || ""}); setShowModal(true); };
@@ -129,6 +129,7 @@ export default function AssetsPage() {
     </div>
   );
 }
+
 
 
 

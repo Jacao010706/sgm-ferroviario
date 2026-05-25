@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -136,7 +136,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
             <p className="text-slate-500 text-sm">
-              Visao geral — {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              Visao geral â€” {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
           <button onClick={load} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">
@@ -285,7 +285,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-700 truncate">{wo.title}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {assets.find(a => a.id === wo.asset_id)?.name || "Ativo"} — {new Date(wo.created_at).toLocaleDateString("pt-BR")}
+                        {assets.find(a => a.id === wo.asset_id)?.name || "Ativo"} â€” {new Date(wo.created_at).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -351,3 +351,4 @@ function AlertsPanel() {
     </div>
   );
 }
+

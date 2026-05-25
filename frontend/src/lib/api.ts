@@ -1,4 +1,4 @@
-import axios from "axios";
+﻿import axios from "axios";
 const API_BASE = "https://sgm-ferroviario-production.up.railway.app"; // cache-bust: 2026-05-16
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
@@ -38,3 +38,4 @@ export function createTelemetrySocket(assetId: string, onData: (d: any) => void)
   ws.onmessage = (e) => { try { onData(JSON.parse(e.data)); } catch {} };
   return ws;
 }
+

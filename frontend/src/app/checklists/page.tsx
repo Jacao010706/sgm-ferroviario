@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useRef } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -147,7 +147,7 @@ export default function ChecklistsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Excluir este checklist?")) return;
+    if (!window.confirm("Excluir este checklist?")) return;
     await api.delete(`/checklists/${id}`).catch(() => {});
     load();
   };
@@ -264,7 +264,7 @@ export default function ChecklistsPage() {
 
                   <div className="bg-slate-50 rounded-lg px-3 py-2 mb-3 flex items-center gap-2">
                     <FileText size={13} className="text-slate-400 shrink-0" />
-                    <p className="text-xs text-slate-500">Formatos aceitos: <strong>.txt</strong>, <strong>.csv</strong>, <strong>.xlsx</strong> — uma tarefa por linha</p>
+                    <p className="text-xs text-slate-500">Formatos aceitos: <strong>.txt</strong>, <strong>.csv</strong>, <strong>.xlsx</strong> â€” uma tarefa por linha</p>
                   </div>
 
                   {fileImportMsg && (
@@ -349,3 +349,4 @@ export default function ChecklistsPage() {
     </div>
   );
 }
+

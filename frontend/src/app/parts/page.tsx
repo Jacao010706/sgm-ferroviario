@@ -52,7 +52,7 @@ export default function PartsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Desativar esta peca?")) return;
+    if (!window.confirm("Desativar esta peca?")) return;
     try { await api.delete("/parts/" + id); load(); } catch { alert("Erro ao excluir peca"); }
   };
 
@@ -145,3 +145,4 @@ export default function PartsPage() {
     </div>
   );
 }
+

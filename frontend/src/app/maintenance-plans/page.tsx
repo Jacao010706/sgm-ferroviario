@@ -143,7 +143,7 @@ export default function MaintenancePlansPage() {
   };
 
   const generateWO = async (planId: string) => {
-    if (!confirm("Gerar OS para este plano agora?")) return;
+    if (!window.confirm("Gerar OS para este plano agora?")) return;
     setGenerating(planId);
     try {
       const res = await api.post(`/maintenance-plans/${planId}/generate-work-order`);
@@ -155,7 +155,7 @@ export default function MaintenancePlansPage() {
   };
 
   const deactivate = async (planId: string) => {
-    if (!confirm("Desativar este plano?")) return;
+    if (!window.confirm("Desativar este plano?")) return;
     await api.delete(`/maintenance-plans/${planId}`).catch(() => {});
     load();
   };
@@ -440,6 +440,7 @@ export default function MaintenancePlansPage() {
     </div>
   );
 }
+
 
 
 

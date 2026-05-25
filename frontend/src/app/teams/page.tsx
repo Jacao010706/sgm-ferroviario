@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -78,19 +78,19 @@ export default function TeamsPage() {
   };
 
   const removeMember = async (teamId: string, userId: string) => {
-    if (!confirm("Remover membro da equipe?")) return;
+    if (!window.confirm("Remover membro da equipe?")) return;
     await api.delete(`/teams/${teamId}/members/${userId}`).catch(() => {});
     load();
   };
 
   const deleteTeam = async (teamId: string) => {
-    if (!confirm("Excluir esta equipe?")) return;
+    if (!window.confirm("Excluir esta equipe?")) return;
     await api.delete(`/teams/${teamId}`).catch(() => {});
     load();
   };
 
   const deactivateUser = async (userId: string) => {
-    if (!confirm("Desativar este usuario?")) return;
+    if (!window.confirm("Desativar este usuario?")) return;
     await api.delete(`/admin/users/${userId}`).catch(() => {});
     load();
   };
@@ -334,3 +334,4 @@ export default function TeamsPage() {
     </div>
   );
 }
+

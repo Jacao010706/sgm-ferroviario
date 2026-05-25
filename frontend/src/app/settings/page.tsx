@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -203,3 +203,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+
