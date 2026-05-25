@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -57,7 +57,7 @@ export default function WorkOrdersPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir esta OS?")) return;
-    try { await api.delete(`/work-orders/${id}`); load(); } catch { alert("Erro ao excluir OS"); }
+    try { await api.delete(`/work-orders/${id}`); window.location.reload(); } catch { alert("Erro ao excluir OS"); }
   };
 
   const handleSubmit = async () => {
@@ -235,3 +235,4 @@ export default function WorkOrdersPage() {
     </div>
   );
 }
+
