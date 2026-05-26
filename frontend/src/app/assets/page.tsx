@@ -5,12 +5,16 @@ import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Plus, Search, RefreshCw, X, ChevronRight, ChevronDown } from "lucide-react";
 import clsx from "clsx";
+import { useConfirm } from "@/components/ConfirmDialog";
+
 const STATUS_BADGE: Record<string, string> = { operational: "bg-green-100 text-green-700", maintenance: "bg-amber-100 text-amber-700", failure: "bg-red-100 text-red-700", standby: "bg-slate-100 text-slate-600", decommissioned: "bg-gray-100 text-gray-400" };
 const STATUS_LABEL: Record<string, string> = { operational: "Operacional", maintenance: "Manutencao", failure: "Falha", standby: "Reserva", decommissioned: "Desativado" };
 const TYPE_LABEL: Record<string, string> = { substation: "Subestacao", generator: "Gerador", transformer: "Transformador", rectifier: "Retificador", inverter: "Inversor", switchgear: "Painel", catenary: "Catenaria", battery_bank: "Banco Baterias", circuit_breaker: "Disjuntor", measurement: "Medicao", cooling: "Refrigeracao", other: "Outro" };
 const emptyForm = { tag: "", name: "", asset_type: "generator", status: "operational", manufacturer: "", model: "", serial_number: "", location_description: "", installation_date: "", notes: "", parent_id: "" };
+
 export default function AssetsPage() {
   const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -21,16 +25,22 @@ export default function AssetsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
   const load = () => { setLoading(true); api.get("/assets/", { params: { limit: 200 } }).then((r) => setAssets(r.data)).finally(() => setLoading(false)); };
   useEffect(() => { load(); }, []);
+
   const roots = assets.filter(a => !a.parent_id).filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()) || a.tag.toLowerCase().includes(search.toLowerCase())).filter(a => !statusFilter || a.status === statusFilter).filter(a => !typeFilter || a.asset_type === typeFilter);
   const children = (parentId: string) => assets.filter(a => a.parent_id === parentId);
   const toggleExpand = (id: string) => { const s = new Set(expanded); s.has(id) ? s.delete(id) : s.add(id); setExpanded(s); };
+
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir este ativo?")) return;
+    const ok = await confirm("Tem certeza que deseja excluir este ativo?");
+    if (!ok) return;
     try { await api.delete(`/assets/${id}`); load(); } catch { alert("Erro ao excluir ativo"); }
   };
+
   const openNew = (parentId?: string) => { setForm({...emptyForm, parent_id: parentId || ""}); setShowModal(true); };
+
   const handleSubmit = async () => {
     if (!form.tag || !form.name || !form.asset_type) { setError("Preencha Tag, Nome e Tipo"); return; }
     setSaving(true); setError("");
@@ -47,8 +57,10 @@ export default function AssetsPage() {
     } catch (e: any) { setError(e?.response?.data?.detail || "Erro ao criar ativo");
     } finally { setSaving(false); }
   };
+
   const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
   const lbl = "block text-sm font-medium text-slate-700 mb-1";
+
   const AssetRow = ({ a, depth }: { a: any, depth: number }) => {
     const kids = children(a.id);
     const isExpanded = expanded.has(a.id);
@@ -60,13 +72,19 @@ export default function AssetsPage() {
         <td className="px-4 py-3"><span className={clsx("px-2 py-0.5 rounded-full text-xs font-medium", STATUS_BADGE[a.status])}>{STATUS_LABEL[a.status] || a.status}</span></td>
         <td className="px-4 py-3 text-slate-500 text-sm">{a.manufacturer || "-"}</td>
         <td className="px-4 py-3 text-slate-500 text-sm">{a.model || "-"}</td>
-        <td className="px-4 py-3 flex gap-2"><button onClick={() => router.push(`/assets/${a.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button><button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button><button onClick={() => handleDelete(a.id)} className="text-red-500 hover:underline text-xs">Excluir</button></td>
+        <td className="px-4 py-3 flex gap-2">
+          <button onClick={() => router.push(`/assets/${a.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button>
+          <button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button>
+          <button onClick={() => handleDelete(a.id)} className="text-red-500 hover:underline text-xs">Excluir</button>
+        </td>
       </tr>
       {isExpanded && kids.map(k => <AssetRow key={k.id} a={k} depth={depth+1} />)}
     </>);
   };
+
   return (
     <div className="flex min-h-screen bg-slate-50">
+      {ConfirmDialog}
       <Sidebar />
       <main className="flex-1 p-6 overflow-auto">
         <div className="flex items-center justify-between mb-6">
@@ -129,13 +147,3 @@ export default function AssetsPage() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-

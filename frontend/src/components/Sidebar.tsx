@@ -12,6 +12,7 @@ const nav = [
   { href: "/assets", label: "Ativos", icon: Layers },
   { href: "/work-orders", label: "Ordens de Servico", icon: ClipboardList },
   { href: "/maintenance-plans", label: "Planos de Manutencao", icon: Fuel },
+  { href: "/fuel-orders", label: "OS Combustivel", icon: Fuel },
   { href: "/checklists", label: "Checklists", icon: ClipboardList },
   { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
   { href: "/alerts", label: "Alertas", icon: Bell },
