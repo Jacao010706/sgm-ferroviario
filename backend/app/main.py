@@ -44,10 +44,9 @@ app = FastAPI(
     redoc_url="/api/redoc",
     lifespan=lifespan,
 )
-origins = [
-    "https://laudable-peace-production-09cd.up.railway.app",
-    "http://localhost:3000",
-    "http://localhost:3001",
+import os
+_raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+origins = [o.strip() for o in _raw.split(",")]
 ]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"], allow_headers=["*"], expose_headers=["*"])
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
