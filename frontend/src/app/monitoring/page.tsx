@@ -1,5 +1,6 @@
 ﻿"use client";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle, ClipboardList, ChevronDown, ChevronUp, AlertTriangle, Fuel } from "lucide-react";
@@ -7,23 +8,23 @@ import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianG
 import clsx from "clsx";
 
 const STATUS_LABEL: Record<string, { label: string; color: string }> = {
-  pending:          { label: "Pendente",         color: "bg-slate-100 text-slate-600" },
-  assigned:         { label: "AtribuÃ­da",         color: "bg-blue-100 text-blue-700" },
-  in_progress:      { label: "Em ExecuÃ§Ã£o",       color: "bg-yellow-100 text-yellow-700" },
-  paused:           { label: "Pausada",           color: "bg-orange-100 text-orange-700" },
-  completed:        { label: "ConcluÃ­da",         color: "bg-green-100 text-green-700" },
-  cancelled:        { label: "Cancelada",         color: "bg-red-100 text-red-700" },
-  waiting_parts:    { label: "Aguard. PeÃ§as",     color: "bg-purple-100 text-purple-700" },
-  waiting_approval: { label: "Aguard. AprovaÃ§Ã£o", color: "bg-indigo-100 text-indigo-700" },
+  pending:          { label: "Pendente",          color: "bg-slate-100 text-slate-600" },
+  assigned:         { label: "Atribuida",          color: "bg-blue-100 text-blue-700" },
+  in_progress:      { label: "Em Execucao",        color: "bg-yellow-100 text-yellow-700" },
+  paused:           { label: "Pausada",            color: "bg-orange-100 text-orange-700" },
+  completed:        { label: "Concluida",          color: "bg-green-100 text-green-700" },
+  cancelled:        { label: "Cancelada",          color: "bg-red-100 text-red-700" },
+  waiting_parts:    { label: "Aguard. Pecas",      color: "bg-purple-100 text-purple-700" },
+  waiting_approval: { label: "Aguard. Aprovacao",  color: "bg-indigo-100 text-indigo-700" },
 };
 
 const TYPE_LABEL: Record<string, string> = {
   preventive:  "Preventiva",
   corrective:  "Corretiva",
   predictive:  "Preditiva",
-  inspection:  "InspeÃ§Ã£o",
-  calibration: "CalibraÃ§Ã£o",
-  emergency:   "EmergÃªncia",
+  inspection:  "Inspecao",
+  calibration: "Calibracao",
+  emergency:   "Emergencia",
 };
 
 function SubAssetHistory({ subAsset }: { subAsset: any }) {
@@ -70,14 +71,14 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
                         <p className="text-sm font-medium text-slate-700 truncate">{os.title}</p>
                         {os.observations && <p className="text-xs text-slate-500 mt-1 italic">Obs: {os.observations}</p>}
                         {os.root_cause && <p className="text-xs text-slate-500 mt-0.5">Causa raiz: {os.root_cause}</p>}
-                        {os.corrective_action && <p className="text-xs text-slate-500 mt-0.5">AÃ§Ã£o corretiva: {os.corrective_action}</p>}
+                        {os.corrective_action && <p className="text-xs text-slate-500 mt-0.5">Acao corretiva: {os.corrective_action}</p>}
                         {os.fuel_liters_added != null && (
-                          <p className="text-xs text-blue-600 mt-0.5 font-medium">â›½ Abastecimento: {os.fuel_liters_added}L</p>
+                          <p className="text-xs text-blue-600 mt-0.5 font-medium">Abastecimento: {os.fuel_liters_added}L</p>
                         )}
                       </div>
                       <div className="text-right text-xs text-slate-400 shrink-0">
                         {os.scheduled_start && <p>{new Date(os.scheduled_start).toLocaleDateString("pt-BR")}</p>}
-                        {os.actual_end && <p className="text-green-600">ConcluÃ­do: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>}
+                        {os.actual_end && <p className="text-green-600">Concluido: {new Date(os.actual_end).toLocaleDateString("pt-BR")}</p>}
                       </div>
                     </div>
                   </div>
@@ -92,14 +93,13 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
 }
 
 export default function MonitoringPage() {
+  const router = useRouter();
   const [assets, setAssets] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [readings, setReadings] = useState<any[]>([]);
   const [latest, setLatest] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
   const [simulating, setSimulating] = useState(false);
-  const [generatingFuelOS, setGeneratingFuelOS] = useState(false);
-  const [fuelOSMsg, setFuelOSMsg] = useState("");
 
   useEffect(() => {
     api.get("/assets/", { params: { limit: 50 } }).then((r) => {
@@ -137,28 +137,8 @@ export default function MonitoringPage() {
     } catch { } finally { setSimulating(false); }
   };
 
-  const generateFuelOS = async () => {
-    if (!selected) return;
-    setGeneratingFuelOS(true);
-    setFuelOSMsg("");
-    try {
-      const res = await api.post("/alerts/", {
-        title: `Combustivel baixo â€” ${selected.name}`,
-        description: `Nivel de combustivel abaixo de 50% (atual: ${fuelLevel}%). Necessario abastecimento urgente.`,
-        asset_id: selected.id,
-        severity: fuelLevel != null && fuelLevel <= 20 ? "critical" : "high",
-        source: "iot_sensor",
-        metric_name: "fuel_level",
-        metric_value: fuelLevel,
-        threshold_value: 50,
-      });
-      // Gera OS a partir do alerta
-      const woRes = await api.post(`/alerts/${res.data.id}/create-work-order`);
-      setFuelOSMsg(`OS ${woRes.data.number} gerada com sucesso!`);
-      setTimeout(() => setFuelOSMsg(""), 5000);
-    } catch (e: any) {
-      setFuelOSMsg("Erro ao gerar OS de abastecimento.");
-    } finally { setGeneratingFuelOS(false); }
+  const goToFuelOrders = () => {
+    router.push("/fuel-orders?new=true");
   };
 
   const getVal = (sensorId: string) => latest[sensorId]?.value;
@@ -209,28 +189,22 @@ export default function MonitoringPage() {
               <AlertTriangle size={20} className={fuelLevel <= 20 ? "text-red-600 mt-0.5 shrink-0" : "text-amber-600 mt-0.5 shrink-0"} />
               <div>
                 <p className={clsx("font-semibold text-sm", fuelLevel <= 20 ? "text-red-800" : "text-amber-800")}>
-                  {fuelLevel <= 20 ? "âš ï¸ Combustivel Critico!" : "âš ï¸ Combustivel Baixo"}
+                  {fuelLevel <= 20 ? "Combustivel Critico!" : "Combustivel Baixo"}
                 </p>
                 <p className={clsx("text-xs mt-0.5", fuelLevel <= 20 ? "text-red-600" : "text-amber-600")}>
-                  Nivel atual: <strong>{fuelLevel}%</strong> â€” abaixo de 50%. Ã‰ necessÃ¡rio gerar uma OS de abastecimento.
+                  Nivel atual: <strong>{fuelLevel}%</strong> — abaixo de 50%. Necessario gerar uma OS de abastecimento.
                 </p>
-                {fuelOSMsg && (
-                  <p className={clsx("text-xs mt-1 font-medium", fuelOSMsg.includes("Erro") ? "text-red-700" : "text-green-700")}>
-                    {fuelOSMsg}
-                  </p>
-                )}
               </div>
             </div>
             <button
-              onClick={generateFuelOS}
-              disabled={generatingFuelOS}
+              onClick={goToFuelOrders}
               className={clsx(
-                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap disabled:opacity-50",
+                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white whitespace-nowrap",
                 fuelLevel <= 20 ? "bg-red-600 hover:bg-red-700" : "bg-amber-600 hover:bg-amber-700"
               )}
             >
               <Fuel size={14} />
-              {generatingFuelOS ? "Gerando..." : "Gerar OS Abastecimento"}
+              Gerar OS Abastecimento
             </button>
           </div>
         )}
@@ -242,7 +216,7 @@ export default function MonitoringPage() {
               {assets.map((a) => (
                 <button key={a.id} onClick={() => setSelected(a)}
                   className={clsx("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", a.parent_id ? "pl-6" : "", selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700")}>
-                  <p className="font-medium truncate">{a.parent_id ? "â†³ " : ""}{a.name}</p>
+                  <p className="font-medium truncate">{a.parent_id ? "↳ " : ""}{a.name}</p>
                   <p className={clsx("text-xs", selected?.id === a.id ? "text-blue-200" : "text-slate-400")}>{a.tag}</p>
                 </button>
               ))}
@@ -295,7 +269,7 @@ export default function MonitoringPage() {
                       <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                         <div className="p-2 bg-amber-50 rounded-lg"><Thermometer size={18} className="text-amber-600"/></div>
                         <div>
-                          <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "Â°C")}</p>
+                          <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "°C")}</p>
                           <p className="text-xs text-slate-500">Temperatura</p>
                         </div>
                       </div>
@@ -347,7 +321,7 @@ export default function MonitoringPage() {
                     {subAssets.length > 0 && (
                       <div className="space-y-3">
                         <h2 className="font-semibold text-slate-700 flex items-center gap-2 text-sm">
-                          <ClipboardList size={15} className="text-slate-500" /> HistÃ³rico de Subativos
+                          <ClipboardList size={15} className="text-slate-500" /> Historico de Subativos
                         </h2>
                         {subAssets.map((sub) => <SubAssetHistory key={sub.id} subAsset={sub} />)}
                       </div>
@@ -355,7 +329,7 @@ export default function MonitoringPage() {
                   </>
                 ) : (
                   <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                    <p className="text-slate-400 text-sm">Subativo selecionado â€” telemetria disponÃ­vel apenas no ativo principal.</p>
+                    <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponivel apenas no ativo principal.</p>
                   </div>
                 )}
               </>
@@ -367,4 +341,3 @@ export default function MonitoringPage() {
     </div>
   );
 }
-

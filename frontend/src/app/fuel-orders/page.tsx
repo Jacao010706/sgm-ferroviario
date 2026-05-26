@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Plus, RefreshCw, X, Printer, Fuel, Droplets, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import clsx from "clsx";
 
-const SHIFT_OPTIONS = ["MANHÃ", "TARDE", "NOITE"];
+const SHIFT_OPTIONS = ["MANHA", "TARDE", "NOITE"];
 
 const emptyItem = { subitem: "", station: "", forecast_liters: "", supplied_liters: "", ggd_automatic: "" };
 
@@ -19,6 +20,7 @@ const emptyForm = {
   supplier: "QUERODIESEL TRANSPORTE E COMERCIO DE COMBUSTIVEIS LTDA",
   fiscal_1: "",
   fiscal_2: "",
+  fiscal_3: "",
   additive_station: "",
   additive_forecast_ml: "",
   additive_quantity_ml: "",
@@ -34,6 +36,7 @@ const emptyForm = {
 };
 
 export default function FuelOrdersPage() {
+  const searchParams = useSearchParams();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -50,6 +53,10 @@ export default function FuelOrdersPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (searchParams.get("new") === "true") setShowModal(true);
+  }, [searchParams]);
 
   useEffect(() => {
     if (showModal) {
@@ -114,11 +121,10 @@ export default function FuelOrdersPage() {
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-6 overflow-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-slate-800">OS de Abastecimento</h1>
-            <p className="text-slate-500 text-sm">Fornecimento de óleo diesel S-500</p>
+            <p className="text-slate-500 text-sm">Fornecimento de oleo diesel S-500</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
@@ -130,7 +136,6 @@ export default function FuelOrdersPage() {
           </div>
         </div>
 
-        {/* Cards resumo */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-xl border border-slate-100 p-4 flex gap-3 items-center shadow-sm">
             <div className="p-2 bg-blue-50 rounded-lg"><FileText size={18} className="text-blue-600" /></div>
@@ -138,7 +143,7 @@ export default function FuelOrdersPage() {
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4 flex gap-3 items-center shadow-sm">
             <div className="p-2 bg-green-50 rounded-lg"><Fuel size={18} className="text-green-600" /></div>
-            <div><p className="text-2xl font-bold text-slate-800">{totalThisMonth}</p><p className="text-xs text-slate-500">OS este mês</p></div>
+            <div><p className="text-2xl font-bold text-slate-800">{totalThisMonth}</p><p className="text-xs text-slate-500">OS este mes</p></div>
           </div>
           <div className="bg-white rounded-xl border border-slate-100 p-4 flex gap-3 items-center shadow-sm">
             <div className="p-2 bg-amber-50 rounded-lg"><Droplets size={18} className="text-amber-600" /></div>
@@ -146,7 +151,6 @@ export default function FuelOrdersPage() {
           </div>
         </div>
 
-        {/* Lista de OS */}
         <div className="space-y-3">
           {loading ? (
             <p className="text-center text-slate-400 py-10">Carregando...</p>
@@ -163,7 +167,7 @@ export default function FuelOrdersPage() {
                   <div className="p-2 bg-blue-50 rounded-lg shrink-0"><Fuel size={16} className="text-blue-600" /></div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-slate-800">OS Nº {o.number}</span>
+                      <span className="font-semibold text-slate-800">OS No {o.number}</span>
                       {o.shift && <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-full text-xs">{o.shift}</span>}
                       {o.location && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">{o.location}</span>}
                     </div>
@@ -184,7 +188,6 @@ export default function FuelOrdersPage() {
 
               {expanded === o.id && (
                 <div className="border-t border-slate-100 px-4 pb-4 pt-3">
-                  {/* Itens de fornecimento */}
                   {o.items?.length > 0 && (
                     <div className="mb-4">
                       <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Fornecimento de Diesel S-500</p>
@@ -193,10 +196,10 @@ export default function FuelOrdersPage() {
                           <thead>
                             <tr className="bg-slate-50">
                               <th className="text-left p-2 border border-slate-100 font-medium text-slate-500">Subitem</th>
-                              <th className="text-left p-2 border border-slate-100 font-medium text-slate-500">Estação</th>
-                              <th className="text-right p-2 border border-slate-100 font-medium text-slate-500">Previsão (L)</th>
+                              <th className="text-left p-2 border border-slate-100 font-medium text-slate-500">Estacao</th>
+                              <th className="text-right p-2 border border-slate-100 font-medium text-slate-500">Previsao (L)</th>
                               <th className="text-right p-2 border border-slate-100 font-medium text-slate-500">Fornecido (L)</th>
-                              <th className="text-center p-2 border border-slate-100 font-medium text-slate-500">GGD Automático</th>
+                              <th className="text-center p-2 border border-slate-100 font-medium text-slate-500">GGD Automatico</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -220,26 +223,25 @@ export default function FuelOrdersPage() {
                     </div>
                   )}
 
-                  {/* Aditivo */}
                   {o.additive_station && (
                     <div className="mb-4">
-                      <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Colocação de Aditivo</p>
+                      <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Colocacao de Aditivo</p>
                       <div className="bg-slate-50 rounded-lg p-3 text-xs grid grid-cols-2 gap-2">
-                        <div><span className="text-slate-500">Estação:</span> <span className="font-medium text-slate-800">{o.additive_station}</span></div>
-                        <div><span className="text-slate-500">Previsão:</span> <span className="font-medium">{o.additive_forecast_ml ?? "—"} ml</span></div>
+                        <div><span className="text-slate-500">Estacao:</span> <span className="font-medium text-slate-800">{o.additive_station}</span></div>
+                        <div><span className="text-slate-500">Previsao:</span> <span className="font-medium">{o.additive_forecast_ml ?? "—"} ml</span></div>
                         <div><span className="text-slate-500">Quantidade:</span> <span className="font-medium">{o.additive_quantity_ml ?? "—"} ml</span></div>
-                        <div><span className="text-slate-500">Concluído:</span> <span className="font-medium">{o.additive_completed ?? "—"}</span></div>
+                        <div><span className="text-slate-500">Concluido:</span> <span className="font-medium">{o.additive_completed ?? "—"}</span></div>
                       </div>
                     </div>
                   )}
 
-                  {/* Fiscais e funcionários */}
                   <div className="grid grid-cols-2 gap-4 mb-3 text-xs">
-                    {(o.fiscal_1 || o.fiscal_2) && (
+                    {(o.fiscal_1 || o.fiscal_2 || o.fiscal_3) && (
                       <div>
                         <p className="font-semibold text-slate-500 uppercase mb-1">Fiscais Trensurb</p>
                         {o.fiscal_1 && <p className="text-slate-700">1. {o.fiscal_1}</p>}
                         {o.fiscal_2 && <p className="text-slate-700">2. {o.fiscal_2}</p>}
+                        {o.fiscal_3 && <p className="text-slate-700">3. {o.fiscal_3}</p>}
                       </div>
                     )}
                     {(o.employee_1_name || o.employee_2_name) && (
@@ -253,14 +255,14 @@ export default function FuelOrdersPage() {
 
                   {o.observations && (
                     <div className="text-xs mb-2">
-                      <span className="font-semibold text-slate-500">Observações: </span>
+                      <span className="font-semibold text-slate-500">Observacoes: </span>
                       <span className="text-slate-700">{o.observations}</span>
                     </div>
                   )}
 
                   {o.responsible_name && (
                     <div className="text-xs text-slate-500 pt-2 border-t border-slate-100">
-                      Superior responsável: <span className="font-medium text-slate-700">{o.responsible_name}</span> — RE: {o.responsible_re}
+                      Superior responsavel: <span className="font-medium text-slate-700">{o.responsible_name}</span> — RE: {o.responsible_re}
                     </div>
                   )}
                 </div>
@@ -269,7 +271,6 @@ export default function FuelOrdersPage() {
           ))}
         </div>
 
-        {/* Modal Nova OS */}
         {showModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
@@ -279,10 +280,9 @@ export default function FuelOrdersPage() {
               </div>
 
               <div className="p-6 space-y-5">
-                {/* Dados gerais */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div><label className={lbl}>Nº OS *</label><input className={inp} value={form.number} onChange={e => setForm({ ...form, number: e.target.value })} /></div>
-                  <div><label className={lbl}>Data de execução *</label><input type="date" className={inp} value={form.execution_date} onChange={e => setForm({ ...form, execution_date: e.target.value })} /></div>
+                  <div><label className={lbl}>No OS *</label><input className={inp} value={form.number} onChange={e => setForm({ ...form, number: e.target.value })} /></div>
+                  <div><label className={lbl}>Data de execucao *</label><input type="date" className={inp} value={form.execution_date} onChange={e => setForm({ ...form, execution_date: e.target.value })} /></div>
                   <div><label className={lbl}>Semana</label><input className={inp} value={form.week} onChange={e => setForm({ ...form, week: e.target.value })} placeholder="Ex: 21" /></div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -299,45 +299,43 @@ export default function FuelOrdersPage() {
                   <label className={lbl}>Fornecedor</label>
                   <input className={inp} value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div><label className={lbl}>Fiscal Trensurb (1)</label><input className={inp} value={form.fiscal_1} onChange={e => setForm({ ...form, fiscal_1: e.target.value })} placeholder="Nome do fiscal" /></div>
                   <div><label className={lbl}>Fiscal Trensurb (2)</label><input className={inp} value={form.fiscal_2} onChange={e => setForm({ ...form, fiscal_2: e.target.value })} placeholder="Nome do fiscal" /></div>
+                  <div><label className={lbl}>Fiscal Trensurb (3)</label><input className={inp} value={form.fiscal_3} onChange={e => setForm({ ...form, fiscal_3: e.target.value })} placeholder="Nome do fiscal" /></div>
                 </div>
 
-                {/* Itens de diesel */}
                 <div className="border-t border-slate-100 pt-4">
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm font-semibold text-slate-700">Fornecimento de Diesel S-500</p>
                     <button onClick={addItem} className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 border border-blue-200 px-2 py-1 rounded-lg">
-                      <Plus size={12} /> Adicionar estação
+                      <Plus size={12} /> Adicionar estacao
                     </button>
                   </div>
                   <div className="space-y-2">
                     {items.map((item, i) => (
                       <div key={i} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg">
                         <div className="col-span-1"><label className="text-xs text-slate-500">Subitem</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.subitem} onChange={e => updateItem(i, "subitem", e.target.value)} /></div>
-                        <div className="col-span-4"><label className="text-xs text-slate-500">Estação *</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)} placeholder="Ex: Estação Farrapos" /></div>
-                        <div className="col-span-2"><label className="text-xs text-slate-500">Previsão (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)} /></div>
+                        <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)} placeholder="Ex: Estacao Farrapos" /></div>
+                        <div className="col-span-2"><label className="text-xs text-slate-500">Previsao (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)} /></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Fornecido (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.supplied_liters} onChange={e => updateItem(i, "supplied_liters", e.target.value)} /></div>
-                        <div className="col-span-2"><label className="text-xs text-slate-500">GGD Automático?</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)} placeholder="Sim/Não" /></div>
+                        <div className="col-span-2"><label className="text-xs text-slate-500">GGD Automatico?</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)} placeholder="Sim/Nao" /></div>
                         <div className="col-span-1 flex items-end pb-0.5">{items.length > 1 && <button onClick={() => removeItem(i)} className="text-slate-300 hover:text-red-500 mt-4"><X size={14} /></button>}</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Aditivo */}
                 <div className="border-t border-slate-100 pt-4">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Colocação de Aditivo</p>
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Colocacao de Aditivo</p>
                   <div className="grid grid-cols-4 gap-3">
-                    <div className="col-span-2"><label className={lbl}>Estação</label><input className={inp} value={form.additive_station} onChange={e => setForm({ ...form, additive_station: e.target.value })} placeholder="Ex: Estação Farrapos" /></div>
-                    <div><label className={lbl}>Previsão (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
+                    <div className="col-span-2"><label className={lbl}>Estacao</label><input className={inp} value={form.additive_station} onChange={e => setForm({ ...form, additive_station: e.target.value })} placeholder="Ex: Estacao Farrapos" /></div>
+                    <div><label className={lbl}>Previsao (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
                     <div><label className={lbl}>Quantidade (ml)</label><input type="number" className={inp} value={form.additive_quantity_ml} onChange={e => setForm({ ...form, additive_quantity_ml: e.target.value })} /></div>
                   </div>
-                  <div className="mt-3"><label className={lbl}>Serviço concluído?</label><input className={clsx(inp, "max-w-xs")} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })} placeholder="Sim / Não" /></div>
+                  <div className="mt-3"><label className={lbl}>Servico concluido?</label><input className={clsx(inp, "max-w-xs")} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })} placeholder="Sim / Nao" /></div>
                 </div>
 
-                {/* Funcionários */}
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-3">Empregados Trensurb</p>
                   <div className="grid grid-cols-2 gap-4">
@@ -352,14 +350,12 @@ export default function FuelOrdersPage() {
                   </div>
                 </div>
 
-                {/* Observações */}
                 <div className="border-t border-slate-100 pt-4">
-                  <div><label className={lbl}>Observações do serviço</label><textarea className={inp} rows={2} value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} /></div>
+                  <div><label className={lbl}>Observacoes do servico</label><textarea className={inp} rows={2} value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} /></div>
                 </div>
 
-                {/* Responsável */}
                 <div className="border-t border-slate-100 pt-4">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Superior responsável</p>
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Superior responsavel</p>
                   <div className="grid grid-cols-4 gap-3">
                     <div className="col-span-3"><label className={lbl}>Nome</label><input className={inp} value={form.responsible_name} onChange={e => setForm({ ...form, responsible_name: e.target.value })} /></div>
                     <div><label className={lbl}>RE</label><input className={inp} value={form.responsible_re} onChange={e => setForm({ ...form, responsible_re: e.target.value })} /></div>
@@ -377,7 +373,6 @@ export default function FuelOrdersPage() {
           </div>
         )}
 
-        {/* Print area */}
         {printOrder && (
           <div id="print-area" className="hidden print:block print:fixed print:inset-0 print:bg-white print:p-8 print:text-sm print:text-black">
             <div className="text-center mb-4">
@@ -385,7 +380,7 @@ export default function FuelOrdersPage() {
               <p className="text-sm">{printOrder.supplier}</p>
             </div>
             <div className="grid grid-cols-3 border border-black mb-3">
-              <div className="border-r border-black p-2"><span className="font-bold">OS Nº:</span> {printOrder.number}</div>
+              <div className="border-r border-black p-2"><span className="font-bold">OS No:</span> {printOrder.number}</div>
               <div className="border-r border-black p-2"><span className="font-bold">Data:</span> {new Date(printOrder.execution_date).toLocaleDateString("pt-BR")}</div>
               <div className="p-2"><span className="font-bold">Local:</span> {printOrder.location}</div>
             </div>
@@ -397,19 +392,19 @@ export default function FuelOrdersPage() {
             <table className="w-full border-collapse border border-black mb-3 text-xs">
               <thead>
                 <tr className="bg-gray-100">
-                  <th className="border border-black p-1 text-left">Descrição</th>
+                  <th className="border border-black p-1 text-left">Descricao</th>
                   <th className="border border-black p-1">Unidade</th>
                   <th className="border border-black p-1">Subitem</th>
                   <th className="border border-black p-1">Equipamento</th>
-                  <th className="border border-black p-1">Previsão (L)</th>
+                  <th className="border border-black p-1">Previsao (L)</th>
                   <th className="border border-black p-1">Fornecimento (L)</th>
-                  <th className="border border-black p-1">GGD Automático?</th>
+                  <th className="border border-black p-1">GGD Automatico?</th>
                 </tr>
               </thead>
               <tbody>
                 {printOrder.items?.map((item: any, i: number) => (
                   <tr key={i}>
-                    <td className="border border-black p-1">Fornecimento de óleo diesel S-500</td>
+                    <td className="border border-black p-1">Fornecimento de oleo diesel S-500</td>
                     <td className="border border-black p-1 text-center">Litro</td>
                     <td className="border border-black p-1 text-center">{item.subitem}</td>
                     <td className="border border-black p-1">{item.station}</td>
@@ -438,16 +433,17 @@ export default function FuelOrdersPage() {
               </div>
             </div>
             <div className="border border-black p-2 text-xs mb-2">
-              <p className="font-bold">Apontamento de observações:</p>
+              <p className="font-bold">Apontamento de observacoes:</p>
               <p className="mt-1 min-h-[40px]">{printOrder.observations}</p>
             </div>
             <div className="grid grid-cols-2 border border-black text-xs">
               <div className="border-r border-black p-2">
-                <p>Superior responsável: {printOrder.responsible_name} &nbsp; RE: {printOrder.responsible_re}</p>
+                <p>Superior responsavel: {printOrder.responsible_name} &nbsp; RE: {printOrder.responsible_re}</p>
               </div>
               <div className="p-2">
                 <p>Fiscal Trensurb (1): {printOrder.fiscal_1}</p>
                 <p>Fiscal Trensurb (2): {printOrder.fiscal_2}</p>
+                {printOrder.fiscal_3 && <p>Fiscal Trensurb (3): {printOrder.fiscal_3}</p>}
               </div>
             </div>
           </div>
