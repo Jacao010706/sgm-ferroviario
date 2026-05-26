@@ -204,7 +204,7 @@ export default function MonitoringPage() {
               )}
             >
               <Fuel size={14} />
-              Gerar OS Abastecimento
+              Ir para OS Abastecimento
             </button>
           </div>
         )}
