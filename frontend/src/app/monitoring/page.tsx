@@ -147,7 +147,7 @@ export default function MonitoringPage() {
         description: `Nivel de combustivel abaixo de 50% (atual: ${fuelLevel}%). Necessario abastecimento urgente.`,
         asset_id: selected.id,
         severity: fuelLevel != null && fuelLevel <= 20 ? "critical" : "high",
-        source: "iot",
+        source: "iot_sensor",
         metric_name: "fuel_level",
         metric_value: fuelLevel,
         threshold_value: 50,
