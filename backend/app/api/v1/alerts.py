@@ -50,7 +50,11 @@ async def get_alert(alert_id: UUID, db: AsyncSession=Depends(get_db), _: User=De
 
 @router.post("/", status_code=201)
 async def create_alert(body: AlertCreate, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
-    alert = Alert(**body.model_dump(), triggered_at=datetime.utcnow())
+    data = body.model_dump()
+    data.pop("metric_name", None)
+    data.pop("metric_value", None)
+    data.pop("threshold_value", None)
+    alert = Alert(**data, triggered_at=datetime.utcnow())
     db.add(alert)
     await db.flush()
     await db.refresh(alert)
