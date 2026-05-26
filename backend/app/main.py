@@ -47,7 +47,6 @@ app = FastAPI(
 import os
 _raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
 origins = [o.strip() for o in _raw.split(",")]
-]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_credentials=True, allow_methods=["GET","POST","PUT","PATCH","DELETE","OPTIONS"], allow_headers=["*"], expose_headers=["*"])
 from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
