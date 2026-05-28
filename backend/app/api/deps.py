@@ -1,38 +1,33 @@
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+﻿from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.core.database import get_db
-from app.core.security import decode_token
+from app.core.security import verify_token
 from app.models.user import User, UserRole
 
-bearer = HTTPBearer()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-
-async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
-    db: AsyncSession = Depends(get_db),
-) -> User:
-    token = credentials.credentials
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)) -> User:
+    credentials_exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais invalidas", headers={"WWW-Authenticate": "Bearer"})
+    payload = verify_token(token)
+    if not payload:
+        raise credentials_exception
     user_id = payload.get("sub")
-    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    if not user_id:
+        raise credentials_exception
+    result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuário não encontrado")
+    if not user or not user.is_active:
+        raise credentials_exception
     return user
 
+async def require_manager(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in [UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente")
+    return current_user
 
-def require_roles(*roles: UserRole):
-    async def checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in roles:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissão negada")
-        return current_user
-    return checker
-
-
-require_admin = require_roles(UserRole.ADMIN)
-require_manager = require_roles(UserRole.ADMIN, UserRole.MANAGER)
-require_technician = require_roles(UserRole.ADMIN, UserRole.MANAGER, UserRole.TECHNICIAN)
+async def require_technician(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in [UserRole.TECHNICIAN, UserRole.MANAGER, UserRole.ADMIN]:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente")
+    return current_user
