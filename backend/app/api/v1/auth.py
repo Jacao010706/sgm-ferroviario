@@ -43,8 +43,8 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     user.last_login = datetime.utcnow()
     await db.commit()
     return TokenResponse(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
         user_id=str(user.id),
         name=user.name,
         role=user.role.value,
@@ -61,8 +61,8 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     return TokenResponse(
-        access_token=create_access_token(str(user.id)),
-        refresh_token=create_refresh_token(str(user.id)),
+        access_token=create_access_token({"sub": str(user.id)}),
+        refresh_token=create_refresh_token({"sub": str(user.id)}),
         user_id=str(user.id),
         name=user.name,
         role=user.role.value,
