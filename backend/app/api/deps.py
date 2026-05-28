@@ -31,3 +31,8 @@ async def require_technician(current_user: User = Depends(get_current_user)) -> 
     if current_user.role not in [UserRole.TECHNICIAN, UserRole.MANAGER, UserRole.ADMIN]:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permissao insuficiente")
     return current_user
+
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Apenas administradores")
+    return current_user
