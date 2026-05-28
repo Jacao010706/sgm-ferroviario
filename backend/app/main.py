@@ -43,6 +43,8 @@ app = FastAPI(
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     lifespan=lifespan,
+    redirect_slashes=False,
+)
 )
 import os
 _raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
