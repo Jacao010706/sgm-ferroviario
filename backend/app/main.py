@@ -45,7 +45,6 @@ app = FastAPI(
     lifespan=lifespan,
     redirect_slashes=False,
 )
-)
 import os
 _raw = os.getenv("CORS_ORIGINS", "http://localhost:3000")
 origins = [o.strip() for o in _raw.split(",")]
