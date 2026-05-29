@@ -5,7 +5,8 @@ RUN npm install
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-ARG CACHEBUST=2
+ARG CACHEBUST=3
+RUN cat package.json
 RUN npm run build
 
 FROM node:20-alpine AS runner
