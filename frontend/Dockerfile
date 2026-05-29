@@ -1,10 +1,11 @@
-FROM node:20-alpine AS builder
+﻿FROM node:20-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
 ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ARG CACHEBUST=1
 RUN npm run build
 
 FROM node:20-alpine AS runner
@@ -15,3 +16,4 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 EXPOSE 3000
 CMD ["node", "server.js"]
+
