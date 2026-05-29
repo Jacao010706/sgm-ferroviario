@@ -7,7 +7,7 @@ ARG NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ARG CACHEBUST=3
 RUN cat package.json
-RUN npm run build
+RUN npm run build 2>&1 || (find /app/src -name '*.tsx' -newer /app/package.json && exit 1)
 
 FROM node:20-alpine AS runner
 WORKDIR /app
