@@ -1,4 +1,4 @@
-{
+﻿{
     "name":  "sgm-ferroviario-web",
     "version":  "1.0.0",
     "private":  true,
@@ -35,3 +35,4 @@
                         },
     "_buildtime":  "202605241031"
 }
+
