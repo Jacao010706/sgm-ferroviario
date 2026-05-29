@@ -11,6 +11,12 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+api.interceptors.request.use((config) => {
+  if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
+    config.url = config.url + '/';
+  }
+  return config;
+});
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
