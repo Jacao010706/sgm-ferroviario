@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -146,6 +146,3 @@ export default function PartsPage() {
   );
 }
 
-/ /   f o r c e   r e b u i l d   2 0 2 6 - 0 5 - 2 8   2 2 : 3 1 
- 
- 
