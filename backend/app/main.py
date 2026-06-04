@@ -62,14 +62,6 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 app.add_middleware(SecurityHeadersMiddleware)
 app.include_router(api_router)
 Instrumentator().instrument(app).expose(app, endpoint="/metrics")
-
-@app.get("/debug-env")
-async def debug_env():
-    import os
-    return {
-        "DATABASE_URL": os.getenv("DATABASE_URL", "NAO_ENCONTRADA")[:50],
-        "ASYNC_DATABASE_URL": settings.ASYNC_DATABASE_URL[:50],
-    }
 @app.get("/health")
 async def health():
     return {"status": "ok", "version": settings.VERSION, "env": settings.ENVIRONMENT}
