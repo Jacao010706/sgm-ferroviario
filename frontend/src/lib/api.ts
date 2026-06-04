@@ -17,13 +17,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-api.interceptors.request.use((config) => {
-  if (config.url && !config.url.endsWith("/") && !config.url.includes("?")) {
-    config.url = config.url + "/";
-  }
-  return config;
-});
-
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
@@ -31,7 +24,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {
-          const resp = await axios.post(`${API_BASE}/api/v1/auth/refresh/`, null, {
+          const resp = await axios.post(`${API_BASE}/api/v1/auth/refresh`, null, {
             params: { refresh_token: refresh },
           });
           localStorage.setItem("access_token", resp.data.access_token);
