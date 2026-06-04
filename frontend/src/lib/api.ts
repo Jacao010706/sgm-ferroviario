@@ -1,9 +1,14 @@
-﻿import axios from "axios";
-const API_BASE = "https://sgm-ferroviario-production.up.railway.app"; // cache-bust: 2026-05-16
+import axios from "axios";
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL
+  ? process.env.NEXT_PUBLIC_API_URL.replace("/api/v1", "")
+  : "https://laudable-peace-production-09cd.up.railway.app";
+
 export const api = axios.create({
   baseURL: `${API_BASE}/api/v1`,
   timeout: 15000,
 });
+
 api.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("access_token");
@@ -11,12 +16,14 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
 api.interceptors.request.use((config) => {
-  if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
-    config.url = config.url + '/';
+  if (config.url && !config.url.endsWith("/") && !config.url.includes("?")) {
+    config.url = config.url + "/";
   }
   return config;
 });
+
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
@@ -24,7 +31,7 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {
-          const resp = await axios.post(`${API_BASE}/api/v1/auth/refresh`, null, {
+          const resp = await axios.post(`${API_BASE}/api/v1/auth/refresh/`, null, {
             params: { refresh_token: refresh },
           });
           localStorage.setItem("access_token", resp.data.access_token);
@@ -39,9 +46,10 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
 export function createTelemetrySocket(assetId: string, onData: (d: any) => void): WebSocket {
-  const ws = new WebSocket(`wss://sgm-ferroviario-production.up.railway.app/api/v1/iot/ws/${assetId}`);
+  const wsBase = API_BASE.replace("https://", "wss://").replace("http://", "ws://");
+  const ws = new WebSocket(`${wsBase}/api/v1/iot/ws/${assetId}`);
   ws.onmessage = (e) => { try { onData(JSON.parse(e.data)); } catch {} };
   return ws;
 }
-
