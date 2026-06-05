@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -55,9 +55,24 @@ export default function WorkOrdersPage() {
     (!typeFilter || o.maintenance_type === typeFilter)
   );
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Tem certeza que deseja excluir esta OS?")) return;
-    await api.delete(`/work-orders/${id}`).then(() => window.location.reload()).catch(() => window.alert("Erro ao excluir OS"));
+  const handleCancel = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja cancelar esta OS?")) return;
+    try {
+      await api.delete(`/work-orders/${id}`);
+      load();
+    } catch (e: any) {
+      window.alert(e?.response?.data?.detail || "Erro ao cancelar OS");
+    }
+  };
+
+  const handleDeletePermanent = async (id: string) => {
+    if (!window.confirm("Excluir permanentemente? Esta acao nao pode ser desfeita.")) return;
+    try {
+      await api.delete(`/work-orders/${id}/permanent`);
+      load();
+    } catch (e: any) {
+      window.alert(e?.response?.data?.detail || "Erro ao excluir OS");
+    }
   };
 
   const handleSubmit = async () => {
@@ -154,8 +169,12 @@ export default function WorkOrdersPage() {
                   <td className="px-4 py-3 text-slate-500 text-xs">{o.scheduled_end ? new Date(o.scheduled_end).toLocaleDateString("pt-BR") : "--"}</td>
                   <td className="px-4 py-3 flex gap-2">
                     <button onClick={() => router.push(`/work-orders/${o.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button>
-                    {o.status !== "cancelled" && o.status !== "completed" && (<button onClick={() => handleCancel(o.id)} className="text-orange-500 hover:underline text-xs">Cancelar</button>)}
-                    {o.status === "cancelled" && (<button onClick={() => handleDeletePermanent(o.id)} className="text-red-600 hover:underline text-xs font-semibold">Excluir</button>)}
+                    {o.status !== "cancelled" && o.status !== "completed" && (
+                      <button onClick={() => handleCancel(o.id)} className="text-orange-500 hover:underline text-xs">Cancelar</button>
+                    )}
+                    {o.status === "cancelled" && (
+                      <button onClick={() => handleDeletePermanent(o.id)} className="text-red-600 hover:underline text-xs font-semibold">Excluir</button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -173,7 +192,6 @@ export default function WorkOrdersPage() {
               <div className="p-6 space-y-4">
                 <div><label className={lbl}>Titulo *</label><input className={inp} value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Ex: Manutencao corretiva do gerador" /></div>
                 <div><label className={lbl}>Descricao</label><textarea className={inp} rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Descricao detalhada..." /></div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={lbl}>Ativo Principal *</label>
@@ -184,33 +202,24 @@ export default function WorkOrdersPage() {
                   </div>
                   <div>
                     <label className={lbl}>Subativo <span className="text-slate-400 font-normal">(opcional)</span></label>
-                    <select
-                      className={clsx(inp, subAssets.length === 0 && "opacity-50 cursor-not-allowed")}
-                      value={form.sub_asset_id}
-                      onChange={e => setForm({ ...form, sub_asset_id: e.target.value })}
-                      disabled={subAssets.length === 0}
-                    >
+                    <select className={clsx(inp, subAssets.length === 0 && "opacity-50 cursor-not-allowed")} value={form.sub_asset_id} onChange={e => setForm({ ...form, sub_asset_id: e.target.value })} disabled={subAssets.length === 0}>
                       <option value="">{subAssets.length === 0 ? "Selecione o ativo primeiro" : "Nenhum (ativo principal)"}</option>
                       {subAssets.map(a => <option key={a.id} value={a.id}>{a.name} ({a.tag})</option>)}
                     </select>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className={lbl}>Tipo de Manutencao *</label><select className={inp} value={form.maintenance_type} onChange={e => setForm({ ...form, maintenance_type: e.target.value })}>{Object.entries(MAINTENANCE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></div>
                   <div><label className={lbl}>Prioridade</label><select className={inp} value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })}><option value="low">Baixa</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Critica</option></select></div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className={lbl}>Duracao Estimada (horas)</label><input type="number" className={inp} value={form.estimated_duration_h} onChange={e => setForm({ ...form, estimated_duration_h: e.target.value })} placeholder="Ex: 4" /></div>
                   <div></div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className={lbl}>Inicio Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_start} onChange={e => setForm({ ...form, scheduled_start: e.target.value })} /></div>
                   <div><label className={lbl}>Fim Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_end} onChange={e => setForm({ ...form, scheduled_end: e.target.value })} /></div>
                 </div>
-
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-3">Execucao</p>
                   <div className="grid grid-cols-2 gap-4">
@@ -222,7 +231,6 @@ export default function WorkOrdersPage() {
                     <div><label className={lbl}>Horas Terceirizadas</label><input type="number" step="0.5" className={inp} value={form.contractor_hours} onChange={e => setForm({ ...form, contractor_hours: e.target.value })} placeholder="Ex: 4" /></div>
                   </div>
                 </div>
-
                 {error && <p className="text-red-600 text-sm">{error}</p>}
               </div>
               <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
@@ -236,6 +244,3 @@ export default function WorkOrdersPage() {
     </div>
   );
 }
-
-
-
