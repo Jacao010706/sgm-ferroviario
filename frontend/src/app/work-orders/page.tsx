@@ -30,6 +30,8 @@ export default function WorkOrdersPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
+  const [teams, setTeams] = useState<any[]>([]);
+  const [technicians, setTechnicians] = useState<any[]>([]);
   const [form, setForm] = useState<any>({ ...emptyForm });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -39,6 +41,8 @@ export default function WorkOrdersPage() {
     Promise.all([
       api.get("/work-orders/", { params: { status: statusFilter || undefined, limit: 100 } }).then((r) => setOrders(r.data)),
       api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/teams/").then((r) => setTeams(r.data)).catch(() => {}),
+      api.get("/teams/members").then((r) => setTechnicians(r.data.filter((u: any) => u.role === "technician" || u.role === "manager"))).catch(() => {}),
     ]).finally(() => setLoading(false));
   };
 
@@ -219,6 +223,25 @@ export default function WorkOrdersPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className={lbl}>Inicio Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_start} onChange={e => setForm({ ...form, scheduled_start: e.target.value })} /></div>
                   <div><label className={lbl}>Fim Previsto</label><input type="datetime-local" className={inp} value={form.scheduled_end} onChange={e => setForm({ ...form, scheduled_end: e.target.value })} /></div>
+                </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Responsavel</p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className={lbl}>Equipe</label>
+                      <select className={inp} value={form.team_id} onChange={e => setForm({ ...form, team_id: e.target.value })}>
+                        <option value="">Sem equipe</option>
+                        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className={lbl}>Tecnico Responsavel</label>
+                      <select className={inp} value={form.assigned_to_id} onChange={e => setForm({ ...form, assigned_to_id: e.target.value })}>
+                        <option value="">Sem tecnico</option>
+                        {technicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-3">Execucao</p>
