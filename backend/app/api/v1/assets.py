@@ -143,6 +143,16 @@ async def deactivate_asset(asset_id: UUID, db: AsyncSession=Depends(get_db), _: 
     asset.status = AssetStatus.DECOMMISSIONED
     await db.commit()
 
+@router.delete("/{asset_id}/permanent", status_code=204)
+async def delete_asset_permanent(asset_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
+    result = await db.execute(select(Asset).where(Asset.id == asset_id))
+    asset = result.scalar_one_or_none()
+    if not asset: raise HTTPException(status_code=404, detail="Ativo nao encontrado")
+    if asset.status != AssetStatus.DECOMMISSIONED:
+        raise HTTPException(status_code=400, detail="Apenas ativos desativados podem ser excluidos permanentemente")
+    await db.delete(asset)
+    await db.commit()
+
 locations_router = APIRouter(prefix="/locations", tags=["Localidades"])
 
 class LocationCreate(BaseModel):

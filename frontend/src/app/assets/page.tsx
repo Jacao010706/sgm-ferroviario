@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -33,10 +33,15 @@ export default function AssetsPage() {
   const children = (parentId: string) => assets.filter(a => a.parent_id === parentId);
   const toggleExpand = (id: string) => { const s = new Set(expanded); s.has(id) ? s.delete(id) : s.add(id); setExpanded(s); };
 
-  const handleDelete = async (id: string) => {
-    const ok = await confirm("Tem certeza que deseja excluir este ativo?");
+ const handleDeactivate = async (id: string) => {
+    const ok = await confirm("Desativar este ativo?");
     if (!ok) return;
-    try { await api.delete(`/assets/${id}`); load(); } catch { alert("Erro ao excluir ativo"); }
+    try { await api.delete(`/assets/${id}`); load(); } catch { alert("Erro ao desativar ativo"); }
+  };
+  const handleDeletePermanent = async (id: string) => {
+    const ok = await confirm("Excluir permanentemente? Esta acao nao pode ser desfeita.");
+    if (!ok) return;
+    try { await api.delete(`/assets/${id}/permanent`); load(); } catch (e: any) { alert(e?.response?.data?.detail || "Erro ao excluir ativo"); }
   };
 
   const openNew = (parentId?: string) => { setForm({...emptyForm, parent_id: parentId || ""}); setShowModal(true); };
@@ -75,7 +80,8 @@ export default function AssetsPage() {
         <td className="px-4 py-3 flex gap-2">
           <button onClick={() => router.push(`/assets/${a.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button>
           <button onClick={() => openNew(a.id)} className="text-green-600 hover:underline text-xs">+ Sub</button>
-          <button onClick={() => handleDelete(a.id)} className="text-red-500 hover:underline text-xs">Excluir</button>
+          {a.status !== "decommissioned" && (<button onClick={() => handleDeactivate(a.id)} className="text-orange-500 hover:underline text-xs">Desativar</button>)}
+          {a.status === "decommissioned" && (<button onClick={() => handleDeletePermanent(a.id)} className="text-red-600 hover:underline text-xs font-semibold">Excluir</button>)}
         </td>
       </tr>
       {isExpanded && kids.map(k => <AssetRow key={k.id} a={k} depth={depth+1} />)}
