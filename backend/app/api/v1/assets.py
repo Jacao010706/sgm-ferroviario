@@ -143,6 +143,10 @@ async def deactivate_asset(asset_id: UUID, db: AsyncSession=Depends(get_db), _: 
     asset.status = AssetStatus.DECOMMISSIONED
     await db.commit()
 
+@router.options("/{asset_id}/permanent", status_code=200)
+async def options_delete_asset_permanent():
+    return {}
+
 @router.delete("/{asset_id}/permanent", status_code=204)
 async def delete_asset_permanent(asset_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
     result = await db.execute(select(Asset).where(Asset.id == asset_id))
