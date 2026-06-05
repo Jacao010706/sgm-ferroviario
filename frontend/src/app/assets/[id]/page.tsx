@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -28,8 +28,8 @@ export default function AssetDetailPage() {
     if (!id) return;
     Promise.all([
       api.get(`/assets/${id}`),
-      api.get("/assets", { params: { limit: 200 } }),
-      api.get("/work-orders", { params: { asset_id: id, limit: 20 } }),
+      api.get("/assets/", { params: { limit: 200 } }),
+      api.get("/work-orders/", { params: { asset_id: id, limit: 20 } }),
     ]).then(([assetRes, allRes, woRes]) => {
       setAsset(assetRes.data);
       setKids(allRes.data.filter((a: any) => a.parent_id === id));
