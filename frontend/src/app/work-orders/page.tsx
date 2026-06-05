@@ -154,7 +154,8 @@ export default function WorkOrdersPage() {
                   <td className="px-4 py-3 text-slate-500 text-xs">{o.scheduled_end ? new Date(o.scheduled_end).toLocaleDateString("pt-BR") : "--"}</td>
                   <td className="px-4 py-3 flex gap-2">
                     <button onClick={() => router.push(`/work-orders/${o.id}`)} className="text-blue-600 hover:underline text-xs">Ver</button>
-                    <button onClick={() => handleDelete(o.id)} className="text-red-500 hover:underline text-xs">Excluir</button>
+                    {o.status !== "cancelled" && o.status !== "completed" && (<button onClick={() => handleCancel(o.id)} className="text-orange-500 hover:underline text-xs">Cancelar</button>)}
+                    {o.status === "cancelled" && (<button onClick={() => handleDeletePermanent(o.id)} className="text-red-600 hover:underline text-xs font-semibold">Excluir</button>)}
                   </td>
                 </tr>
               ))}
