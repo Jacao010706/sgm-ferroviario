@@ -150,6 +150,16 @@ async def delete_asset_permanent(asset_id: UUID, db: AsyncSession=Depends(get_db
     if not asset: raise HTTPException(status_code=404, detail="Ativo nao encontrado")
     if asset.status != AssetStatus.DECOMMISSIONED:
         raise HTTPException(status_code=400, detail="Apenas ativos desativados podem ser excluidos permanentemente")
+    from app.models.maintenance import WorkOrder
+    work_orders = await db.execute(select(WorkOrder).where((WorkOrder.asset_id == asset_id) | (WorkOrder.sub_asset_id == asset_id)))
+    for wo in work_orders.scalars().all():
+        await db.delete(wo)
+    sub_assets = await db.execute(select(Asset).where(Asset.parent_id == asset_id))
+    for sub in sub_assets.scalars().all():
+        sub_work_orders = await db.execute(select(WorkOrder).where((WorkOrder.asset_id == sub.id) | (WorkOrder.sub_asset_id == sub.id)))
+        for wo in sub_work_orders.scalars().all():
+            await db.delete(wo)
+        await db.delete(sub)
     await db.delete(asset)
     await db.commit()
 
