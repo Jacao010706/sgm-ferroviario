@@ -235,7 +235,7 @@ export default function WorkOrderDetailPage() {
     if (!id) return;
     Promise.all([
       api.get("/work-orders/" + id),
-      api.get("/assets", { params: { limit: 100 } }),
+      api.get("/assets/", { params: { limit: 100 } }),
     ]).then(([r, assetsRes]) => {
       const o = r.data;
       setOrder(o);
