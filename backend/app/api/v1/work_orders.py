@@ -204,6 +204,16 @@ async def cancel_work_order(wo_id: UUID, db: AsyncSession=Depends(get_db), _: Us
     wo.status = WorkOrderStatus.CANCELLED
     await db.commit()
 
+@router.delete("/{wo_id}/permanent", status_code=204)
+async def delete_work_order_permanent(wo_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
+    result = await db.execute(select(WorkOrder).where(WorkOrder.id == wo_id))
+    wo = result.scalar_one_or_none()
+    if not wo: raise HTTPException(status_code=404, detail="OS nao encontrada")
+    if wo.status != WorkOrderStatus.CANCELLED:
+        raise HTTPException(status_code=400, detail="Apenas OS canceladas podem ser excluidas permanentemente")
+    await db.delete(wo)
+    await db.commit()
+
 @router.post("/{wo_id}/sync-erp")
 async def sync_to_erp(wo_id: UUID, db: AsyncSession=Depends(get_db), _: User=Depends(require_manager)):
     from app.services.erp_sync_service import sync_work_order_to_erp
