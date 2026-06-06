@@ -154,15 +154,23 @@ async def delete_asset_permanent(asset_id: UUID, db: AsyncSession=Depends(get_db
     if not asset: raise HTTPException(status_code=404, detail="Ativo nao encontrado")
     if asset.status != AssetStatus.DECOMMISSIONED:
         raise HTTPException(status_code=400, detail="Apenas ativos desativados podem ser excluidos permanentemente")
-    from app.models.maintenance import WorkOrder
-    work_orders = await db.execute(select(WorkOrder).where((WorkOrder.asset_id == asset_id) | (WorkOrder.sub_asset_id == asset_id)))
-    for wo in work_orders.scalars().all():
-        await db.delete(wo)
-    sub_assets = await db.execute(select(Asset).where(Asset.parent_id == asset_id))
-    for sub in sub_assets.scalars().all():
-        sub_work_orders = await db.execute(select(WorkOrder).where((WorkOrder.asset_id == sub.id) | (WorkOrder.sub_asset_id == sub.id)))
-        for wo in sub_work_orders.scalars().all():
+    from app.models.maintenance import WorkOrder, MaintenancePlan
+    from app.models.alert import Alert
+    from app.models.iot import IoTReading, SensorConfig
+    async def delete_asset_data(aid):
+        for wo in (await db.execute(select(WorkOrder).where((WorkOrder.asset_id == aid) | (WorkOrder.sub_asset_id == aid)))).scalars().all():
             await db.delete(wo)
+        for mp in (await db.execute(select(MaintenancePlan).where(MaintenancePlan.asset_id == aid))).scalars().all():
+            await db.delete(mp)
+        for al in (await db.execute(select(Alert).where(Alert.asset_id == aid))).scalars().all():
+            await db.delete(al)
+        for ir in (await db.execute(select(IoTReading).where(IoTReading.asset_id == aid))).scalars().all():
+            await db.delete(ir)
+        for sc in (await db.execute(select(SensorConfig).where(SensorConfig.asset_id == aid))).scalars().all():
+            await db.delete(sc)
+    await delete_asset_data(asset_id)
+    for sub in (await db.execute(select(Asset).where(Asset.parent_id == asset_id))).scalars().all():
+        await delete_asset_data(sub.id)
         await db.delete(sub)
     await db.delete(asset)
     await db.commit()
