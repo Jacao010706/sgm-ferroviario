@@ -41,7 +41,7 @@ export default function AssetsPage() {
   const handleDeletePermanent = async (id: string) => {
     const ok = await confirm("Excluir permanentemente? Esta acao nao pode ser desfeita.");
     if (!ok) return;
-    try { await api.delete(`/assets/${id}/permanent`); load(); } catch (e: any) { alert(e?.response?.data?.detail || "Erro ao excluir ativo"); }
+    try { await api.delete(`/assets/${id}/permanent`); } catch (e: any) { if (e?.response?.data?.detail) { alert(e.response.data.detail); return; } } load();
   };
 
   const openNew = (parentId?: string) => { setForm({...emptyForm, parent_id: parentId || ""}); setShowModal(true); };
