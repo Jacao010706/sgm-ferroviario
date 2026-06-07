@@ -146,7 +146,7 @@ export default function MonitoringPage() {
   };
 
   const getVal = (sensorId: string) => latest[sensorId]?.value;
-  const fmt = (v: any, unit: string) => v != null ? `${v}${unit}` : "--";
+  const fmt = (v: any, unit: string) => v != null ? `${typeof v === "number" ? parseFloat(v.toFixed(1)) : v}${unit}` : "--";
 
   const voltageData = readings.filter(r => r.sensor_id === "voltage_l1").slice(-20).map(r => ({
     time: new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
