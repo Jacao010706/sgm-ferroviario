@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -141,6 +141,10 @@ export default function MonitoringPage() {
     router.push("/fuel-orders?new=true");
   };
 
+  const goToAsset = (assetId: string) => {
+    router.push(`/monitoring?asset=${assetId}`);
+  };
+
   const getVal = (sensorId: string) => latest[sensorId]?.value;
   const fmt = (v: any, unit: string) => v != null ? `${v}${unit}` : "--";
 
@@ -265,12 +269,19 @@ export default function MonitoringPage() {
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-3 gap-3">
                       <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                         <div className="p-2 bg-amber-50 rounded-lg"><Thermometer size={18} className="text-amber-600"/></div>
                         <div>
                           <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "°C")}</p>
                           <p className="text-xs text-slate-500">Temperatura</p>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
+                        <div className="p-2 bg-yellow-50 rounded-lg"><Zap size={18} className="text-yellow-600"/></div>
+                        <div>
+                          <p className="text-xl font-bold text-slate-800">{(latest["battery"]?.value ?? latest["runtime_hours"]?.value) != null ? (((latest["battery"]?.value ?? latest["runtime_hours"]?.value)) / 10).toFixed(1) + "V" : "--"}</p>
+                          <p className="text-xs text-slate-500">Bateria</p>
                         </div>
                       </div>
                       <div className={clsx("rounded-xl border p-4", fuelLow ? (fuelLevel <= 20 ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50") : "border-slate-200 bg-white")}>
