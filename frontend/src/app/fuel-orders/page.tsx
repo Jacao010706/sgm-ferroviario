@@ -84,7 +84,12 @@ function FuelOrdersContent() {
       setItems([{ ...emptyItem, subitem: "1.1" }]);
       load();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Erro ao criar OS");
+      const msg = e?.response?.data?.detail || "Erro ao criar OS";
+      if (msg === "Credenciais invalidas") {
+        setError("Sessao expirada. Faca logout e login novamente.");
+      } else {
+        setError(msg);
+      }
     } finally { setSaving(false); }
   };
 
