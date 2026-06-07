@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useState, useCallback, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Activity, RefreshCw, Thermometer, Zap, Gauge, Droplets, PlayCircle, ClipboardList, ChevronDown, ChevronUp, AlertTriangle, Fuel } from "lucide-react";
@@ -92,9 +92,8 @@ function SubAssetHistory({ subAsset }: { subAsset: any }) {
   );
 }
 
-function MonitoringPageInner() {
+export default function MonitoringPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [assets, setAssets] = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
   const [readings, setReadings] = useState<any[]>([]);
@@ -105,14 +104,14 @@ function MonitoringPageInner() {
   useEffect(() => {
     api.get("/assets/", { params: { limit: 50 } }).then((r) => {
       setAssets(r.data);
-      const assetParam = searchParams.get("asset");
+      const assetParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("asset") : null;
       if (assetParam) {
         const found = r.data.find((a: any) => a.id === assetParam);
         if (found) { setSelected(found); return; }
       }
       if (r.data.length > 0) setSelected(r.data[0]);
     });
-  }, [searchParams]);
+  }, []);
 
   const loadReadings = useCallback(() => {
     if (!selected) return;
