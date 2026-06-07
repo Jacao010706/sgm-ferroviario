@@ -145,6 +145,7 @@ async def post_asset_readings(
         ("temperature",   ReadingType.TEMPERATURE, "C",  "temperature"),
         ("fuel_level",    ReadingType.FUEL_LEVEL,  "%",  "fuel_level"),
         ("runtime_hours", ReadingType.STATUS,      "h",  "runtime_hours"),
+        ("battery_voltage", ReadingType.VOLTAGE,   "V",  "battery"),
     ]
     saved = 0
     for field, rtype, unit, sensor_id in mapping:
