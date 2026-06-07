@@ -102,7 +102,7 @@ export default function Sidebar() {
                         <p className="text-xs font-semibold text-slate-800">{alert.title}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{alert.description}</p>
                         <Link
-                          href="/monitoring"
+                          href={`/monitoring?asset=${alert.asset_id}`}
                           onClick={() => setShowNotifications(false)}
                           className="text-xs text-blue-600 hover:underline mt-1 block"
                         >
