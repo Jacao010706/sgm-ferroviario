@@ -153,12 +153,19 @@ export default function AssetDetailPage() {
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                 <div className="p-2 bg-amber-50 rounded-lg"><Thermometer size={18} className="text-amber-600"/></div>
                 <div>
                   <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "°C")}</p>
                   <p className="text-xs text-slate-500">Temperatura</p>
+                </div>
+              </div>
+              <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
+                <div className="p-2 bg-yellow-50 rounded-lg"><Zap size={18} className="text-yellow-600"/></div>
+                <div>
+                  <p className="text-xl font-bold text-slate-800">{fmt(getVal("battery"), "V")}</p>
+                  <p className="text-xs text-slate-500">Bateria</p>
                 </div>
               </div>
               <div className="bg-white rounded-xl border border-slate-200 p-4">
