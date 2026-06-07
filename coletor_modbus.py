@@ -211,24 +211,28 @@ def ler_gerador(ip, slave_id, tag):
                 return regs[idx]
             return 0
 
+        f1 = 0.0 if is_stemac else 0.1
+        fv = 1.0 if is_stemac else 0.1
+        ff = 0.01 if is_stemac else 0.1
+
         dados = {
             "status":        r(reg_map["status"]),
-            "tensao_l1":     r(reg_map["tensao_l1"]) * 0.1,
-            "tensao_l2":     r(reg_map["tensao_l2"]) * 0.1,
-            "tensao_l3":     r(reg_map["tensao_l3"]) * 0.1,
-            "corrente_l1":   r(reg_map["corrente_l1"]) * 0.1,
-            "corrente_l2":   r(reg_map["corrente_l2"]) * 0.1,
-            "corrente_l3":   r(reg_map["corrente_l3"]) * 0.1,
-            "frequencia":    r(reg_map["frequencia"]) * 0.1,
-            "potencia_kw":   r(reg_map["potencia_kw"]) * 0.1,
+            "tensao_l1":     r(reg_map["tensao_l1"]) * f1,
+            "tensao_l2":     r(reg_map["tensao_l2"]) * f1,
+            "tensao_l3":     r(reg_map["tensao_l3"]) * f1,
+            "corrente_l1":   r(reg_map["corrente_l1"]) * f1,
+            "corrente_l2":   r(reg_map["corrente_l2"]) * f1,
+            "corrente_l3":   r(reg_map["corrente_l3"]) * f1,
+            "frequencia":    r(reg_map["frequencia"]) * f1,
+            "potencia_kw":   r(reg_map["potencia_kw"]) * f1,
             "temperatura":   r(reg_map["temperatura"]),
             "nivel_tanque":  r(reg_map["nivel_tanque"]),
             "bateria":       r(reg_map["bateria"]) * 0.1,
-        "horas_funcio":  r(reg_map["horas_funcio"]),
-            "tensao_rede_l1":r(reg_map["tensao_rede_l1"]) * 0.1,
-            "tensao_rede_l2":r(reg_map["tensao_rede_l2"]) * 0.1,
-            "tensao_rede_l3":r(reg_map["tensao_rede_l3"]) * 0.1,
-            "freq_rede":     r(REG["freq_rede"]) * 0.1,
+            "horas_funcio":  r(reg_map["horas_funcio"]),
+            "tensao_rede_l1":r(reg_map["tensao_rede_l1"]) * fv,
+            "tensao_rede_l2":r(reg_map["tensao_rede_l2"]) * fv,
+            "tensao_rede_l3":r(reg_map["tensao_rede_l3"]) * fv,
+            "freq_rede":     r(reg_map["freq_rede"]) * ff,
         }
         log.info(f"{tag} ({ip}): lido OK | tanque={dados['nivel_tanque']}% temp={dados['temperatura']}C")
 
