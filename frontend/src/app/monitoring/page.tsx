@@ -148,12 +148,12 @@ export default function MonitoringPage() {
   const getVal = (sensorId: string) => latest[sensorId]?.value;
   const fmt = (v: any, unit: string) => v != null ? `${v}${unit}` : "--";
 
-  const voltageData = readings.filter(r => r.sensor_id === "voltage_r").slice(-20).map(r => ({
+  const voltageData = readings.filter(r => r.sensor_id === "voltage_l1").slice(-20).map(r => ({
     time: new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     "Tensao R": r.value,
   }));
 
-  const currentData = readings.filter(r => r.sensor_id === "current_r").slice(-20).map(r => ({
+  const currentData = readings.filter(r => r.sensor_id === "current_l1").slice(-20).map(r => ({
     time: new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     "Corrente R": r.value,
   }));
@@ -252,12 +252,12 @@ export default function MonitoringPage() {
                   <>
                     <div className="grid grid-cols-3 gap-3">
                       {[
-                        { label: "Tensao R", sensor: "voltage_r", unit: "V", icon: <Zap size={18} className="text-blue-600"/>, bg: "bg-blue-50" },
-                        { label: "Tensao S", sensor: "voltage_s", unit: "V", icon: <Zap size={18} className="text-indigo-600"/>, bg: "bg-indigo-50" },
-                        { label: "Tensao T", sensor: "voltage_t", unit: "V", icon: <Zap size={18} className="text-violet-600"/>, bg: "bg-violet-50" },
-                        { label: "Corrente R", sensor: "current_r", unit: "A", icon: <Gauge size={18} className="text-green-600"/>, bg: "bg-green-50" },
-                        { label: "Corrente S", sensor: "current_s", unit: "A", icon: <Gauge size={18} className="text-emerald-600"/>, bg: "bg-emerald-50" },
-                        { label: "Corrente T", sensor: "current_t", unit: "A", icon: <Gauge size={18} className="text-teal-600"/>, bg: "bg-teal-50" },
+                        { label: "Tensao R", sensor: "voltage_l1", unit: "V", icon: <Zap size={18} className="text-blue-600"/>, bg: "bg-blue-50" },
+                        { label: "Tensao S", sensor: "voltage_l2", unit: "V", icon: <Zap size={18} className="text-indigo-600"/>, bg: "bg-indigo-50" },
+                        { label: "Tensao T", sensor: "voltage_l3", unit: "V", icon: <Zap size={18} className="text-violet-600"/>, bg: "bg-violet-50" },
+                        { label: "Corrente R", sensor: "current_l1", unit: "A", icon: <Gauge size={18} className="text-green-600"/>, bg: "bg-green-50" },
+                        { label: "Corrente S", sensor: "current_l2", unit: "A", icon: <Gauge size={18} className="text-emerald-600"/>, bg: "bg-emerald-50" },
+                        { label: "Corrente T", sensor: "current_l3", unit: "A", icon: <Gauge size={18} className="text-teal-600"/>, bg: "bg-teal-50" },
                       ].map(item => (
                         <div key={item.sensor} className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                           <div className={clsx("p-2 rounded-lg", item.bg)}>{item.icon}</div>
