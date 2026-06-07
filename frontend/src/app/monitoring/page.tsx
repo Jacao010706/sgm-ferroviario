@@ -112,7 +112,7 @@ export default function MonitoringPage() {
       }
       if (r.data.length > 0) setSelected(r.data[0]);
     });
-  }, []);
+  }, [searchParams]);
 
   const loadReadings = useCallback(() => {
     if (!selected) return;
