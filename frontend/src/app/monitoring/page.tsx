@@ -146,7 +146,8 @@ export default function MonitoringPage() {
   };
 
   const goToFuelOrders = () => {
-    router.push("/fuel-orders?new=true");
+    const station = selected?.name || "";
+    router.push(`/fuel-orders?new=true&station=${encodeURIComponent(station)}`);
   };
 
   const goToAsset = (assetId: string) => {

@@ -42,7 +42,13 @@ function FuelOrdersContent() {
 
   useEffect(() => { load(); }, []);
   useEffect(() => {
-    if (searchParams.get("new") === "true") setShowModal(true);
+    if (searchParams.get("new") === "true") {
+      setShowModal(true);
+      const station = searchParams.get("station");
+      if (station) {
+        setItems([{ ...emptyItem, subitem: "1.1", station: station }]);
+      }
+    }
   }, [searchParams]);
   useEffect(() => {
     if (showModal) {
@@ -256,9 +262,9 @@ function FuelOrdersContent() {
                       <div key={i} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg">
                         <div className="col-span-1"><label className="text-xs text-slate-500">Subitem</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.subitem} onChange={e => updateItem(i, "subitem", e.target.value)} /></div>
                         <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)} /></div>
-                        <div className="col-span-2"><label className="text-xs text-slate-500">Previsao (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)} /></div>
+                        <div className="col-span-2"><label className="text-xs text-slate-500">Previsao (L)</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)}><option value="">Selecione</option>{Array.from({length: 25}, (_, i) => (i+1)*10).map(v => <option key={v} value={v}>{v}L</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Fornecido (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.supplied_liters} onChange={e => updateItem(i, "supplied_liters", e.target.value)} /></div>
-                        <div className="col-span-2"><label className="text-xs text-slate-500">GGD Auto?</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)} /></div>
+                        <div className="col-span-2"><label className="text-xs text-slate-500">GGD Auto?</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
                         <div className="col-span-1 flex items-end pb-0.5">{items.length > 1 && <button onClick={() => removeItem(i)} className="text-slate-300 hover:text-red-500 mt-4"><X size={14} /></button>}</div>
                       </div>
                     ))}
