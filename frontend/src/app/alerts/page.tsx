@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
@@ -62,9 +62,9 @@ export default function AlertsPage() {
   const load = () => {
     setLoading(true);
     Promise.all([
-      api.get("/alerts", { params: { status: statusFilter || undefined, severity: severityFilter || undefined, limit: 100 } })
+      api.get("/alerts/", { params: { status: statusFilter || undefined, severity: severityFilter || undefined, limit: 100 } })
         .then((r) => setAlerts(r.data)),
-      api.get("/assets", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
 
