@@ -145,17 +145,13 @@ export default function MonitoringPage() {
     router.push(`/monitoring?asset=${assetId}`);
   };
 
-  const getVal = (sensorId: string) => {
+  const getVal = (sensorId: string) => latest[sensorId]?.value;
+  const getValElec = (sensorId: string) => {
     const reading = latest[sensorId];
     if (!reading) return null;
-    // Mostra -- se dado for mais antigo que 10 minutos
     const age = (Date.now() - new Date(reading.timestamp).getTime()) / 1000 / 60;
     if (age > 10) return null;
-    return reading.value;
-  };
-  const getValElec = (sensorId: string) => {
-    const v = getVal(sensorId);
-    // Mostra -- se valor for zero (gerador desligado)
+    const v = reading.value;
     if (v === 0 || v === null) return null;
     return v;
   };

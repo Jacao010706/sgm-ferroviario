@@ -61,15 +61,13 @@ export default function AssetDetailPage() {
     }
   }, [asset, loadTelemetry]);
 
-  const getVal = (sensorId: string) => {
+  const getVal = (sensorId: string) => latest[sensorId]?.value;
+  const getValElec = (sensorId: string) => {
     const reading = latest[sensorId];
     if (!reading) return null;
     const age = (Date.now() - new Date(reading.timestamp).getTime()) / 1000 / 60;
     if (age > 10) return null;
-    return reading.value;
-  };
-  const getValElec = (sensorId: string) => {
-    const v = getVal(sensorId);
+    const v = reading.value;
     if (v === 0 || v === null) return null;
     return v;
   };
