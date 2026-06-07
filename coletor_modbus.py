@@ -101,6 +101,70 @@ def obter_token():
         return None
 
 
+# Registros especificos por gerador (quando diferem do padrao)
+REG_STEMAC = {
+    "temperatura":   57,   # C (direto)
+    "nivel_tanque":  61,   # % (direto)
+    "bateria":       58,   # V bateria (fator 0.1)
+    "horas_funcio":  56,   # horas (direto)
+    "tensao_l1":     0,    # gerador desligado
+    "tensao_l2":     0,
+    "tensao_l3":     0,
+    "corrente_l1":   0,
+    "corrente_l2":   0,
+    "corrente_l3":   0,
+    "frequencia":    0,
+    "potencia_kw":   0,
+    "tensao_rede_l1":71,   # V rede (direto)
+    "tensao_rede_l2":72,
+    "tensao_rede_l3":73,
+    "freq_rede":     87,   # Hz rede (fator 0.01)
+    "status":        0,
+}
+
+REG_CUSTOM = {
+    "GMG-CANOAS": {
+        "temperatura":   1025,
+        "nivel_tanque":  1027,
+        "bateria":       1028,
+        "frequencia":    1031,
+        "tensao_l1":     1033,
+        "tensao_l2":     1035,
+        "tensao_l3":     1037,
+        "tensao_rede_l1":1039,
+        "tensao_rede_l2":1041,
+        "tensao_rede_l3":1043,
+        "corrente_l1":   1045,
+        "corrente_l2":   1047,
+        "corrente_l3":   1049,
+    },
+    "GMG-AEROPORTO":    {**REG_STEMAC},
+    "GMG-ANCHIETA":     {**REG_STEMAC},
+    "GMG-NITEROI":      {**REG_STEMAC},
+    "GMG-FATIMA":       {**REG_STEMAC},
+    "GMG-MATHIASVELHO": {**REG_STEMAC},
+    "GMG-SAOLUIS":      {**REG_STEMAC},
+    "GMG-PETROBRAS":    {**REG_STEMAC},
+    "GMG-SAPUCAIA":     {**REG_STEMAC},
+    "GMG-SAOLEOPOLDO":  {**REG_STEMAC},
+    "GMG-SUBESTACAO2":  {**REG_STEMAC},
+    "GMG-CANOAS": {
+        "temperatura":   1025,
+        "nivel_tanque":  1027,
+        "bateria":       1028,
+        "frequencia":    1031,
+        "tensao_l1":     1033,
+        "tensao_l2":     1035,
+        "tensao_l3":     1037,
+        "tensao_rede_l1":1039,
+        "tensao_rede_l2":1041,
+        "tensao_rede_l3":1043,
+        "corrente_l1":   1045,
+        "corrente_l2":   1047,
+        "corrente_l3":   1049,
+    }
+}
+
 def ler_gerador(ip, slave_id, tag):
     """Conecta ao DSE7420 via Modbus TCP e lê os registros."""
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
@@ -110,8 +174,23 @@ def ler_gerador(ip, slave_id, tag):
             log.warning(f"{tag} ({ip}): sem conexao Modbus")
             return None
 
-        # Lê bloco de registros (1000 a 1050)
-        result = client.read_holding_registers(address=1000, count=50)
+        # Le registros conforme tipo do gerador
+        is_stemac = tag in REG_CUSTOM and REG_CUSTOM[tag].get("temperatura", 1000) < 100
+        if is_stemac:
+            # STEMAC: lê em blocos de 40 registros
+            regs_stemac = [0] * 200
+            for base in [0, 35, 56, 71, 86]:
+                rb = client.read_input_registers(address=base, count=35)
+                if not rb.isError():
+                    for i, v in enumerate(rb.registers):
+                        regs_stemac[base + i] = v
+            class FakeResult:
+                def __init__(self, regs):
+                    self.registers = regs
+                def isError(self): return False
+            result = FakeResult(regs_stemac)
+        else:
+            result = client.read_holding_registers(address=1000, count=50)
 
         if result.isError():
             log.warning(f"{tag} ({ip}): erro ao ler registros - {result}")
@@ -119,29 +198,36 @@ def ler_gerador(ip, slave_id, tag):
 
         regs = result.registers
 
+        reg_map = {**REG, **REG_CUSTOM.get(tag, {})}
+
         def r(offset):
-            idx = offset - 1000
+            if offset == 0:
+                return 0
+            if is_stemac:
+                idx = offset
+            else:
+                idx = offset - 1000
             if 0 <= idx < len(regs):
                 return regs[idx]
             return 0
 
         dados = {
-            "status":        r(REG["status"]),
-            "tensao_l1":     r(REG["tensao_l1"]) * 0.1,
-            "tensao_l2":     r(REG["tensao_l2"]) * 0.1,
-            "tensao_l3":     r(REG["tensao_l3"]) * 0.1,
-            "corrente_l1":   r(REG["corrente_l1"]) * 0.1,
-            "corrente_l2":   r(REG["corrente_l2"]) * 0.1,
-            "corrente_l3":   r(REG["corrente_l3"]) * 0.1,
-            "frequencia":    r(REG["frequencia"]) * 0.1,
-            "potencia_kw":   r(REG["potencia_kw"]) * 0.1,
-            "temperatura":   r(REG["temperatura"]),
-            "nivel_tanque":  r(REG["nivel_tanque"]),
-            "bateria":       r(REG["bateria"]) * 0.1,
-        "horas_funcio":  r(REG["horas_funcio"]),
-            "tensao_rede_l1":r(REG["tensao_rede_l1"]) * 0.1,
-            "tensao_rede_l2":r(REG["tensao_rede_l2"]) * 0.1,
-            "tensao_rede_l3":r(REG["tensao_rede_l3"]) * 0.1,
+            "status":        r(reg_map["status"]),
+            "tensao_l1":     r(reg_map["tensao_l1"]) * 0.1,
+            "tensao_l2":     r(reg_map["tensao_l2"]) * 0.1,
+            "tensao_l3":     r(reg_map["tensao_l3"]) * 0.1,
+            "corrente_l1":   r(reg_map["corrente_l1"]) * 0.1,
+            "corrente_l2":   r(reg_map["corrente_l2"]) * 0.1,
+            "corrente_l3":   r(reg_map["corrente_l3"]) * 0.1,
+            "frequencia":    r(reg_map["frequencia"]) * 0.1,
+            "potencia_kw":   r(reg_map["potencia_kw"]) * 0.1,
+            "temperatura":   r(reg_map["temperatura"]),
+            "nivel_tanque":  r(reg_map["nivel_tanque"]),
+            "bateria":       r(reg_map["bateria"]) * 0.1,
+        "horas_funcio":  r(reg_map["horas_funcio"]),
+            "tensao_rede_l1":r(reg_map["tensao_rede_l1"]) * 0.1,
+            "tensao_rede_l2":r(reg_map["tensao_rede_l2"]) * 0.1,
+            "tensao_rede_l3":r(reg_map["tensao_rede_l3"]) * 0.1,
             "freq_rede":     r(REG["freq_rede"]) * 0.1,
         }
         log.info(f"{tag} ({ip}): lido OK | tanque={dados['nivel_tanque']}% temp={dados['temperatura']}C")
@@ -190,6 +276,35 @@ def enviar_leitura(asset_id, dados, token):
         return False
 
 
+ALERTAS_ENVIADOS = set()  # evita duplicar alertas no mesmo ciclo
+
+def criar_alerta_combustivel(asset_id, tag, nivel, token):
+    """Cria alerta de baixo combustivel se ainda nao existe um ativo."""
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = {
+        "title": f"Combustivel baixo - {tag}",
+        "description": f"Nivel de combustivel em {nivel}%. Necessario abastecimento.",
+        "asset_id": asset_id,
+        "severity": "high" if nivel < 30 else "medium",
+        "source": "iot_sensor",
+        "metric_name": "fuel_level",
+        "metric_value": nivel,
+        "threshold_value": 50.0,
+    }
+    try:
+        r = requests.post(
+            f"{API_BASE}/alerts/",
+            json=payload,
+            headers=headers,
+            timeout=10,
+        )
+        if r.status_code in (200, 201):
+            log.info(f"{tag}: alerta de combustivel criado ({nivel}%)")
+        else:
+            log.warning(f"{tag}: erro ao criar alerta - {r.status_code}: {r.text[:100]}")
+    except Exception as e:
+        log.error(f"{tag}: erro ao criar alerta - {e}")
+
 def ciclo_coleta(token):
     """Executa um ciclo completo de coleta para todos os geradores."""
     ok = 0
@@ -199,11 +314,17 @@ def ciclo_coleta(token):
         if dados:
             if enviar_leitura(asset_id, dados, token):
                 ok += 1
+                nivel = dados.get("nivel_tanque", 100)
+                if nivel > 0 and nivel < 50 and asset_id not in ALERTAS_ENVIADOS:
+                    criar_alerta_combustivel(asset_id, tag, nivel, token)
+                    ALERTAS_ENVIADOS.add(asset_id)
+                elif nivel >= 50 and asset_id in ALERTAS_ENVIADOS:
+                    ALERTAS_ENVIADOS.discard(asset_id)
             else:
                 falha += 1
         else:
             falha += 1
-        time.sleep(0.5)  # pausa entre geradores para não sobrecarregar a rede
+        time.sleep(0.5)
     log.info(f"Ciclo concluido: {ok} OK, {falha} falhas")
 
 
