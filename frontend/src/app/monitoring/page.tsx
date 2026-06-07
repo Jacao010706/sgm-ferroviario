@@ -104,14 +104,17 @@ export default function MonitoringPage() {
   useEffect(() => {
     api.get("/assets/", { params: { limit: 50 } }).then((r) => {
       setAssets(r.data);
-      const assetParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("asset") : null;
-      if (assetParam) {
-        const found = r.data.find((a: any) => a.id === assetParam);
-        if (found) { setSelected(found); return; }
-      }
       if (r.data.length > 0) setSelected(r.data[0]);
     });
   }, []);
+
+  useEffect(() => {
+    const assetParam = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("asset") : null;
+    if (assetParam && assets.length > 0) {
+      const found = assets.find((a: any) => a.id === assetParam);
+      if (found) setSelected(found);
+    }
+  }, [assets, typeof window !== "undefined" ? window.location.search : ""]);
 
   const loadReadings = useCallback(() => {
     if (!selected) return;
