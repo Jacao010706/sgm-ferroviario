@@ -47,6 +47,7 @@ function FuelOrdersContent() {
       const station = searchParams.get("station");
       if (station) {
         setItems([{ ...emptyItem, subitem: "1.1", station: station }]);
+        setForm((f: any) => ({ ...f, sector: "SENERG" }));
       }
     }
   }, [searchParams]);
