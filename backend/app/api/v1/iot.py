@@ -122,6 +122,55 @@ async def telemetry_ws(asset_id: str, websocket: WebSocket):
     finally:
         await pubsub.unsubscribe(f"telemetry:{asset_id}")
         await r.aclose()
+
+@router.post("/readings/{asset_id}", status_code=201)
+async def post_asset_readings(
+    asset_id: UUID,
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Recebe leituras reais do coletor Modbus e salva no banco."""
+    from pydantic import BaseModel
+    now = datetime.utcnow()
+    mapping = [
+        ("voltage_l1",    ReadingType.VOLTAGE,     "V",  "voltage_l1"),
+        ("voltage_l2",    ReadingType.VOLTAGE,     "V",  "voltage_l2"),
+        ("voltage_l3",    ReadingType.VOLTAGE,     "V",  "voltage_l3"),
+        ("current_l1",    ReadingType.CURRENT,     "A",  "current_l1"),
+        ("current_l2",    ReadingType.CURRENT,     "A",  "current_l2"),
+        ("current_l3",    ReadingType.CURRENT,     "A",  "current_l3"),
+        ("frequency",     ReadingType.FREQUENCY,   "Hz", "frequency"),
+        ("power_kw",      ReadingType.POWER,       "kW", "power_kw"),
+        ("temperature",   ReadingType.TEMPERATURE, "C",  "temperature"),
+        ("fuel_level",    ReadingType.FUEL_LEVEL,  "%",  "fuel_level"),
+        ("runtime_hours", ReadingType.STATUS,      "h",  "runtime_hours"),
+    ]
+    saved = 0
+    for field, rtype, unit, sensor_id in mapping:
+        val = body.get(field)
+        if val is None or val == 0:
+            continue
+        reading = IoTReading(
+            asset_id=asset_id,
+            sensor_id=sensor_id,
+            reading_type=rtype,
+            value=float(val),
+            unit=unit,
+            source="modbus",
+            timestamp=now,
+        )
+        db.add(reading)
+        saved += 1
+    await db.commit()
+    try:
+        r_client = redis.from_url(settings.REDIS_URL)
+        payload = {"asset_id": str(asset_id), "timestamp": now.isoformat(), "source": "modbus", "data": body}
+        await r_client.publish(f"telemetry:{asset_id}", json.dumps(payload))
+        await r_client.aclose()
+    except Exception:
+        pass
+    return {"saved": saved, "asset_id": str(asset_id)}
 @router.post("/simulate/{asset_id}")
 async def simulate_readings(
     asset_id: UUID,
