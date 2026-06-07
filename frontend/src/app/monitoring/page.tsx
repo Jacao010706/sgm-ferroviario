@@ -145,7 +145,20 @@ export default function MonitoringPage() {
     router.push(`/monitoring?asset=${assetId}`);
   };
 
-  const getVal = (sensorId: string) => latest[sensorId]?.value;
+  const getVal = (sensorId: string) => {
+    const reading = latest[sensorId];
+    if (!reading) return null;
+    // Mostra -- se dado for mais antigo que 10 minutos
+    const age = (Date.now() - new Date(reading.timestamp).getTime()) / 1000 / 60;
+    if (age > 10) return null;
+    return reading.value;
+  };
+  const getValElec = (sensorId: string) => {
+    const v = getVal(sensorId);
+    // Mostra -- se valor for zero (gerador desligado)
+    if (v === 0 || v === null) return null;
+    return v;
+  };
   const fmt = (v: any, unit: string) => v != null ? `${typeof v === "number" ? parseFloat(v.toFixed(1)) : v}${unit}` : "--";
 
   const voltageData = readings.filter(r => r.sensor_id === "voltage_l1").slice(-20).map(r => ({
@@ -262,7 +275,7 @@ export default function MonitoringPage() {
                         <div key={item.sensor} className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                           <div className={clsx("p-2 rounded-lg", item.bg)}>{item.icon}</div>
                           <div>
-                            <p className="text-xl font-bold text-slate-800">{fmt(getVal(item.sensor), item.unit)}</p>
+                            <p className="text-xl font-bold text-slate-800">{fmt(getValElec(item.sensor), item.unit)}</p>
                             <p className="text-xs text-slate-500">{item.label}</p>
                           </div>
                         </div>

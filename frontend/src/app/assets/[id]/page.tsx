@@ -61,7 +61,18 @@ export default function AssetDetailPage() {
     }
   }, [asset, loadTelemetry]);
 
-  const getVal = (sensorId: string) => latest[sensorId]?.value;
+  const getVal = (sensorId: string) => {
+    const reading = latest[sensorId];
+    if (!reading) return null;
+    const age = (Date.now() - new Date(reading.timestamp).getTime()) / 1000 / 60;
+    if (age > 10) return null;
+    return reading.value;
+  };
+  const getValElec = (sensorId: string) => {
+    const v = getVal(sensorId);
+    if (v === 0 || v === null) return null;
+    return v;
+  };
   const fmt = (v: any, unit: string) => v != null ? `${typeof v === "number" ? parseFloat(v.toFixed(1)) : v}${unit}` : "--";
   const fuelLevel = getVal("fuel_level");
 
