@@ -37,6 +37,7 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
           body * { visibility: hidden !important; }
           #print-area, #print-area * { visibility: visible !important; }
           #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          #apr-print-area { display: none !important; visibility: hidden !important; }
           @page { margin: 10mm; size: A4; }
         }
         #print-area {
@@ -360,6 +361,7 @@ export default function WorkOrderDetailPage() {
   const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAPR, setShowAPR] = useState(false);
+  const [printMode, setPrintMode] = useState<"os"|"apr"|null>(null);
   const [aprSelections, setAprSelections] = useState<Record<string, boolean>>({});
   const toggleAPR = (key: string) => setAprSelections(prev => ({ ...prev, [key]: !prev[key] }));
   const [companies, setCompanies] = useState<ContractedCompany[]>([]);
@@ -413,11 +415,13 @@ export default function WorkOrderDetailPage() {
   }, [id]);
 
   const handlePrint = () => {
-    const printArea = document.getElementById("print-area");
-    if (printArea) {
-      printArea.style.display = "block";
-      setTimeout(() => { window.print(); printArea.style.display = "none"; }, 100);
-    }
+    setPrintMode("os");
+    setTimeout(() => { window.print(); setPrintMode(null); }, 100);
+  };
+
+  const handlePrintAPR = () => {
+    setPrintMode("apr");
+    setTimeout(() => { window.print(); setPrintMode(null); }, 100);
   };
 
   const openImportModal = () => {
@@ -768,7 +772,7 @@ export default function WorkOrderDetailPage() {
               <div className="flex items-center justify-between p-4 border-b border-slate-200">
                 <h2 className="text-lg font-bold text-slate-800">APR / Check-List de Seguranca</h2>
                 <div className="flex gap-2">
-                  <button onClick={() => { const el = document.getElementById("apr-print-area"); if(el){el.style.display="block"; setTimeout(()=>{window.print(); el.style.display="none";},100);}}} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium">
+                  <button onClick={handlePrintAPR} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium">
                     <Printer size={14} /> Imprimir APR
                   </button>
                   <button onClick={() => setShowAPR(false)} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
@@ -815,7 +819,7 @@ export default function WorkOrderDetailPage() {
                 </div>
               </div>
 
-              <div id="apr-print-area" style={{display:"none"}}>
+              <div id="apr-print-area" style={{display: printMode === "apr" ? "block" : "none"}}>
                 <style>{`@media print { body * { visibility: hidden !important; } #apr-print-area, #apr-print-area * { visibility: visible !important; } #apr-print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 10mm; display: block !important; } @page { margin: 10mm; size: A4; } }`}</style>
                 <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
                   <tbody>
