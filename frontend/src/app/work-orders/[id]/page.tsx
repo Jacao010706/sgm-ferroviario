@@ -203,11 +203,11 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
           <tr>
             <td style={{width:"50%", verticalAlign:"top"}}>
               <strong>MANHÃ:</strong>
-              <div style={{minHeight: 60, paddingTop: 4}}>{form.observations || ""}</div>
+              <div style={{minHeight: 160, paddingTop: 4}}>{form.observations || ""}</div>
             </td>
             <td style={{width:"50%", verticalAlign:"top"}}>
               <strong>TARDE:</strong>
-              <div style={{minHeight: 60}}>&nbsp;</div>
+              <div style={{minHeight: 160}}>&nbsp;</div>
             </td>
           </tr>
         </tbody>
