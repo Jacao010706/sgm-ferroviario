@@ -424,10 +424,28 @@ function FuelOrdersContent() {
                   </div>
                 </div>
                 <div><label className={lbl}>Fornecedor</label><input className={inp} value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} /></div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><label className={lbl}>Fiscal 1</label><input className={inp} value={form.fiscal_1} onChange={e => setForm({ ...form, fiscal_1: e.target.value })} /></div>
-                  <div><label className={lbl}>Fiscal 2</label><input className={inp} value={form.fiscal_2} onChange={e => setForm({ ...form, fiscal_2: e.target.value })} /></div>
-                  <div><label className={lbl}>Fiscal 3</label><input className={inp} value={form.fiscal_3} onChange={e => setForm({ ...form, fiscal_3: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className={lbl}>Fiscal 1</label>
+                    <select className={inp} value={form.fiscal_1} onChange={e => setForm({ ...form, fiscal_1: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {technicians.map((t: any) => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                  </div>
+                  <div><label className={lbl}>Fiscal 2</label>
+                    <select className={inp} value={form.fiscal_2} onChange={e => setForm({ ...form, fiscal_2: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {technicians.map((t: any) => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Aditivo</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div><label className={lbl}>Estacao</label><select className={inp} value={form.additive_station} onChange={e => setForm({ ...form, additive_station: e.target.value })}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
+                    <div><label className={lbl}>Previsao (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
+                    <div><label className={lbl}>Quantidade (ml)</label><input type="number" className={inp} value={form.additive_quantity_ml} onChange={e => setForm({ ...form, additive_quantity_ml: e.target.value })} /></div>
+                  </div>
+                  <div className="mt-3"><label className={lbl}>Servico Concluido?</label><select className={inp} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
                 </div>
                 <div className="border-t border-slate-100 pt-4">
                   <div className="flex items-center justify-between mb-3">
@@ -461,15 +479,6 @@ function FuelOrdersContent() {
                   </div>
                     <div><label className={lbl}>RE</label><input className={inp} value={form.responsible_re} onChange={e => setForm({ ...form, responsible_re: e.target.value })} /></div>
                   </div>
-                </div>
-                <div className="border-t border-slate-100 pt-4">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Aditivo</p>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div><label className={lbl}>Estacao</label><select className={inp} value={form.additive_station} onChange={e => setForm({ ...form, additive_station: e.target.value })}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
-                    <div><label className={lbl}>Previsao (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
-                    <div><label className={lbl}>Quantidade (ml)</label><input type="number" className={inp} value={form.additive_quantity_ml} onChange={e => setForm({ ...form, additive_quantity_ml: e.target.value })} /></div>
-                  </div>
-                  <div className="mt-3"><label className={lbl}>Servico Concluido?</label><select className={inp} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
                 </div>
                 <div><label className={lbl}>Observacoes</label><textarea className={inp} rows={2} value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} /></div>
                 {error && <p className="text-red-600 text-sm">{error}</p>}
