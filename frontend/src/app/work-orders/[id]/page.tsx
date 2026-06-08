@@ -144,13 +144,13 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
       <table className="trensurb-table" style={{marginTop: 0}}>
         <tbody>
           <tr>
-            <td style={{width:"18%"}}><strong>OS ROMARCK Nº:</strong><br/>{order.number}</td>
-            <td style={{width:"30%"}}><strong>LOCAL:</strong><br/>Sala do GGD</td>
-            <td style={{width:"12%"}}><strong>SEMANA:</strong><br/>&nbsp;</td>
-            <td style={{width:"12%"}}><strong>TURNO:</strong><br/>{form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "MANHÃ" : new Date(form.actual_start).getHours() < 18 ? "TARDE" : "NOITE") : ""}</td>
-            <td style={{width:"28%"}}>
-              <strong>Fiscal Trensurb (1):</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>RE:</strong><br/>
-              <strong>Fiscal Trensurb (2):</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>RE:</strong>
+            <td style={{width:"16%"}}><strong>OS ROMARCK Nº:</strong><br/>{order.number}</td>
+            <td style={{width:"18%"}}><strong>LOCAL:</strong><br/>Sala do GGD</td>
+            <td style={{width:"10%"}}><strong>SEMANA:</strong><br/>&nbsp;</td>
+            <td style={{width:"10%"}}><strong>TURNO:</strong><br/>{form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "MANHÃ" : new Date(form.actual_start).getHours() < 18 ? "TARDE" : "NOITE") : ""}</td>
+            <td style={{width:"46%"}}>
+              <strong>Fiscal Trensurb (1):</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>RE:</strong><br/>
+              <strong>Fiscal Trensurb (2):</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>RE:</strong>
             </td>
           </tr>
           <tr>
