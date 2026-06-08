@@ -146,6 +146,9 @@ async def post_asset_readings(
         ("fuel_level",    ReadingType.FUEL_LEVEL,  "%",  "fuel_level"),
         ("runtime_hours", ReadingType.STATUS,      "h",  "runtime_hours"),
         ("battery_voltage", ReadingType.BATTERY_VOLTAGE, "V", "battery"),
+        ("grid_voltage_l1", ReadingType.VOLTAGE, "V", "grid_voltage_l1"),
+        ("grid_voltage_l2", ReadingType.VOLTAGE, "V", "grid_voltage_l2"),
+        ("grid_voltage_l3", ReadingType.VOLTAGE, "V", "grid_voltage_l3"),
     ]
     saved = 0
     elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3"}
