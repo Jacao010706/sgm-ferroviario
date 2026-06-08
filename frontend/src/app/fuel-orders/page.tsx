@@ -12,7 +12,7 @@ const emptyForm = {
   number: "",
   execution_date: new Date().toISOString().split("T")[0],
   location: "Sala do GGD",
-  sector: "CRP",
+  sector: "SENERG",
   shift: "NOITE",
   week: "",
   supplier: "QUERODIESEL TRANSPORTE E COMERCIO DE COMBUSTIVEIS LTDA",
@@ -35,6 +35,7 @@ function FuelOrdersContent() {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [printOrder, setPrintOrder] = useState<any | null>(null);
   const [technicians, setTechnicians] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
 
   const load = () => {
     setLoading(true);
@@ -44,6 +45,7 @@ function FuelOrdersContent() {
   useEffect(() => {
     load();
     api.get("/teams/").then((r) => { const all = r.data.flatMap((t: any) => t.members || []); setTechnicians(all); }).catch(() => {});
+    api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data.filter((a: any) => a.asset_type === "generator"))).catch(() => {});
   }, []);
   useEffect(() => {
     if (searchParams.get("new") === "true") {
@@ -436,7 +438,7 @@ function FuelOrdersContent() {
                     {items.map((item, i) => (
                       <div key={i} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg">
                         <div className="col-span-1"><label className="text-xs text-slate-500">Subitem</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.subitem} onChange={e => updateItem(i, "subitem", e.target.value)} /></div>
-                        <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)} /></div>
+                        <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Previsao (L)</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)}><option value="">Selecione</option>{Array.from({length: 25}, (_, i) => (i+1)*10).map(v => <option key={v} value={v}>{v}L</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Fornecido (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.supplied_liters} onChange={e => updateItem(i, "supplied_liters", e.target.value)} /></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">GGD Auto?</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
@@ -459,6 +461,15 @@ function FuelOrdersContent() {
                   </div>
                     <div><label className={lbl}>RE</label><input className={inp} value={form.responsible_re} onChange={e => setForm({ ...form, responsible_re: e.target.value })} /></div>
                   </div>
+                </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Aditivo</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div><label className={lbl}>Estacao</label><select className={inp} value={form.additive_station} onChange={e => setForm({ ...form, additive_station: e.target.value })}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
+                    <div><label className={lbl}>Previsao (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
+                    <div><label className={lbl}>Quantidade (ml)</label><input type="number" className={inp} value={form.additive_quantity_ml} onChange={e => setForm({ ...form, additive_quantity_ml: e.target.value })} /></div>
+                  </div>
+                  <div className="mt-3"><label className={lbl}>Servico Concluido?</label><select className={inp} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
                 </div>
                 <div><label className={lbl}>Observacoes</label><textarea className={inp} rows={2} value={form.observations} onChange={e => setForm({ ...form, observations: e.target.value })} /></div>
                 {error && <p className="text-red-600 text-sm">{error}</p>}
