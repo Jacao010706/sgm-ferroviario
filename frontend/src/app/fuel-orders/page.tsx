@@ -107,6 +107,10 @@ function FuelOrdersContent() {
 
   const handlePrint = (order: any) => {
     setPrintOrder(order);
+    setTimeout(() => {
+      window.print();
+      window.onafterprint = () => setPrintOrder(null);
+    }, 300);
   };
 
 
