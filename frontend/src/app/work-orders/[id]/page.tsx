@@ -149,8 +149,16 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
             <td style={{width:"10%"}}><strong>SEMANA:</strong><br/>&nbsp;</td>
             <td style={{width:"10%"}}><strong>TURNO:</strong><br/>{form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "MANHÃ" : new Date(form.actual_start).getHours() < 18 ? "TARDE" : "NOITE") : ""}</td>
             <td style={{width:"46%"}}>
-              <strong>Fiscal Trensurb (1):</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>RE:</strong><br/>
-              <strong>Fiscal Trensurb (2):</strong> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>RE:</strong>
+              <table style={{width:"100%",borderCollapse:"collapse"}}><tbody>
+                <tr>
+                  <td style={{width:"75%",border:"none",padding:"1px 0"}}><strong>Fiscal Trensurb (1):</strong></td>
+                  <td style={{width:"25%",border:"none",padding:"1px 0"}}><strong>RE:</strong></td>
+                </tr>
+                <tr>
+                  <td style={{border:"none",padding:"1px 0"}}><strong>Fiscal Trensurb (2):</strong></td>
+                  <td style={{border:"none",padding:"1px 0"}}><strong>RE:</strong></td>
+                </tr>
+              </tbody></table>
             </td>
           </tr>
           <tr>
