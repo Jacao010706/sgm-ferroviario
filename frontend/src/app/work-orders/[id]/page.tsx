@@ -35,10 +35,10 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #print-area[data-printing="true"], #print-area[data-printing="true"] * { visibility: visible !important; }
-          #print-area[data-printing="true"] { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
-          #apr-print-area[data-printing="true"], #apr-print-area[data-printing="true"] * { visibility: visible !important; }
-          #apr-print-area[data-printing="true"] { position: absolute; left: 0; top: 0; width: 100%; padding: 10mm; display: block !important; }
+          #print-area, #print-area * { visibility: visible !important; }
+          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
+          #apr-print-area, #apr-print-area * { visibility: visible !important; }
+          #apr-print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 10mm; }
           @page { margin: 10mm; size: A4; }
         }
         #print-area {
@@ -418,24 +418,22 @@ export default function WorkOrderDetailPage() {
   const handlePrint = () => {
     const os = document.getElementById("print-area");
     const apr = document.getElementById("apr-print-area");
-    if (os) os.setAttribute("data-printing", "true");
-    if (apr) apr.setAttribute("data-printing", "false");
+    if (os) { os.style.display = "block"; }
+    if (apr) { apr.style.display = "none"; }
     setTimeout(() => {
       window.print();
-      if (os) os.removeAttribute("data-printing");
-      if (apr) apr.removeAttribute("data-printing");
+      if (os) { os.style.display = "none"; }
     }, 100);
   };
 
   const handlePrintAPR = () => {
     const os = document.getElementById("print-area");
     const apr = document.getElementById("apr-print-area");
-    if (os) os.setAttribute("data-printing", "false");
-    if (apr) apr.setAttribute("data-printing", "true");
+    if (os) { os.style.display = "none"; }
+    if (apr) { apr.style.display = "block"; }
     setTimeout(() => {
       window.print();
-      if (os) os.removeAttribute("data-printing");
-      if (apr) apr.removeAttribute("data-printing");
+      if (apr) { apr.style.display = "none"; }
     }, 100);
   };
 
