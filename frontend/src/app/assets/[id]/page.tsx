@@ -62,6 +62,11 @@ export default function AssetDetailPage() {
   }, [asset, loadTelemetry]);
 
   const getVal = (sensorId: string) => latest[sensorId]?.value;
+  const getValElec = (sensorId: string) => {
+    const v = latest[sensorId]?.value;
+    if (v === null || v === undefined || v === 0) return null;
+    return v;
+  };
   const fmt = (v: any, unit: string) => v != null ? `${typeof v === "number" ? parseFloat(v.toFixed(1)) : v}${unit}` : "--";
   const fuelLevel = getVal("fuel_level");
 
