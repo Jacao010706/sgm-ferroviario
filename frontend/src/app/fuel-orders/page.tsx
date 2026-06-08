@@ -246,7 +246,7 @@ function FuelOrdersContent() {
         </div>
         <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
           <strong>OBSERVACOES DA GESTAO / SUPERVISAO</strong>
-          <div style={{height:"60px",marginTop:"4px"}}>{o.management_observations}</div>
+          <div style={{height:"150px",marginTop:"4px"}}>{o.management_observations}</div>
         </div>
         <div style={{border:"1px solid black",padding:"4px"}}>
           <strong>RESPONSAVEL PELAS OBSERVACOES</strong>
