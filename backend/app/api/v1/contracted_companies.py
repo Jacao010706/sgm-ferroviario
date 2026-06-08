@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import List, Optional
 from pydantic import BaseModel
-from app.database import get_db
+from app.core.database import get_db
 from app.models.contracted_company import ContractedCompany
 from app.api.v1.deps import get_current_user
 
