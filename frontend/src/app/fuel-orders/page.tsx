@@ -43,7 +43,7 @@ function FuelOrdersContent() {
 
   useEffect(() => {
     load();
-    api.get("/teams/technicians/").then((r) => setTechnicians(r.data)).catch(() => {});
+    api.get("/teams/").then((r) => { const all = r.data.flatMap((t: any) => t.members || []); setTechnicians(all); }).catch(() => {});
   }, []);
   useEffect(() => {
     if (searchParams.get("new") === "true") {
@@ -451,7 +451,7 @@ function FuelOrdersContent() {
                     <div className="col-span-3"><label className={lbl}>Nome</label>
                     <select className={inp} value={form.responsible_name} onChange={e => {
                       const tech = technicians.find((t: any) => t.name === e.target.value);
-                      setForm({ ...form, responsible_name: e.target.value, responsible_re: tech?.registration || form.responsible_re });
+                      setForm({ ...form, responsible_name: e.target.value, responsible_re: tech?.badge_number?.toString() || form.responsible_re });
                     }}>
                       <option value={form.responsible_name}>{form.responsible_name}</option>
                       {technicians.map((t: any) => <option key={t.id} value={t.name}>{t.name} ({t.role || "Tecnico"})</option>)}
