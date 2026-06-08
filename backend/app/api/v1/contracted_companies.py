@@ -5,7 +5,7 @@ from typing import List, Optional
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.models.contracted_company import ContractedCompany
-from app.api.v1.deps import get_current_user
+from app.api.deps import get_current_user
 
 router = APIRouter(prefix="/contracted-companies", tags=["contracted-companies"])
 
