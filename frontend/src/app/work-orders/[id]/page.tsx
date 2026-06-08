@@ -54,7 +54,7 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
         .print-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
         .print-field label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px; }
         .print-field span { font-size: 12px; font-weight: 600; color: #1e293b; }
-        .print-field span.empty { color: #cbd5e1; font-weight: 400; font-style: italic; }
+        .print-field span.empty { color: transparent; border-bottom: 1px solid #94a3b8; display: inline-block; min-width: 120px; }
         .checklist-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; }
         .checklist-item:last-child { border-bottom: none; }
         .checkbox { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -118,14 +118,14 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
           <div className="print-grid-3">
             <div className="print-field"><label>Tipo de Manutencao</label><span>{MAINTENANCE_LABEL[order.maintenance_type] || "—"}</span></div>
             <div className="print-field"><label>Ativo</label><span>{asset ? `${asset.name} (${asset.tag})` : "—"}</span></div>
-            <div className="print-field"><label>Subativo</label><span>{subAsset ? subAsset.name : <span className="empty">Nao informado</span>}</span></div>
+            <div className="print-field"><label>Subativo</label><span>{subAsset ? subAsset.name : <span className="empty">&nbsp;</span>}</span></div>
           </div>
           <div className="divider" />
           <div className="print-grid-4">
-            <div className="print-field"><label>Inicio Previsto</label><span>{form.scheduled_start ? new Date(form.scheduled_start).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Fim Previsto</label><span>{form.scheduled_end ? new Date(form.scheduled_end).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Inicio Real</label><span>{form.actual_start ? new Date(form.actual_start).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Fim Real</label><span>{form.actual_end ? new Date(form.actual_end).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
+            <div className="print-field"><label>Inicio Previsto</label><span>{form.scheduled_start ? new Date(form.scheduled_start).toLocaleString("pt-BR") : <span className="empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>}</span></div>
+            <div className="print-field"><label>Fim Previsto</label><span>{form.scheduled_end ? new Date(form.scheduled_end).toLocaleString("pt-BR") : <span className="empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>}</span></div>
+            <div className="print-field"><label>Inicio Real</label><span>{form.actual_start ? new Date(form.actual_start).toLocaleString("pt-BR") : <span className="empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>}</span></div>
+            <div className="print-field"><label>Fim Real</label><span>{form.actual_end ? new Date(form.actual_end).toLocaleString("pt-BR") : <span className="empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>}</span></div>
           </div>
         </div>
       </div>
@@ -134,10 +134,10 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
         <div className="print-section-header">Execucao</div>
         <div className="print-section-body">
           <div className="print-grid">
-            <div className="print-field"><label>Empresa Terceirizada</label><span>{form.contractor_name || <span className="empty">Nao informado</span>}</span></div>
-            <div className="print-field"><label>Tecnico Preposto</label><span>{form.contractor_preposto || <span className="empty">Nao informado</span>}</span></div>
-            <div className="print-field"><label>Horas Internas</label><span>{form.internal_hours ? `${form.internal_hours}h` : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Horas Terceirizadas</label><span>{form.contractor_hours ? `${form.contractor_hours}h` : <span className="empty">—</span>}</span></div>
+            <div className="print-field"><label>Empresa Terceirizada</label><span>{form.contractor_name || <span className="empty">&nbsp;</span>}</span></div>
+            <div className="print-field"><label>Tecnico Preposto</label><span>{form.contractor_preposto || <span className="empty">&nbsp;</span>}</span></div>
+            <div className="print-field"><label>Horas Internas</label><span>{form.internal_hours ? `${form.internal_hours}h` : <span className="empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>}</span></div>
+            <div className="print-field"><label>Horas Terceirizadas</label><span>{form.contractor_hours ? `${form.contractor_hours}h` : <span className="empty">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span>}</span></div>
           </div>
           {form.fuel_liters_added && (
             <>
