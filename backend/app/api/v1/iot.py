@@ -148,9 +148,12 @@ async def post_asset_readings(
         ("battery_voltage", ReadingType.BATTERY_VOLTAGE, "V", "battery"),
     ]
     saved = 0
+    elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3"}
     for field, rtype, unit, sensor_id in mapping:
         val = body.get(field)
-        if val is None or val == 0:
+        if val is None:
+            continue
+        if val == 0 and field not in elec_fields:
             continue
         reading = IoTReading(
             asset_id=asset_id,
