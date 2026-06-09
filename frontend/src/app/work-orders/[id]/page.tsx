@@ -419,28 +419,16 @@ export default function WorkOrderDetailPage() {
     const el = document.getElementById("print-area");
     if (!el) return;
     el.style.display = "block";
-    const styles = Array.from(document.styleSheets).map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join(""); } catch(e) { return ""; } }).join("");
-    const w = window.open("", "_blank", "width=900,height=700");
-    if (!w) return;
-    w.document.write("<html><head><style>" + styles + "</style></head><body>" + el.innerHTML + "</body></html>");
-    w.document.close();
-    w.focus();
+    window.print();
     el.style.display = "none";
-    setTimeout(() => { w.print(); w.close(); }, 500);
   };
 
   const handlePrintAPR = () => {
     const el = document.getElementById("apr-print-area");
     if (!el) return;
     el.style.display = "block";
-    const styles = Array.from(document.styleSheets).map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join(""); } catch(e) { return ""; } }).join("");
-    const w = window.open("", "_blank", "width=900,height=700");
-    if (!w) return;
-    w.document.write("<html><head><style>" + styles + "</style></head><body>" + el.innerHTML + "</body></html>");
-    w.document.close();
-    w.focus();
+    window.print();
     el.style.display = "none";
-    setTimeout(() => { w.print(); w.close(); }, 500);
   };
 
   const openImportModal = () => {
