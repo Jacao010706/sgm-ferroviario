@@ -126,7 +126,7 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
           margin-top: 1px;
         }
         .no-print { display: block; }
-        @media print { .no-print { display: none !important; } }
+        
       `}</style>
 
       {/* Botoes - nao imprimem */}
@@ -835,7 +835,7 @@ export default function WorkOrderDetailPage() {
               </div>
 
               <div id="apr-print-area" style={{display: "none"}}>
-                <style>{`@media print { body * { visibility: hidden !important; } #apr-print-area, #apr-print-area * { visibility: visible !important; } #apr-print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 10mm; display: block !important; } @page { margin: 10mm; size: A4; } }`}</style>
+                <style>{``}</style>
                 <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
                   <tbody>
                     <tr><td style={{border:"1px solid black",padding:"4px",textAlign:"center",fontWeight:"bold",fontSize:"11px"}} colSpan={3}>SENERG - Setor de Energia<br/><span style={{fontSize:"10px",fontWeight:"normal"}}>Check-List de Seguranca do Trabalho - Manutencao dos Sistemas de Abastecimento de Energia Eletrica</span></td></tr>
