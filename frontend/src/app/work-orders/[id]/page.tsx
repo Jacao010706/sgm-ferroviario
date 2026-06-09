@@ -35,10 +35,10 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #print-area, #print-area * { visibility: visible !important; }
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-          #apr-print-area, #apr-print-area * { visibility: visible !important; }
-          #apr-print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 10mm; }
+          body.printing-os #print-area, body.printing-os #print-area * { visibility: visible !important; }
+          body.printing-os #print-area { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+          body.printing-apr #apr-print-area, body.printing-apr #apr-print-area * { visibility: visible !important; }
+          body.printing-apr #apr-print-area { position: absolute; left: 0; top: 0; width: 100%; padding: 10mm; display: block !important; }
           @page { margin: 10mm; size: A4; }
         }
         #print-area {
@@ -419,20 +419,24 @@ export default function WorkOrderDetailPage() {
     const os = document.getElementById("print-area");
     const apr = document.getElementById("apr-print-area");
     if (!os) return;
-    if (apr) apr.remove();
+    document.body.classList.add("printing-os");
     os.style.display = "block";
+    if (apr) apr.style.display = "none";
     window.print();
     os.style.display = "none";
+    document.body.classList.remove("printing-os");
   };
 
   const handlePrintAPR = () => {
     const os = document.getElementById("print-area");
     const apr = document.getElementById("apr-print-area");
     if (!apr) return;
-    if (os) os.remove();
+    document.body.classList.add("printing-apr");
     apr.style.display = "block";
+    if (os) os.style.display = "none";
     window.print();
     apr.style.display = "none";
+    document.body.classList.remove("printing-apr");
   };
 
   const openImportModal = () => {
