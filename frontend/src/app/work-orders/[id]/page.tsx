@@ -416,19 +416,23 @@ export default function WorkOrderDetailPage() {
   }, [id]);
 
   const handlePrint = () => {
-    const el = document.getElementById("print-area");
-    if (!el) return;
-    el.style.display = "block";
+    const os = document.getElementById("print-area");
+    const apr = document.getElementById("apr-print-area");
+    if (!os) return;
+    if (apr) apr.remove();
+    os.style.display = "block";
     window.print();
-    el.style.display = "none";
+    os.style.display = "none";
   };
 
   const handlePrintAPR = () => {
-    const el = document.getElementById("apr-print-area");
-    if (!el) return;
-    el.style.display = "block";
+    const os = document.getElementById("print-area");
+    const apr = document.getElementById("apr-print-area");
+    if (!apr) return;
+    if (os) os.remove();
+    apr.style.display = "block";
     window.print();
-    el.style.display = "none";
+    apr.style.display = "none";
   };
 
   const openImportModal = () => {
