@@ -418,23 +418,29 @@ export default function WorkOrderDetailPage() {
   const handlePrint = () => {
     const el = document.getElementById("print-area");
     if (!el) return;
+    el.style.display = "block";
+    const styles = Array.from(document.styleSheets).map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join(""); } catch(e) { return ""; } }).join("");
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
-    w.document.write("<html><head><style>body{font-family:Arial,sans-serif;font-size:10px;margin:10mm;}@page{margin:10mm;size:A4;}</style></head><body>" + el.innerHTML + "</body></html>");
+    w.document.write("<html><head><style>" + styles + "</style></head><body>" + el.innerHTML + "</body></html>");
     w.document.close();
     w.focus();
-    setTimeout(() => { w.print(); w.close(); }, 300);
+    el.style.display = "none";
+    setTimeout(() => { w.print(); w.close(); }, 500);
   };
 
   const handlePrintAPR = () => {
     const el = document.getElementById("apr-print-area");
     if (!el) return;
+    el.style.display = "block";
+    const styles = Array.from(document.styleSheets).map(s => { try { return Array.from(s.cssRules).map(r => r.cssText).join(""); } catch(e) { return ""; } }).join("");
     const w = window.open("", "_blank", "width=900,height=700");
     if (!w) return;
-    w.document.write("<html><head><style>body{font-family:Arial,sans-serif;font-size:10px;margin:10mm;}@page{margin:10mm;size:A4;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid black;padding:3px;font-size:10px;}</style></head><body>" + el.innerHTML + "</body></html>");
+    w.document.write("<html><head><style>" + styles + "</style></head><body>" + el.innerHTML + "</body></html>");
     w.document.close();
     w.focus();
-    setTimeout(() => { w.print(); w.close(); }, 300);
+    el.style.display = "none";
+    setTimeout(() => { w.print(); w.close(); }, 500);
   };
 
   const openImportModal = () => {
