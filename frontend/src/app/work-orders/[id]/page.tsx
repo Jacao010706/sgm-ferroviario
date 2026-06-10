@@ -34,10 +34,10 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
     <div id="print-area" style={{ display: "none" }}>
       <style>{`
         @media print {
-          body > * { display: none !important; }
-          body.printing-os #print-area { display: block !important; position: fixed; left: 0; top: 0; width: 100%; z-index: 9999; }
+          body * { visibility: hidden !important; }
+          body.printing-os #print-area { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 99999; }
           body.printing-os #print-area * { visibility: visible !important; }
-          body.printing-apr #apr-print-area { display: block !important; position: fixed; left: 0; top: 0; width: 100%; z-index: 9999; }
+          body.printing-apr #apr-print-area { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 99999; }
           body.printing-apr #apr-print-area * { visibility: visible !important; }
           @page { margin: 10mm; size: A4; }
         }
