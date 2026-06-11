@@ -730,8 +730,22 @@ export default function WorkOrderDetailPage() {
               ))}
             </div>
           )}
-          <div className="grid grid-cols-12 gap-2 items-center">
-            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={partSearch} onChange={e => searchParts(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Buscar peca do almoxarifado..." autoComplete="off" />
+          <div className="grid grid-cols-12 gap-2 items-center relative">
+            <div className="col-span-6 relative">
+              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={partSearch} onChange={e => searchParts(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Buscar peca do almoxarifado..." autoComplete="off" />
+              {showPartDropdown && partResults.length > 0 && (
+                <div className="absolute z-50 top-full left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  {partResults.map((p: any) => (
+                    <button key={p.id} type="button" onClick={() => selectPart(p)} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-50 last:border-0">
+                      <span className="font-medium text-slate-800">{p.name}</span>
+                      <span className="text-xs text-slate-400 ml-2">{p.code}</span>
+                      <span className="text-xs text-blue-600 ml-2">{p.unit}</span>
+                      {p.quantity_stock != null && <span className="text-xs text-green-600 ml-2">Estoque: {p.quantity_stock}</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <input type="number" className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.quantity} onChange={e => setNewMaterial({ ...newMaterial, quantity: e.target.value })} min="0" step="0.1" />
             <select className="col-span-3 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}>
               {["un","kg","L","m","m²","cx","par","jogo"].map(u => <option key={u} value={u}>{u}</option>)}
