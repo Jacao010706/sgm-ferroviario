@@ -361,6 +361,9 @@ export default function WorkOrderDetailPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
   const [partSearch, setPartSearch] = useState("");
+  const [partResults, setPartResults] = useState([]);
+  const [showPartDropdown, setShowPartDropdown] = useState(false);
+  const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
   const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [partSearch, setPartSearch] = useState("");
