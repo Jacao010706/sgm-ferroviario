@@ -363,6 +363,7 @@ export default function WorkOrderDetailPage() {
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState([]);
   const [showPartDropdown, setShowPartDropdown] = useState(false);
+  const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState<any[]>([]);
   const [showPartDropdown, setShowPartDropdown] = useState(false);
