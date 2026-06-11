@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -155,8 +155,12 @@ export default function MonitoringPage() {
   };
 
   const getVal = (sensorId: string) => latest[sensorId]?.value;
+  const getValElec = (sensorId: string) => {
+    const v = latest[sensorId]?.value;
+    if (v === null || v === undefined || v === 0) return null;
+    return v;
+  };
   const fmt = (v: any, unit: string) => v != null ? `${typeof v === "number" ? parseFloat(v.toFixed(1)) : v}${unit}` : "--";
-
   const voltageData = readings.filter(r => r.sensor_id === "voltage_l1").slice(-20).map(r => ({
     time: new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
     "Tensao R": r.value,
@@ -167,11 +171,36 @@ export default function MonitoringPage() {
     "Corrente R": r.value,
   }));
 
+  // Dados historicos tensao da rede concessionaria
+  const gridVoltageData = readings
+    .filter(r => r.sensor_id === "grid_voltage_l1" || r.sensor_id === "grid_voltage_l2" || r.sensor_id === "grid_voltage_l3")
+    .reduce((acc: any[], r) => {
+      const time = new Date(r.timestamp).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      const existing = acc.find(x => x.time === time);
+      if (existing) {
+        if (r.sensor_id === "grid_voltage_l1") existing["Tensao R"] = r.value;
+        if (r.sensor_id === "grid_voltage_l2") existing["Tensao S"] = r.value;
+        if (r.sensor_id === "grid_voltage_l3") existing["Tensao T"] = r.value;
+      } else {
+        const entry: any = { time };
+        if (r.sensor_id === "grid_voltage_l1") entry["Tensao R"] = r.value;
+        if (r.sensor_id === "grid_voltage_l2") entry["Tensao S"] = r.value;
+        if (r.sensor_id === "grid_voltage_l3") entry["Tensao T"] = r.value;
+        acc.push(entry);
+      }
+      return acc;
+    }, [])
+    .slice(-20);
+
   const fuelLevel = getVal("fuel_level");
   const mode = getVal("mode");
   const isSubAsset = !!selected?.parent_id;
   const fuelLow = fuelLevel != null && fuelLevel < 50;
   const subAssets = selected && !isSubAsset ? assets.filter((a) => a.parent_id === selected.id) : [];
+
+  const gridV1 = getVal("grid_voltage_l1");
+  const gridV2 = getVal("grid_voltage_l2");
+  const gridV3 = getVal("grid_voltage_l3");
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -192,7 +221,6 @@ export default function MonitoringPage() {
           </div>
         </div>
 
-        {/* Banner alerta combustivel baixo */}
         {fuelLow && !isSubAsset && (
           <div className={clsx(
             "rounded-xl border p-4 mb-4 flex items-start justify-between gap-4",
@@ -205,7 +233,7 @@ export default function MonitoringPage() {
                   {fuelLevel <= 20 ? "Combustivel Critico!" : "Combustivel Baixo"}
                 </p>
                 <p className={clsx("text-xs mt-0.5", fuelLevel <= 20 ? "text-red-600" : "text-amber-600")}>
-                  Nivel atual: <strong>{fuelLevel}%</strong> — abaixo de 50%. Necessario gerar uma OS de abastecimento.
+                  Nivel atual: <strong>{fuelLevel}%</strong> - abaixo de 50%. Necessario gerar uma OS de abastecimento.
                 </p>
               </div>
             </div>
@@ -229,7 +257,7 @@ export default function MonitoringPage() {
               {assets.map((a) => (
                 <button key={a.id} onClick={() => setSelected(a)}
                   className={clsx("w-full text-left px-3 py-2 rounded-lg text-sm transition-colors", a.parent_id ? "pl-6" : "", selected?.id === a.id ? "bg-blue-600 text-white" : "hover:bg-slate-50 text-slate-700")}>
-                  <p className="font-medium truncate">{a.parent_id ? "↳ " : ""}{a.name}</p>
+                  <p className="font-medium truncate">{a.parent_id ? "-> " : ""}{a.name}</p>
                   <p className={clsx("text-xs", selected?.id === a.id ? "text-blue-200" : "text-slate-400")}>{a.tag}</p>
                 </button>
               ))}
@@ -259,6 +287,7 @@ export default function MonitoringPage() {
 
                 {!isSubAsset ? (
                   <>
+                    {/* TENSAO E CORRENTE DO GERADOR */}
                     <div className="grid grid-cols-3 gap-3">
                       {[
                         { label: "Tensao R", sensor: "voltage_l1", unit: "V", icon: <Zap size={18} className="text-blue-600"/>, bg: "bg-blue-50" },
@@ -271,18 +300,19 @@ export default function MonitoringPage() {
                         <div key={item.sensor} className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                           <div className={clsx("p-2 rounded-lg", item.bg)}>{item.icon}</div>
                           <div>
-                            <p className="text-xl font-bold text-slate-800">{fmt(getVal(item.sensor), item.unit)}</p>
+                            <p className="text-xl font-bold text-slate-800">{fmt(item.sensor.startsWith("voltage") || item.sensor.startsWith("current") ? getValElec(item.sensor) : getVal(item.sensor), item.unit)}</p>
                             <p className="text-xs text-slate-500">{item.label}</p>
                           </div>
                         </div>
                       ))}
                     </div>
 
+                    {/* TEMPERATURA, BATERIA, COMBUSTIVEL */}
                     <div className="grid grid-cols-3 gap-3">
                       <div className="bg-white rounded-xl border border-slate-200 p-4 flex gap-3 items-center">
                         <div className="p-2 bg-amber-50 rounded-lg"><Thermometer size={18} className="text-amber-600"/></div>
                         <div>
-                          <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "°C")}</p>
+                          <p className="text-xl font-bold text-slate-800">{fmt(getVal("temperature"), "C")}</p>
                           <p className="text-xs text-slate-500">Temperatura</p>
                         </div>
                       </div>
@@ -306,10 +336,10 @@ export default function MonitoringPage() {
                         {fuelLow && <p className={clsx("text-xs mt-1 font-medium", fuelLevel <= 20 ? "text-red-600" : "text-amber-600")}>Abastecimento necessario!</p>}
                       </div>
                     </div>
-
+                    {/* GRAFICOS DO GERADOR */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><Activity size={14}/> Historico Tensao R (V)</h2>
+                        <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><Activity size={14}/> Historico Tensao R Gerador (V)</h2>
                         {voltageData.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">Sem dados</p> : (
                           <ResponsiveContainer width="100%" height={150}>
                             <LineChart data={voltageData}>
@@ -323,7 +353,7 @@ export default function MonitoringPage() {
                         )}
                       </div>
                       <div className="bg-white rounded-xl border border-slate-200 p-4">
-                        <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><Activity size={14}/> Historico Corrente R (A)</h2>
+                        <h2 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm"><Activity size={14}/> Historico Corrente R Gerador (A)</h2>
                         {currentData.length === 0 ? <p className="text-center text-slate-400 py-8 text-sm">Sem dados</p> : (
                           <ResponsiveContainer width="100%" height={150}>
                             <LineChart data={currentData}>
@@ -332,6 +362,58 @@ export default function MonitoringPage() {
                               <YAxis tick={{ fontSize: 9 }} domain={[0, 100]} />
                               <Tooltip />
                               <Line type="monotone" dataKey="Corrente R" stroke="#16A34A" dot={false} strokeWidth={2} />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* SECAO REDE CONCESSIONARIA */}
+                    <div className="bg-white rounded-xl border border-orange-200 p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="p-1.5 bg-orange-100 rounded-lg">
+                          <Zap size={14} className="text-orange-600" />
+                        </div>
+                        <h3 className="font-semibold text-slate-700 text-sm">Rede Concessionaria</h3>
+                        <span className="ml-auto text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">Monitoramento continuo</span>
+                      </div>
+
+                      {/* CARDS TENSAO DA REDE */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: "Tensao R", value: gridV1, color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
+                          { label: "Tensao S", value: gridV2, color: "text-amber-600",  bg: "bg-amber-50",  border: "border-amber-100"  },
+                          { label: "Tensao T", value: gridV3, color: "text-yellow-600", bg: "bg-yellow-50", border: "border-yellow-100" },
+                        ].map((item) => (
+                          <div key={item.label} className={clsx("rounded-xl border p-4 flex gap-3 items-center", item.bg, item.border)}>
+                            <div className="p-2 bg-white rounded-lg">
+                              <Zap size={18} className={item.color} />
+                            </div>
+                            <div>
+                              <p className="text-xl font-bold text-slate-800">{fmt(item.value, "V")}</p>
+                              <p className="text-xs text-slate-500">{item.label}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* GRAFICO TENSOES DA REDE R S T */}
+                      <div className="bg-orange-50 rounded-xl border border-orange-100 p-4">
+                        <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2 text-sm">
+                          <Activity size={14} className="text-orange-500"/> Historico Tensao Rede R / S / T (V)
+                        </h4>
+                        {gridVoltageData.length === 0 ? (
+                          <p className="text-center text-slate-400 py-8 text-sm">Sem dados da rede concessionaria</p>
+                        ) : (
+                          <ResponsiveContainer width="100%" height={180}>
+                            <LineChart data={gridVoltageData}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#fed7aa" />
+                              <XAxis dataKey="time" tick={{ fontSize: 9 }} />
+                              <YAxis tick={{ fontSize: 9 }} domain={[100, 160]} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="Tensao R" stroke="#ea580c" dot={false} strokeWidth={2} />
+                              <Line type="monotone" dataKey="Tensao S" stroke="#d97706" dot={false} strokeWidth={2} />
+                              <Line type="monotone" dataKey="Tensao T" stroke="#ca8a04" dot={false} strokeWidth={2} />
                             </LineChart>
                           </ResponsiveContainer>
                         )}
@@ -349,7 +431,7 @@ export default function MonitoringPage() {
                   </>
                 ) : (
                   <div className="bg-white rounded-xl border border-slate-200 p-10 text-center">
-                    <p className="text-slate-400 text-sm">Subativo selecionado — telemetria disponivel apenas no ativo principal.</p>
+                    <p className="text-slate-400 text-sm">Subativo selecionado - telemetria disponivel apenas no ativo principal.</p>
                   </div>
                 )}
               </>

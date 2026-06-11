@@ -20,7 +20,8 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r,
   async (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+    const isCredError = error.response?.data?.detail === "Credenciais invalidas";
+    if ((error.response?.status === 401 || (error.response?.status === 500 && isCredError)) && typeof window !== "undefined") {
       const refresh = localStorage.getItem("refresh_token");
       if (refresh) {
         try {

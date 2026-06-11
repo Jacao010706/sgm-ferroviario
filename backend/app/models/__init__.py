@@ -4,10 +4,12 @@ from app.models.maintenance import MaintenancePlan, WorkOrder
 from app.models.alert import Alert
 from app.models.iot import IoTReading, SensorConfig
 from app.models.fuel_order import FuelOrder, FuelOrderItem
+from app.models.contracted_company import ContractedCompany
 __all__ = [
     "User", "Team",
     "Asset", "Location",
     "MaintenancePlan", "WorkOrder",
     "Alert",
     "IoTReading", "SensorConfig","FuelOrder", "FuelOrderItem",
+    "ContractedCompany",
 ]

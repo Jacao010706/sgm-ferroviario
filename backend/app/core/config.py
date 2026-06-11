@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     ENVIRONMENT: Literal["development", "production", "testing"] = "development"
     SECRET_KEY: str = "change_me_in_production"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8  # 8 horas
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 365  # 365 dias
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
     # Banco de dados

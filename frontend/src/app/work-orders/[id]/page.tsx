@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package, Download, Printer, Fuel } from "lucide-react";
+import { ArrowLeft, Save, CheckCircle, Camera, Trash2, Plus, X, ClipboardList, Package, Download, Printer, Fuel, Building2, User, ChevronDown } from "lucide-react";
 import clsx from "clsx";
 
 const PRIORITY_BADGE: Record<string, string> = { critical: "bg-red-100 text-red-700", high: "bg-orange-100 text-orange-700", medium: "bg-amber-100 text-amber-700", low: "bg-green-100 text-green-700" };
@@ -16,195 +16,330 @@ const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:o
 const lbl = "block text-sm font-medium text-slate-700 mb-1";
 
 interface ChecklistItem { id: string; text: string; done: boolean; }
+interface ContractedCompany { id: number; name: string; cnpj?: string; }
 interface Material { id: string; name: string; quantity: string; unit: string; }
 
 function PrintView({ order, asset, subAsset, form, checklist, materials }: any) {
   const now = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   const checklistDone = checklist.filter((i: ChecklistItem) => i.done).length;
   const isFuelOS = order.title?.toLowerCase().includes("abastecimento") || order.title?.toLowerCase().includes("combustivel");
+  const periodicidade = order.maintenance_type === "preventive" ? (
+    order.title?.toLowerCase().includes("mensal") ? "Mensal" :
+    order.title?.toLowerCase().includes("semestral") ? "Semestral" :
+    order.title?.toLowerCase().includes("anual") ? "Anual" :
+    order.title?.toLowerCase().includes("bienal") ? "Bienal" : "Preventiva"
+  ) : MAINTENANCE_LABEL[order.maintenance_type] || order.maintenance_type;
 
   return (
     <div id="print-area" style={{ display: "none" }}>
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #print-area, #print-area * { visibility: visible !important; }
-          #print-area { position: absolute; left: 0; top: 0; width: 100%; }
-          @page { margin: 15mm; size: A4; }
+          body.printing-os #print-area { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 99999; }
+          body.printing-os #print-area * { visibility: visible !important; }
+          body.printing-apr #apr-print-area { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 99999; }
+          body.printing-apr #apr-print-area * { visibility: visible !important; }
+          @page { margin: 10mm; size: A4; }
         }
-        #print-area { font-family: 'Segoe UI', Arial, sans-serif; color: #1e293b; background: white; padding: 0; font-size: 11px; line-height: 1.5; }
-        .print-header { background: #1E3A5F; color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-radius: 6px; }
-        .print-header h1 { margin: 0; font-size: 20px; font-weight: 700; }
-        .print-header p { margin: 2px 0 0; font-size: 11px; opacity: 0.8; }
-        .os-number { font-size: 28px; font-weight: 800; font-family: monospace; }
-        .print-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
-        .print-subtitle { font-size: 11px; color: #64748b; margin-bottom: 16px; }
-        .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 700; }
-        .badge-critical { background: #fee2e2; color: #dc2626; }
-        .badge-high { background: #ffedd5; color: #ea580c; }
-        .badge-medium { background: #fef3c7; color: #d97706; }
-        .badge-low { background: #dcfce7; color: #16a34a; }
-        .badge-default { background: #f1f5f9; color: #64748b; }
-        .print-section { border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
-        .print-section-header { background: #f8fafc; padding: 8px 14px; font-weight: 700; font-size: 11px; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
-        .print-section-body { padding: 12px 14px; }
-        .print-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .print-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-        .print-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; }
-        .print-field label { font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px; }
-        .print-field span { font-size: 12px; font-weight: 600; color: #1e293b; }
-        .print-field span.empty { color: #cbd5e1; font-weight: 400; font-style: italic; }
-        .checklist-item { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; }
-        .checklist-item:last-child { border-bottom: none; }
-        .checkbox { width: 14px; height: 14px; border: 2px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .checkbox.done { background: #22c55e; border-color: #22c55e; color: white; font-size: 9px; }
-        .material-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-        .material-table th { background: #f8fafc; padding: 6px 10px; text-align: left; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; border-bottom: 1px solid #e2e8f0; }
-        .material-table td { padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
-        .fuel-banner { background: #eff6ff; border: 2px solid #2563eb; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; display: flex; align-items: center; gap: 12px; }
-        .fuel-banner .fuel-value { font-size: 28px; font-weight: 800; color: #1d4ed8; }
-        .fuel-banner .fuel-label { font-size: 11px; color: #3b82f6; }
-        .print-signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 20px; }
-        .signature-box { border-top: 2px solid #334155; padding-top: 8px; text-align: center; }
-        .signature-box p { font-size: 9px; color: #64748b; margin: 0; }
-        .print-footer { margin-top: 16px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 9px; color: #94a3b8; }
-        .divider { height: 1px; background: #e2e8f0; margin: 8px 0; }
-        .progress-bar-bg { background: #f1f5f9; border-radius: 4px; height: 6px; margin-top: 4px; }
-        .progress-bar-fill { background: #22c55e; border-radius: 4px; height: 6px; }
+        #print-area {
+          font-family: Arial, sans-serif;
+          font-size: 10px;
+          color: #000;
+          background: white;
+          padding: 0;
+          line-height: 1.3;
+        }
+        .trensurb-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+        .trensurb-table td, .trensurb-table th {
+          border: 1px solid #000;
+          padding: 3px 5px;
+          font-size: 9px;
+          vertical-align: top;
+        }
+        .trensurb-table th {
+          background: #d9d9d9;
+          font-weight: bold;
+          text-align: center;
+          font-size: 9px;
+        }
+        .header-empresa {
+          text-align: center;
+          font-weight: bold;
+          font-size: 12px;
+          border: 1px solid #000;
+          padding: 4px;
+          margin-bottom: 0;
+        }
+        .header-senerg {
+          font-weight: bold;
+          font-size: 10px;
+          border: 1px solid #000;
+          border-top: none;
+          padding: 3px 5px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        .section-title {
+          background: #d9d9d9;
+          font-weight: bold;
+          font-size: 9px;
+          border: 1px solid #000;
+          padding: 2px 5px;
+          text-transform: uppercase;
+        }
+        .field-line {
+          border-bottom: 1px solid #000;
+          min-height: 16px;
+          display: inline-block;
+          width: 100%;
+        }
+        .sign-box {
+          border-top: 1px solid #000;
+          text-align: center;
+          padding-top: 3px;
+          font-size: 9px;
+        }
+        .obs-box {
+          border: 1px solid #000;
+          min-height: 80px;
+          padding: 4px;
+          font-size: 9px;
+        }
+        .checklist-print-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 4px;
+          padding: 2px 0;
+          border-bottom: 1px solid #eee;
+          font-size: 9px;
+        }
+        .check-box-print {
+          width: 10px;
+          height: 10px;
+          border: 1px solid #000;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          font-size: 8px;
+          margin-top: 1px;
+        }
+        .no-print { display: block; }
+        
       `}</style>
 
-      <div className="print-header">
-        <div>
-          <h1>SGM Ferroviario</h1>
-          <p>Sistema de Gestao de Manutencao Ferroviaria</p>
-          <p style={{ marginTop: 6, fontSize: 10, opacity: 0.6 }}>Emitido em: {now}</p>
-        </div>
-        <div style={{ textAlign: "right" }}>
-          <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 4 }}>ORDEM DE SERVICO</div>
-          <div className="os-number">{order.number}</div>
-          <div style={{ marginTop: 6, display: "flex", gap: 6, justifyContent: "flex-end" }}>
-            <span className={`badge badge-${form.priority}`}>{PRIORITY_LABEL[form.priority] || form.priority}</span>
-            <span className={`badge badge-default`}>{STATUS_LABEL[form.status] || form.status}</span>
-          </div>
-        </div>
+      {/* Botoes - nao imprimem */}
+      <div className="no-print" style={{marginBottom: 12, display: "flex", gap: 8}}>
+        <button onClick={() => { const el = document.getElementById("print-area"); if(el){el.style.display="block"; setTimeout(()=>{window.print(); el.style.display="none";},100);}}} style={{padding: "6px 16px", background: "#1E3A5F", color: "white", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13}}>Imprimir</button>
+        <button onClick={() => { const el = document.getElementById("print-area"); if(el) el.style.display="none"; }} style={{padding: "6px 16px", background: "#fff", border: "1px solid #ccc", borderRadius: 6, cursor: "pointer", fontSize: 13}}>Fechar</button>
       </div>
 
-      <div className="print-title">{order.title}</div>
-      <div className="print-subtitle">
-        {MAINTENANCE_LABEL[order.maintenance_type] || order.maintenance_type}
-        {asset ? ` — ${asset.name} (${asset.tag})` : ""}
-        {subAsset ? ` › ${subAsset.name}` : ""}
-        {order.description ? ` · ${order.description}` : ""}
+      {/* CABECALHO */}
+      <div className="header-empresa">EMPRESA DE TRENS URBANOS DE PORTO ALEGRE S.A</div>
+      <div className="header-senerg">
+        <span>SENERG — ENERGIA</span>
+        <span style={{fontSize: 11}}>OS Nº: <strong>{order.number}</strong></span>
       </div>
 
-      {/* Banner de abastecimento se OS de combustivel */}
-      {isFuelOS && form.fuel_liters_added && (
-        <div className="fuel-banner">
-          <div>
-            <div className="fuel-value">{form.fuel_liters_added}L</div>
-            <div className="fuel-label">Combustivel Abastecido</div>
-          </div>
-          <div style={{ fontSize: 11, color: "#1e40af" }}>
-            <p>Ativo: <strong>{asset?.name || "—"}</strong></p>
-            <p>Data: <strong>{form.actual_end ? new Date(form.actual_end).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR")}</strong></p>
-          </div>
-        </div>
+      {/* INFO PRINCIPAL */}
+      <table className="trensurb-table" style={{marginTop: 0}}>
+        <tbody>
+          <tr>
+            <td style={{width:"16%"}}><strong>OS ROMARCK Nº:</strong><br/>{order.number}</td>
+            <td style={{width:"18%"}}><strong>LOCAL:</strong><br/>Sala do GGD</td>
+            <td style={{width:"10%"}}><strong>SEMANA:</strong><br/>&nbsp;</td>
+            <td style={{width:"10%"}}><strong>TURNO:</strong><br/>{form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "MANHÃ" : new Date(form.actual_start).getHours() < 18 ? "TARDE" : "NOITE") : ""}</td>
+            <td style={{width:"46%"}}>
+              <table style={{width:"100%",borderCollapse:"collapse"}}><tbody>
+                <tr>
+                  <td style={{width:"75%",border:"none",padding:"1px 0"}}><strong>Fiscal Trensurb (1):</strong></td>
+                  <td style={{width:"25%",border:"none",padding:"1px 0"}}><strong>RE:</strong></td>
+                </tr>
+                <tr>
+                  <td style={{border:"none",padding:"1px 0"}}><strong>Fiscal Trensurb (2):</strong></td>
+                  <td style={{border:"none",padding:"1px 0"}}><strong>RE:</strong></td>
+                </tr>
+              </tbody></table>
+            </td>
+          </tr>
+          <tr>
+            <td colSpan={2}><strong>DATA DA EXECUÇÃO:</strong> {form.actual_start ? new Date(form.actual_start).toLocaleDateString("pt-BR") : ""}</td>
+            <td colSpan={3}><strong>EMPRESA CONTRATADA:</strong> {form.contractor_name || ""}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* TABELA DE SERVICOS */}
+      <table className="trensurb-table">
+        <thead>
+          <tr>
+            <th style={{width:"35%"}}>Descrição</th>
+            <th style={{width:"14%"}}>Periodicidade</th>
+            <th style={{width:"21%"}}>Equipamento</th>
+            <th style={{width:"10%"}}>Horário inicial</th>
+            <th style={{width:"10%"}}>Horário final</th>
+            <th style={{width:"5%"}}>Serviço concluído?</th>
+            <th style={{width:"5%"}}>GGD em modo automático?</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{order.title}</td>
+            <td style={{textAlign:"center"}}>{periodicidade}</td>
+            <td>{asset ? `${asset.name} (${asset.tag})` : ""}{subAsset ? ` › ${subAsset.name}` : ""}</td>
+            <td style={{textAlign:"center"}}>{form.actual_start ? new Date(form.actual_start).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : ""}</td>
+            <td style={{textAlign:"center"}}>{form.actual_end ? new Date(form.actual_end).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : ""}</td>
+            <td style={{textAlign:"center"}}>{form.status === "completed" ? "Sim" : ""}</td>
+            <td style={{textAlign:"center"}}>&nbsp;</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* ATIVIDADES / OBSERVACOES */}
+      <table className="trensurb-table">
+        <tbody>
+          <tr>
+            <td colSpan={2} className="section-title">Descrição das atividades, relação de materiais, apontamento de observações e inconformidades:</td>
+          </tr>
+          <tr>
+            <td style={{width:"50%", verticalAlign:"top"}}>
+              <strong>MANHÃ:</strong>
+              <div style={{minHeight: 160, paddingTop: 4}}>{form.observations || ""}</div>
+            </td>
+            <td style={{width:"50%", verticalAlign:"top"}}>
+              <strong>TARDE:</strong>
+              <div style={{minHeight: 160}}>&nbsp;</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* CHECKLIST */}
+      {checklist.length > 0 && (
+        <table className="trensurb-table">
+          <thead>
+            <tr>
+              <th colSpan={4}>CHECKLIST DE ATIVIDADES ({checklistDone}/{checklist.length} concluídos)</th>
+            </tr>
+            <tr>
+              <th style={{width:"4%"}}>✓</th>
+              <th style={{width:"46%"}}>Atividade</th>
+              <th style={{width:"4%"}}>✓</th>
+              <th style={{width:"46%"}}>Atividade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({length: Math.ceil(checklist.length / 2)}, (_, i) => (
+              <tr key={i}>
+                <td style={{textAlign:"center"}}>{checklist[i*2]?.done ? "✓" : "☐"}</td>
+                <td style={{textDecoration: checklist[i*2]?.done ? "line-through" : "none", color: checklist[i*2]?.done ? "#666" : "#000"}}>{checklist[i*2]?.text}</td>
+                <td style={{textAlign:"center"}}>{checklist[i*2+1] ? (checklist[i*2+1]?.done ? "✓" : "☐") : ""}</td>
+                <td style={{textDecoration: checklist[i*2+1]?.done ? "line-through" : "none", color: checklist[i*2+1]?.done ? "#666" : "#000"}}>{checklist[i*2+1]?.text || ""}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
-      <div className="print-section">
-        <div className="print-section-header">Informacoes Gerais</div>
-        <div className="print-section-body">
-          <div className="print-grid-3">
-            <div className="print-field"><label>Tipo de Manutencao</label><span>{MAINTENANCE_LABEL[order.maintenance_type] || "—"}</span></div>
-            <div className="print-field"><label>Ativo</label><span>{asset ? `${asset.name} (${asset.tag})` : "—"}</span></div>
-            <div className="print-field"><label>Subativo</label><span>{subAsset ? subAsset.name : <span className="empty">Nao informado</span>}</span></div>
-          </div>
-          <div className="divider" />
-          <div className="print-grid-4">
-            <div className="print-field"><label>Inicio Previsto</label><span>{form.scheduled_start ? new Date(form.scheduled_start).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Fim Previsto</label><span>{form.scheduled_end ? new Date(form.scheduled_end).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Inicio Real</label><span>{form.actual_start ? new Date(form.actual_start).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Fim Real</label><span>{form.actual_end ? new Date(form.actual_end).toLocaleString("pt-BR") : <span className="empty">—</span>}</span></div>
-          </div>
-        </div>
-      </div>
-
-      <div className="print-section">
-        <div className="print-section-header">Execucao</div>
-        <div className="print-section-body">
-          <div className="print-grid">
-            <div className="print-field"><label>Empresa Terceirizada</label><span>{form.contractor_name || <span className="empty">Nao informado</span>}</span></div>
-            <div className="print-field"><label>CNPJ</label><span>{form.contractor_document || <span className="empty">Nao informado</span>}</span></div>
-            <div className="print-field"><label>Horas Internas</label><span>{form.internal_hours ? `${form.internal_hours}h` : <span className="empty">—</span>}</span></div>
-            <div className="print-field"><label>Horas Terceirizadas</label><span>{form.contractor_hours ? `${form.contractor_hours}h` : <span className="empty">—</span>}</span></div>
-          </div>
-          {form.fuel_liters_added && (
-            <>
-              <div className="divider" />
-              <div className="print-field"><label>⛽ Combustivel Abastecido</label><span style={{ color: "#1d4ed8", fontSize: 14 }}>{form.fuel_liters_added} litros</span></div>
-            </>
-          )}
-          {form.observations && (<><div className="divider" /><div className="print-field"><label>Observacoes</label><span style={{ whiteSpace: "pre-wrap", fontWeight: 400, fontSize: 11 }}>{form.observations}</span></div></>)}
-        </div>
-      </div>
-
-      {(form.root_cause || form.corrective_action) && (
-        <div className="print-section">
-          <div className="print-section-header">Analise Tecnica</div>
-          <div className="print-section-body">
-            <div className="print-grid">
-              {form.root_cause && <div className="print-field"><label>Causa Raiz</label><span style={{ whiteSpace: "pre-wrap", fontWeight: 400, fontSize: 11 }}>{form.root_cause}</span></div>}
-              {form.corrective_action && <div className="print-field"><label>Acao Corretiva</label><span style={{ whiteSpace: "pre-wrap", fontWeight: 400, fontSize: 11 }}>{form.corrective_action}</span></div>}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {checklist.filter((i: ChecklistItem) => i.done).length > 0 && (
-        <div className="print-section">
-          <div className="print-section-header">
-            <span>Checklist de Atividades</span>
-            <span style={{ fontWeight: 600, color: "#16a34a" }}>{checklistDone}/{checklist.length} concluidos</span>
-          </div>
-          <div className="print-section-body" style={{ paddingBottom: 8 }}>
-            <div className="progress-bar-bg"><div className="progress-bar-fill" style={{ width: `${checklist.length > 0 ? (checklistDone / checklist.length) * 100 : 0}%` }} /></div>
-            <div style={{ marginTop: 10 }}>
-              {checklist.filter((item: ChecklistItem) => item.done).map((item: ChecklistItem) => (
-                <div key={item.id} className="checklist-item">
-                  <div className="checkbox done">✓</div>
-                  <span style={{ fontSize: 11 }}>{item.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* MATERIAIS */}
       {materials.length > 0 && (
-        <div className="print-section">
-          <div className="print-section-header">Materiais Utilizados</div>
-          <div className="print-section-body" style={{ padding: 0 }}>
-            <table className="material-table">
-              <thead><tr><th>#</th><th>Material / Peca</th><th>Quantidade</th><th>Unidade</th></tr></thead>
-              <tbody>
-                {materials.map((mat: Material, i: number) => (
-                  <tr key={mat.id}><td style={{ color: "#94a3b8", width: 30 }}>{i + 1}</td><td style={{ fontWeight: 600 }}>{mat.name}</td><td>{mat.quantity}</td><td>{mat.unit}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <table className="trensurb-table">
+          <thead>
+            <tr><th colSpan={4}>MATERIAIS UTILIZADOS</th></tr>
+            <tr>
+              <th style={{width:"5%"}}>#</th>
+              <th style={{width:"55%"}}>Material / Peça</th>
+              <th style={{width:"20%"}}>Quantidade</th>
+              <th style={{width:"20%"}}>Unidade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {materials.map((mat: Material, i: number) => (
+              <tr key={mat.id}>
+                <td style={{textAlign:"center"}}>{i+1}</td>
+                <td>{mat.name}</td>
+                <td style={{textAlign:"center"}}>{mat.quantity}</td>
+                <td style={{textAlign:"center"}}>{mat.unit}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       )}
 
-      <div className="print-signatures">
-        <div className="signature-box"><p>Responsavel pela Execucao</p><p style={{ marginTop: 2, fontWeight: 600, color: "#334155" }}>&nbsp;</p></div>
-        <div className="signature-box"><p>Supervisor / Aprovador</p><p style={{ marginTop: 2, fontWeight: 600, color: "#334155" }}>&nbsp;</p></div>
-        <div className="signature-box"><p>Data de Conclusao</p><p style={{ marginTop: 2, fontWeight: 600, color: "#334155" }}>&nbsp;</p></div>
-      </div>
+      {/* CONDICOES DE SEGURANCA */}
+      <table className="trensurb-table">
+        <tbody>
+          <tr><td className="section-title" colSpan={4}>CONDIÇÕES DE SEGURANÇA: REALIZAR A APR ANTES DO INÍCIO DAS ATIVIDADES</td></tr>
+          <tr>
+            <td style={{width:"25%"}}><strong>EMPREGADOS</strong></td>
+            <td style={{width:"10%"}}><strong>RE</strong></td>
+            <td style={{width:"25%"}}><strong>EMPREGADOS</strong></td>
+            <td style={{width:"10%"}}><strong>RE</strong></td>
+          </tr>
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+          <tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+        </tbody>
+      </table>
 
-      <div className="print-footer">
-        <span>SGM Ferroviario — Sistema de Gestao de Manutencao</span>
-        <span>OS: {order.number} | Impresso em: {now}</span>
+      {/* ASSINATURAS */}
+      <table className="trensurb-table">
+        <tbody>
+          <tr>
+            <td style={{width:"33%"}}>
+              <strong>Programada por:</strong><br/>
+              <div style={{minHeight:16}}>&nbsp;</div>
+              <div style={{display:"flex", gap:8}}>
+                <span>RE:</span>
+                <span>Assinatura:</span>
+              </div>
+            </td>
+            <td style={{width:"34%"}}>
+              <strong>Preposto da CONTRATADA {form.contractor_name || ""}:</strong><br/>
+              <div style={{minHeight:16}}>{form.contractor_preposto || ""}</div>
+            </td>
+            <td style={{width:"33%"}}>
+              <strong>Fiscal Trensurb (M):</strong><br/>
+              <div style={{minHeight:16}}>&nbsp;</div>
+              <strong>Fiscal Trensurb (T):</strong><br/>
+              <div style={{minHeight:16}}>&nbsp;</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* OBSERVACOES GESTAO */}
+      <table className="trensurb-table">
+        <tbody>
+          <tr><td className="section-title">OBSERVAÇÕES DA GESTÃO / SUPERVISÃO</td></tr>
+          <tr><td style={{minHeight:80, height:80}}>{form.observations || ""}&nbsp;</td></tr>
+        </tbody>
+      </table>
+
+      {/* RESPONSAVEL */}
+      <table className="trensurb-table">
+        <thead>
+          <tr><th colSpan={4}>RESPONSÁVEL PELAS OBSERVAÇÕES</th></tr>
+          <tr>
+            <th style={{width:"40%"}}>Nome</th>
+            <th style={{width:"15%"}}>RE</th>
+            <th style={{width:"20%"}}>Data</th>
+            <th style={{width:"25%"}}>Assinatura</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{height:24}}>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={{textAlign:"right", fontSize:8, color:"#666", marginTop:4}}>
+        SGM Ferroviario — Emitido em: {now} | OS: {order.number}
       </div>
     </div>
   );
@@ -226,6 +361,15 @@ export default function WorkOrderDetailPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showAPR, setShowAPR] = useState(false);
+  const [printMode, setPrintMode] = useState<"os"|"apr"|null>(null);
+  const [aprSelections, setAprSelections] = useState<Record<string, boolean>>({});
+  const toggleAPR = (key: string) => setAprSelections(prev => ({ ...prev, [key]: !prev[key] }));
+  const [companies, setCompanies] = useState<ContractedCompany[]>([]);
+  const [showCompanyModal, setShowCompanyModal] = useState(false);
+  const [newCompanyName, setNewCompanyName] = useState("");
+  const [newCompanyCnpj, setNewCompanyCnpj] = useState("");
+  const [savingCompany, setSavingCompany] = useState(false);
   const [templates, setTemplates] = useState<any[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
@@ -246,6 +390,7 @@ export default function WorkOrderDetailPage() {
         contractor_hours: o.contractor_hours ?? "",
         contractor_name: o.contractor_name || "",
         contractor_document: o.contractor_document || "",
+        contractor_preposto: o.contractor_preposto || "",
         scheduled_start: o.scheduled_start ? o.scheduled_start.slice(0, 16) : "",
         scheduled_end: o.scheduled_end ? o.scheduled_end.slice(0, 16) : "",
         actual_start: o.actual_start ? o.actual_start.slice(0, 16) : "",
@@ -267,14 +412,31 @@ export default function WorkOrderDetailPage() {
       if (found) setAsset(found);
       if (o.sub_asset_id) { const sub = allAssets.find((a: any) => a.id === o.sub_asset_id); if (sub) setSubAsset(sub); }
     }).catch(console.error).finally(() => setLoading(false));
+    api.get("/contracted-companies/").then(r => setCompanies(r.data)).catch(() => {});
   }, [id]);
 
   const handlePrint = () => {
-    const printArea = document.getElementById("print-area");
-    if (printArea) {
-      printArea.style.display = "block";
-      setTimeout(() => { window.print(); printArea.style.display = "none"; }, 100);
-    }
+    const os = document.getElementById("print-area");
+    const apr = document.getElementById("apr-print-area");
+    if (!os) return;
+    document.body.classList.add("printing-os");
+    os.style.display = "block";
+    if (apr) apr.style.display = "none";
+    window.print();
+    os.style.display = "none";
+    document.body.classList.remove("printing-os");
+  };
+
+  const handlePrintAPR = () => {
+    const os = document.getElementById("print-area");
+    const apr = document.getElementById("apr-print-area");
+    if (!apr) return;
+    document.body.classList.add("printing-apr");
+    apr.style.display = "block";
+    if (os) os.style.display = "none";
+    window.print();
+    apr.style.display = "none";
+    document.body.classList.remove("printing-apr");
   };
 
   const openImportModal = () => {
@@ -311,6 +473,7 @@ export default function WorkOrderDetailPage() {
       if (!payload.actual_end) delete payload.actual_end;
       if (!payload.contractor_name) delete payload.contractor_name;
       if (!payload.contractor_document) delete payload.contractor_document;
+      if (!payload.contractor_preposto) delete payload.contractor_preposto;
       if (!payload.observations) delete payload.observations;
       if (!payload.root_cause) delete payload.root_cause;
       if (!payload.corrective_action) delete payload.corrective_action;
@@ -364,6 +527,21 @@ export default function WorkOrderDetailPage() {
   const removeMaterial = (matId: string) => setMaterials(materials.filter(m => m.id !== matId));
   const updateMaterial = (matId: string, field: string, value: string) => setMaterials(materials.map(m => m.id === matId ? { ...m, [field]: value } : m));
 
+  const handleCreateCompany = async () => {
+    if (!newCompanyName.trim()) return;
+    setSavingCompany(true);
+    try {
+      const res = await api.post("/contracted-companies/", { name: newCompanyName.trim(), cnpj: newCompanyCnpj.trim() || null });
+      setCompanies(prev => [...prev, res.data]);
+      setForm((prev: any) => ({ ...prev, contractor_name: res.data.name }));
+      setNewCompanyName("");
+      setNewCompanyCnpj("");
+      setShowCompanyModal(false);
+      setMsg("Empresa cadastrada e selecionada!");
+      setTimeout(() => setMsg(""), 3000);
+    } catch { setMsg("Erro ao cadastrar empresa"); } finally { setSavingCompany(false); }
+  };
+
   const checklistDone = checklist.filter(i => i.done).length;
   const checklistTotal = checklist.length;
   const isFuelOS = order?.title?.toLowerCase().includes("abastecimento") || order?.title?.toLowerCase().includes("combustivel");
@@ -395,6 +573,9 @@ export default function WorkOrderDetailPage() {
           <div className="flex items-center gap-2">
             <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-sm font-medium transition-colors">
               <Printer size={15} /> Imprimir OS
+            </button>
+            <button onClick={() => setShowAPR(true)} className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <Printer size={15} /> Imprimir APR
             </button>
             <span className={clsx("px-3 py-1 rounded-full text-xs font-medium", PRIORITY_BADGE[form.priority])}>{PRIORITY_LABEL[form.priority] || form.priority}</span>
             <span className={clsx("px-3 py-1 rounded-full text-sm font-medium", STATUS_BADGE[form.status])}>{STATUS_LABEL[form.status] || form.status}</span>
@@ -452,8 +633,22 @@ export default function WorkOrderDetailPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4 space-y-4">
           <h2 className="font-semibold text-slate-700">Execucao</h2>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className={lbl}>Empresa Terceirizada</label><input className={inp} value={form.contractor_name} onChange={e => setForm({ ...form, contractor_name: e.target.value })} placeholder="Nome da empresa" /></div>
-            <div><label className={lbl}>CNPJ</label><input className={inp} value={form.contractor_document} onChange={e => setForm({ ...form, contractor_document: e.target.value })} placeholder="00.000.000/0000-00" /></div>
+            <div>
+              <label className={lbl}>Empresa Terceirizada</label>
+              <div className="flex gap-2">
+                <input className={inp} value={form.contractor_name} onChange={e => setForm({ ...form, contractor_name: e.target.value })} placeholder="Nome da empresa" />
+                <button type="button" onClick={() => setShowCompanyModal(true)} title="Selecionar empresa cadastrada" className="flex items-center gap-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 border border-slate-200 rounded-lg text-slate-600 transition-colors">
+                  <Building2 size={15} /><ChevronDown size={12} />
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Tecnico Preposto</label>
+              <div className="flex gap-2 items-center">
+                <User size={15} className="text-slate-400 shrink-0" />
+                <input className={inp} value={form.contractor_preposto || ""} onChange={e => setForm({ ...form, contractor_preposto: e.target.value })} placeholder="Nome e funcao do preposto" />
+              </div>
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div><label className={lbl}>Horas Internas</label><input type="number" step="0.5" className={inp} value={form.internal_hours} onChange={e => setForm({ ...form, internal_hours: e.target.value })} placeholder="Ex: 8" /></div>
@@ -573,6 +768,9 @@ export default function WorkOrderDetailPage() {
           <button onClick={handlePrint} className="flex items-center gap-2 px-5 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-sm font-medium">
             <Printer size={15} /> Imprimir OS
           </button>
+          <button onClick={() => setShowAPR(true)} className="flex items-center gap-2 px-5 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium">
+            <Printer size={15} /> Imprimir APR
+          </button>
           <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
             <Save size={15} />{saving ? "Salvando..." : "Salvar Alteracoes"}
           </button>
@@ -582,6 +780,224 @@ export default function WorkOrderDetailPage() {
             </button>
           )}
         </div>
+
+        {showAPR && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-auto">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[95vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b border-slate-200">
+                <h2 className="text-lg font-bold text-slate-800">APR / Check-List de Seguranca</h2>
+                <div className="flex gap-2">
+                  <button onClick={handlePrintAPR} className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg text-sm font-medium">
+                    <Printer size={14} /> Imprimir APR
+                  </button>
+                  <button onClick={() => setShowAPR(false)} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                <div>
+                  <h3 className="font-semibold text-slate-700 text-sm mb-2">Equipamentos de Seguranca / EPIs</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {["Capacete de seguranca","Protetor facial verde","Oculos de protecao","Protetor auditivo","Respirador","Perneira","Tapete isolante","Vara de manobra","Detector de tensao","Aterramento temporario","Fitas/cones","Radio comunicador"].map(epi => (
+                      <label key={epi} className={clsx("flex items-center gap-2 p-2 rounded-lg border cursor-pointer text-sm transition-all", aprSelections[`epi_${epi}`] ? "border-orange-400 bg-orange-50 text-orange-800 font-medium" : "border-slate-200 hover:border-slate-300 text-slate-600")}>
+                        <input type="checkbox" checked={!!aprSelections[`epi_${epi}`]} onChange={() => toggleAPR(`epi_${epi}`)} className="accent-orange-500" />
+                        {epi}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-slate-700 text-sm mb-2">Riscos Identificados</h3>
+                  <div className="space-y-3">
+                    {[
+                      {key:"eletrico", titulo:"Riscos Eletricos", itens:["Contato com partes energizadas","Arco eletrico / flash eletrico","Inducao eletromagnetica","Eletricidade estatica"]},
+                      {key:"queda", titulo:"Riscos de Queda", itens:["Queda de mesmo nivel","Queda de nivel diferente","Queda de objetos/ferramentas"]},
+                      {key:"incendio", titulo:"Riscos de Incendio/Explosao", itens:["Presenca de gases inflamaveis","Curto circuito / faiscas","Materiais combustiveis no local"]},
+                      {key:"mecanico", titulo:"Riscos Mecanicos", itens:["Contato com partes moveis de maquinas","Ferramentas inadequadas ou defeituosas","Projecao de particulas/fragmentos"]},
+                      {key:"ergonomico", titulo:"Riscos Ergonomicos", itens:["Postura inadequada em estruturas","Trabalhos agaixados em paineis","Levantamento e transporte manual de cargas (23kg)"]},
+                      {key:"terceiros", titulo:"Riscos a Terceiros", itens:["Energizacao acidental","Colisao de veiculos"]},
+                    ].map((section: any) => (
+                      <div key={section.key} className="border border-slate-200 rounded-lg overflow-hidden">
+                        <div className="bg-slate-50 px-3 py-2 font-medium text-sm text-slate-700">{section.titulo}</div>
+                        <div className="p-2 grid grid-cols-2 gap-1">
+                          {section.itens.map((item: string) => (
+                            <label key={item} className={clsx("flex items-center gap-2 p-1.5 rounded cursor-pointer text-xs transition-all", aprSelections[`risco_${item}`] ? "bg-red-50 text-red-700 font-medium" : "hover:bg-slate-50 text-slate-600")}>
+                              <input type="checkbox" checked={!!aprSelections[`risco_${item}`]} onChange={() => toggleAPR(`risco_${item}`)} className="accent-red-500" />
+                              {item}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div id="apr-print-area" style={{display: "none"}}>
+                <style>{``}</style>
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr><td style={{border:"1px solid black",padding:"4px",textAlign:"center",fontWeight:"bold",fontSize:"11px"}} colSpan={3}>SENERG - Setor de Energia<br/><span style={{fontSize:"10px",fontWeight:"normal"}}>Check-List de Seguranca do Trabalho - Manutencao dos Sistemas de Abastecimento de Energia Eletrica</span></td></tr>
+                    <tr>
+                      <td style={{border:"1px solid black",padding:"4px",fontSize:"10px",width:"40%"}}><strong>Numero (OS/PI):</strong> {order.number}</td>
+                      <td style={{border:"1px solid black",padding:"4px",fontSize:"10px",width:"35%"}}><strong>Data:</strong> {form.actual_start ? new Date(form.actual_start).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR")}</td>
+                      <td style={{border:"1px solid black",padding:"4px",fontSize:"10px",width:"25%"}}><strong>Turno:</strong> {form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "Manha" : new Date(form.actual_start).getHours() < 18 ? "Tarde" : "Noite") : ""}</td>
+                    </tr>
+                    <tr>
+                      <td style={{border:"1px solid black",padding:"4px",fontSize:"10px"}} colSpan={2}><strong>Supervisor do CCO:</strong></td>
+                      <td style={{border:"1px solid black",padding:"4px",fontSize:"10px"}}><strong>Ha outras equipes?</strong> ☐ Sim &nbsp; ☐ Nao</td>
+                    </tr>
+                    <tr>
+                      <td style={{border:"1px solid black",padding:"4px",fontSize:"10px"}} colSpan={3}><strong>Empresa Contratada:</strong> {form.contractor_name || ""} {form.contractor_preposto ? `— Preposto: ${form.contractor_preposto}` : ""}</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr><td style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Descricao dos servicos a serem executados</td></tr>
+                    <tr><td style={{border:"1px solid black",padding:"4px",height:"40px"}}>{order.title}{asset ? ` — ${asset.name} (${asset.tag})` : ""}</td></tr>
+                  </tbody>
+                </table>
+
+                {Object.entries(aprSelections).some(([k,v]) => k.startsWith("epi_") && v) && (
+                  <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                    <tbody>
+                      <tr><td colSpan={4} style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Equipamentos de seguranca a serem utilizados</td></tr>
+                      {(() => {
+                        const sel = Object.entries(aprSelections).filter(([k,v]) => k.startsWith("epi_") && v).map(([k]) => k.replace("epi_",""));
+                        const rows: any[] = [];
+                        for(let i=0;i<sel.length;i+=2){
+                          rows.push(<tr key={i}><td style={{border:"1px solid black",padding:"3px",width:"5%",textAlign:"center"}}>☑</td><td style={{border:"1px solid black",padding:"3px",width:"45%"}}>{sel[i]}</td><td style={{border:"1px solid black",padding:"3px",width:"5%",textAlign:"center"}}>{sel[i+1]?"☑":""}</td><td style={{border:"1px solid black",padding:"3px",width:"45%"}}>{sel[i+1]||""}</td></tr>);
+                        }
+                        return rows;
+                      })()}
+                    </tbody>
+                  </table>
+                )}
+
+                {Object.entries(aprSelections).some(([k,v]) => k.startsWith("risco_") && v) && (
+                  <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                    <tbody>
+                      <tr><td colSpan={2} style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Riscos Identificados</td></tr>
+                      {Object.entries(aprSelections).filter(([k,v]) => k.startsWith("risco_") && v).map(([k]) => (
+                        <tr key={k}><td style={{border:"1px solid black",padding:"3px",width:"5%",textAlign:"center"}}>☑</td><td style={{border:"1px solid black",padding:"3px"}}>{k.replace("risco_","")}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr><td colSpan={2} style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Planejamento</td></tr>
+                    {[["a)","A equipe conferiu o servico a ser executado e esta apta a realizar as tarefas?"],["b)","Todos estao cientes do procedimento de trabalho para a atividade?"],["c)","O CCO foi informado da presenca da equipe na instalacao?"]].map((row,i) => (
+                      <tr key={i}><td style={{border:"1px solid black",padding:"3px",width:"85%"}}><strong>{row[0]}</strong> {row[1]}</td><td style={{border:"1px solid black",padding:"3px",width:"15%",textAlign:"center"}}>☐ Sim &nbsp; ☐ Nao</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr><td colSpan={2} style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Outros requisitos</td></tr>
+                    {["Todo pessoal envolvido na atividade esta sem adornos (relogio, cracha, anel/alianca, etc.) ?","A equipe conferiu o servico a ser executado ? (Revisar)","A APR foi discutida e entendida por todos ?","Todos estao cientes que so deverao iniciar os servicos apos autorizacao ?"].map((item,i) => (
+                      <tr key={i}><td style={{border:"1px solid black",padding:"3px",width:"85%"}}><strong>{i+1}</strong> {item}</td><td style={{border:"1px solid black",padding:"3px",width:"15%",textAlign:"center"}}>☐ Sim &nbsp; ☐ Nao</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr><td colSpan={2} style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Termino da manutencao (ANTES DA OPERACAO DE REENERGIZACAO)</td></tr>
+                    {["Foram retirados os aterramentos temporarios ?","Foram retirados os cartoes de seguranca e os bloqueios das seccionadoras/disjuntores ?","Foi retirado todo pessoal e ferramental da area a ser reenergizada ?","Foi preenchido o Livro de Registros de Acesso (SEs e CBs) ?"].map((item,i) => (
+                      <tr key={i}><td style={{border:"1px solid black",padding:"3px",width:"85%"}}><strong>{i+1}</strong> {item}</td><td style={{border:"1px solid black",padding:"3px",width:"15%",textAlign:"center"}}>☐ Sim &nbsp; ☐ Nao</td></tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr><td colSpan={3} style={{border:"1px solid black",padding:"3px",background:"#d9d9d9",fontWeight:"bold"}}>Pessoal autorizado e ciente desta Permissao de Trabalho</td></tr>
+                    <tr><th style={{border:"1px solid black",padding:"3px",width:"50%",textAlign:"left"}}>Nome</th><th style={{border:"1px solid black",padding:"3px",width:"15%"}}>RE</th><th style={{border:"1px solid black",padding:"3px",width:"35%"}}>Visto</th></tr>
+                    {[0,1,2,3].map(i => (<tr key={i} style={{height:"20px"}}><td style={{border:"1px solid black",padding:"3px"}}>&nbsp;</td><td style={{border:"1px solid black",padding:"3px"}}>&nbsp;</td><td style={{border:"1px solid black",padding:"3px"}}>&nbsp;</td></tr>))}
+                  </tbody>
+                </table>
+
+                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"10px"}}>
+                  <tbody>
+                    <tr>
+                      <td style={{border:"1px solid black",padding:"4px",width:"50%"}}><strong>Visto do Responsavel pela atividade:</strong><div style={{minHeight:"24px"}}>&nbsp;</div></td>
+                      <td style={{border:"1px solid black",padding:"4px",width:"50%"}}><strong>Justificativa:</strong><div style={{minHeight:"24px"}}>&nbsp;</div></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <table style={{width:"100%",borderCollapse:"collapse",fontFamily:"Arial,sans-serif"}}>
+                  <tbody>
+                    <tr><td style={{border:"1px solid black",padding:"4px",fontSize:"9px"}}><strong>Direito de Recusa:</strong> "O trabalhador podera interromper suas atividades quando constatar uma situacao de trabalho onde, a seu ver, envolva um risco grave e iminente para a sua vida e saude, informando imediatamente ao seu superior hierarquico." (Item 1.4.3 - Portaria no 915 de 30 de julho de 2019 - SEPRT)</td></tr>
+                  </tbody>
+                </table>
+                <div style={{textAlign:"right",fontSize:"8px",color:"#666",marginTop:"4px",fontFamily:"Arial,sans-serif"}}>SGM Ferroviario — APR/PT — OS: {order.number} — Emitido em: {new Date().toLocaleDateString("pt-BR")}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showCompanyModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Building2 size={18} className="text-blue-600" /> Empresas Terceirizadas</h2>
+                <button onClick={() => setShowCompanyModal(false)} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+              </div>
+              <div className="p-6 space-y-4">
+                {/* Lista de empresas cadastradas */}
+                <div>
+                  <p className="text-xs font-medium text-slate-500 uppercase mb-2">Selecionar empresa cadastrada</p>
+                  {companies.length === 0 ? (
+                    <p className="text-slate-400 text-sm py-2">Nenhuma empresa cadastrada ainda.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {companies.map(c => (
+                        <button key={c.id} type="button"
+                          onClick={() => { setForm((prev: any) => ({ ...prev, contractor_name: c.name })); setShowCompanyModal(false); }}
+                          className="w-full text-left p-3 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50 transition-all">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm text-slate-800">{c.name}</span>
+                            {c.cnpj && <span className="text-xs text-slate-400">{c.cnpj}</span>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* Cadastrar nova empresa */}
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-xs font-medium text-slate-500 uppercase mb-3">Cadastrar nova empresa</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">Nome da empresa</label>
+                      <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={newCompanyName} onChange={e => setNewCompanyName(e.target.value)} placeholder="Razao social ou nome fantasia" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">CNPJ (opcional)</label>
+                      <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        value={newCompanyCnpj} onChange={e => setNewCompanyCnpj(e.target.value)} placeholder="00.000.000/0000-00" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
+                <button type="button" onClick={() => setShowCompanyModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
+                <button type="button" onClick={handleCreateCompany} disabled={!newCompanyName.trim() || savingCompany}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">
+                  {savingCompany ? "Salvando..." : "Cadastrar e Selecionar"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {showImportModal && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

@@ -128,6 +128,8 @@ async def create_fuel_order(
         raise HTTPException(status_code=400, detail=f"OS {body.number} ja existe")
 
     data = body.model_dump(exclude={"items"})
+    if data.get("execution_date") and hasattr(data["execution_date"], "tzinfo") and data["execution_date"].tzinfo is not None:
+        data["execution_date"] = data["execution_date"].replace(tzinfo=None)
     order = FuelOrder(**data, created_by_id=current_user.id)
     db.add(order)
     await db.flush()

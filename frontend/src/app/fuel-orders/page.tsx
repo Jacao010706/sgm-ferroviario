@@ -12,7 +12,7 @@ const emptyForm = {
   number: "",
   execution_date: new Date().toISOString().split("T")[0],
   location: "Sala do GGD",
-  sector: "CRP",
+  sector: "SENERG",
   shift: "NOITE",
   week: "",
   supplier: "QUERODIESEL TRANSPORTE E COMERCIO DE COMBUSTIVEIS LTDA",
@@ -34,13 +34,19 @@ function FuelOrdersContent() {
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
   const [printOrder, setPrintOrder] = useState<any | null>(null);
+  const [technicians, setTechnicians] = useState<any[]>([]);
+  const [assets, setAssets] = useState<any[]>([]);
 
   const load = () => {
     setLoading(true);
     api.get("/fuel-orders/").then((r) => setOrders(r.data)).finally(() => setLoading(false));
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    api.get("/teams/").then((r) => { const all = r.data.flatMap((t: any) => t.members || []); setTechnicians(all); }).catch(() => {});
+    api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data.filter((a: any) => a.asset_type === "generator"))).catch(() => {});
+  }, []);
   useEffect(() => {
     if (searchParams.get("new") === "true") {
       setShowModal(true);
@@ -101,8 +107,202 @@ function FuelOrdersContent() {
 
   const handlePrint = (order: any) => {
     setPrintOrder(order);
-    setTimeout(() => window.print(), 300);
   };
+
+
+  if (printOrder) {
+    const o = printOrder;
+    const totalFornecido = o.items?.reduce((acc: number, i: any) => acc + (i.supplied_liters || 0), 0) || 0;
+    return (
+      <div className="p-6" style={{fontFamily: "Arial, sans-serif", fontSize: "10px"}}>
+        <style>{`@media print { .no-print { display: none !important; } }`}</style>
+        <div className="no-print mb-4 flex gap-2">
+          <button onClick={() => window.print()} className="px-4 py-2 bg-blue-600 text-white rounded text-sm">Imprimir</button>
+          <button onClick={() => setPrintOrder(null)} className="px-4 py-2 border rounded text-sm">Fechar</button>
+        </div>
+        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
+          <div style={{textAlign:"center",fontWeight:"bold",fontSize:"12px"}}>EMPRESA DE TRENS URBANOS DE PORTO ALEGRE S.A</div>
+          <div style={{textAlign:"center",fontWeight:"bold"}}>SENERG ENERGIA</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px",marginTop:"4px"}}>
+            <div><strong>Ordem de Servico Interno N°:</strong> {o.number}</div>
+            <div><strong>DATA DA EXECUCAO:</strong> {new Date(o.execution_date).toLocaleDateString("pt-BR")}</div>
+            <div><strong>LOCAL:</strong> {o.location}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"4px",marginTop:"4px"}}>
+            <div><strong>SEMANA:</strong> {o.week || "-"}</div>
+            <div><strong>SETOR:</strong> {o.sector}</div>
+            <div><strong>TURNO:</strong> {o.shift}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px",marginTop:"4px"}}>
+            <div><strong>Fiscal Trensurb (1):</strong> {o.fiscal_1 || "___________________"} <strong>RE:</strong> {o.fiscal_1_re || "______"}</div>
+            <div><strong>Fiscal Trensurb (2):</strong> {o.fiscal_2 || "___________________"} <strong>RE:</strong> {o.fiscal_2_re || "______"}</div>
+          </div>
+          <div style={{marginTop:"4px",fontWeight:"bold"}}>{o.supplier} - FORNECIMENTO DE DIESEL</div>
+        </div>
+        <div style={{marginBottom:"4px"}}>
+          <table style={{width:"100%",borderCollapse:"collapse",fontSize:"10px"}}>
+            <thead>
+              <tr style={{backgroundColor:"#f0f0f0"}}>
+                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Descricao</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Unidade</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Subitem</th>
+                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Equipamentos</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Previsao (L)</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Fornecimento (L)</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>GGD automatico?</th>
+              </tr>
+            </thead>
+            <tbody>
+              {o.items?.map((item: any, idx: number) => (
+                <tr key={idx}>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{idx === 0 ? "Fornecimento de oleo diesel S-500 aos grupos geradores a diesel." : ""}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>Litro</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{item.subitem}</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{item.station}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{item.forecast_liters || "-"}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{item.supplied_liters || ""}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{item.ggd_automatic || ""}</td>
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={5} style={{border:"1px solid black",padding:"3px",textAlign:"right",fontWeight:"bold"}}>TOTAL DE LITROS FORNECIDOS:</td>
+                <td style={{border:"1px solid black",padding:"3px",textAlign:"center",fontWeight:"bold"}}>{totalFornecido || ""}</td>
+                <td style={{border:"1px solid black",padding:"3px"}}></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        {(o.additive_station || o.additive_forecast_ml) && (
+          <div style={{marginBottom:"4px"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:"10px"}}>
+              <thead>
+                <tr style={{backgroundColor:"#f0f0f0"}}>
+                  <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Descricao</th>
+                  <th style={{border:"1px solid black",padding:"3px"}}>Unidade</th>
+                  <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Equipamentos</th>
+                  <th style={{border:"1px solid black",padding:"3px"}}>Previsao (ml)</th>
+                  <th style={{border:"1px solid black",padding:"3px"}}>Quantidade (ml)</th>
+                  <th style={{border:"1px solid black",padding:"3px"}}>Servico Concluido?</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{border:"1px solid black",padding:"3px"}}>Colocacao de Aditivo.</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>ml</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{o.additive_station}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.additive_forecast_ml}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.additive_quantity_ml}</td>
+                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.additive_completed}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        {o.observations && (
+          <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
+            <strong>Apontamento de observacoes:</strong>
+            <p style={{marginTop:"2px"}}>{o.observations}</p>
+          </div>
+        )}
+        {o.checklist_items && o.checklist_items.length > 0 && (
+          <div style={{marginBottom:"4px"}}>
+            <table style={{width:"100%",borderCollapse:"collapse",fontSize:"10px"}}>
+              <thead>
+                <tr style={{backgroundColor:"#f0f0f0"}}>
+                  <th colSpan={4} style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>
+                    CHECKLIST DE ATIVIDADES ({o.checklist_items.filter((i: any) => i.done).length}/{o.checklist_items.length} concluidos)
+                  </th>
+                </tr>
+                <tr style={{backgroundColor:"#f0f0f0"}}>
+                  <th style={{border:"1px solid black",padding:"3px",width:"4%"}}>✓</th>
+                  <th style={{border:"1px solid black",padding:"3px",width:"46%",textAlign:"left"}}>Atividade</th>
+                  <th style={{border:"1px solid black",padding:"3px",width:"4%"}}>✓</th>
+                  <th style={{border:"1px solid black",padding:"3px",width:"46%",textAlign:"left"}}>Atividade</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Array.from({length: Math.ceil(o.checklist_items.length / 2)}, (_: any, i: number) => (
+                  <tr key={i}>
+                    <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.checklist_items[i*2]?.done ? "✓" : "☐"}</td>
+                    <td style={{border:"1px solid black",padding:"3px",textDecoration:o.checklist_items[i*2]?.done?"line-through":"none",color:o.checklist_items[i*2]?.done?"#666":"#000"}}>{o.checklist_items[i*2]?.text}</td>
+                    <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.checklist_items[i*2+1] ? (o.checklist_items[i*2+1]?.done ? "✓" : "☐") : ""}</td>
+                    <td style={{border:"1px solid black",padding:"3px",textDecoration:o.checklist_items[i*2+1]?.done?"line-through":"none",color:o.checklist_items[i*2+1]?.done?"#666":"#000"}}>{o.checklist_items[i*2+1]?.text || ""}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px",fontWeight:"bold"}}>
+          CONDICOES DE SEGURANCA: REALIZAR A APR ANTES DO INICIO DAS ATIVIDADES
+        </div>
+        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
+          <div style={{fontWeight:"bold",marginBottom:"4px"}}>EMPREGADOS TRENSURB</div>
+          <table style={{width:"100%",borderCollapse:"collapse"}}>
+            <thead>
+              <tr>
+                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Nome</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>RE</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Assinatura</th>
+                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Nome</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>RE</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Assinatura</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[0,1,2].map(idx2 => (
+                <tr key={idx2} style={{height:"20px"}}>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_1_name || "") : ""}</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_1_re || "") : ""}</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}></td>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_2_name || "") : ""}</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_2_re || "") : ""}</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
+          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"8px"}}>
+            <div><strong>Superior responsavel pela area:</strong> {o.responsible_name}</div>
+            <div><strong>RE:</strong> {o.responsible_re}</div>
+            <div><strong>Contato do CCO:</strong></div>
+          </div>
+          <div style={{marginTop:"8px"}}>
+            <div><strong>Fiscal Trensurb (1):</strong> ___________________________________</div>
+            <div style={{marginTop:"4px"}}><strong>Fiscal Trensurb (2):</strong> ___________________________________</div>
+            <div style={{marginTop:"4px"}}><strong>Preposto da Contratada:</strong> ___________________________________</div>
+          </div>
+        </div>
+        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
+          <strong>OBSERVACOES DA GESTAO / SUPERVISAO</strong>
+          <div style={{height:"150px",marginTop:"4px"}}>{o.management_observations}</div>
+        </div>
+        <div style={{border:"1px solid black",padding:"4px"}}>
+          <strong>RESPONSAVEL PELAS OBSERVACOES</strong>
+          <table style={{width:"100%",borderCollapse:"collapse",marginTop:"4px"}}>
+            <thead>
+              <tr>
+                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Nome</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>RE</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Data</th>
+                <th style={{border:"1px solid black",padding:"3px"}}>Assinatura</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr style={{height:"30px"}}>
+                <td style={{border:"1px solid black",padding:"3px"}}></td>
+                <td style={{border:"1px solid black",padding:"3px"}}></td>
+                <td style={{border:"1px solid black",padding:"3px"}}></td>
+                <td style={{border:"1px solid black",padding:"3px"}}></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   const totalThisMonth = orders.filter(o => {
     const d = new Date(o.execution_date);
@@ -253,10 +453,28 @@ function FuelOrdersContent() {
                   </div>
                 </div>
                 <div><label className={lbl}>Fornecedor</label><input className={inp} value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} /></div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><label className={lbl}>Fiscal 1</label><input className={inp} value={form.fiscal_1} onChange={e => setForm({ ...form, fiscal_1: e.target.value })} /></div>
-                  <div><label className={lbl}>Fiscal 2</label><input className={inp} value={form.fiscal_2} onChange={e => setForm({ ...form, fiscal_2: e.target.value })} /></div>
-                  <div><label className={lbl}>Fiscal 3</label><input className={inp} value={form.fiscal_3} onChange={e => setForm({ ...form, fiscal_3: e.target.value })} /></div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div><label className={lbl}>Fiscal 1</label>
+                    <select className={inp} value={form.fiscal_1} onChange={e => setForm({ ...form, fiscal_1: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {technicians.map((t: any) => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                  </div>
+                  <div><label className={lbl}>Fiscal 2</label>
+                    <select className={inp} value={form.fiscal_2} onChange={e => setForm({ ...form, fiscal_2: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {technicians.map((t: any) => <option key={t.id} value={t.name}>{t.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="border-t border-slate-100 pt-4">
+                  <p className="text-sm font-semibold text-slate-700 mb-3">Aditivo</p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div><label className={lbl}>Estacao</label><select className={inp} value={form.additive_station} onChange={e => setForm({ ...form, additive_station: e.target.value })}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
+                    <div><label className={lbl}>Previsao (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
+                    <div><label className={lbl}>Quantidade (ml)</label><input type="number" className={inp} value={form.additive_quantity_ml} onChange={e => setForm({ ...form, additive_quantity_ml: e.target.value })} /></div>
+                  </div>
+                  <div className="mt-3"><label className={lbl}>Servico Concluido?</label><select className={inp} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
                 </div>
                 <div className="border-t border-slate-100 pt-4">
                   <div className="flex items-center justify-between mb-3">
@@ -267,7 +485,7 @@ function FuelOrdersContent() {
                     {items.map((item, i) => (
                       <div key={i} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg">
                         <div className="col-span-1"><label className="text-xs text-slate-500">Subitem</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.subitem} onChange={e => updateItem(i, "subitem", e.target.value)} /></div>
-                        <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)} /></div>
+                        <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Previsao (L)</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)}><option value="">Selecione</option>{Array.from({length: 25}, (_, i) => (i+1)*10).map(v => <option key={v} value={v}>{v}L</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Fornecido (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.supplied_liters} onChange={e => updateItem(i, "supplied_liters", e.target.value)} /></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">GGD Auto?</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
@@ -279,7 +497,15 @@ function FuelOrdersContent() {
                 <div className="border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700 mb-3">Superior responsavel</p>
                   <div className="grid grid-cols-4 gap-3">
-                    <div className="col-span-3"><label className={lbl}>Nome</label><input className={inp} value={form.responsible_name} onChange={e => setForm({ ...form, responsible_name: e.target.value })} /></div>
+                    <div className="col-span-3"><label className={lbl}>Nome</label>
+                    <select className={inp} value={form.responsible_name} onChange={e => {
+                      const tech = technicians.find((t: any) => t.name === e.target.value);
+                      setForm({ ...form, responsible_name: e.target.value, responsible_re: tech?.badge_number?.toString() || form.responsible_re });
+                    }}>
+                      <option value={form.responsible_name}>{form.responsible_name}</option>
+                      {technicians.map((t: any) => <option key={t.id} value={t.name}>{t.name} ({t.role || "Tecnico"})</option>)}
+                    </select>
+                  </div>
                     <div><label className={lbl}>RE</label><input className={inp} value={form.responsible_re} onChange={e => setForm({ ...form, responsible_re: e.target.value })} /></div>
                   </div>
                 </div>

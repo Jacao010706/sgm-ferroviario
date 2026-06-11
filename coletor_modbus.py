@@ -250,9 +250,12 @@ def enviar_leitura(asset_id, dados, token):
     """Envia os dados lidos para a API do SGM."""
     headers = {"Authorization": f"Bearer {token}"}
     payload = {
-        "voltage_l1": dados.get("tensao_rede_l1"),
-        "voltage_l2": dados.get("tensao_rede_l2"),
-        "voltage_l3": dados.get("tensao_rede_l3"),
+        "voltage_l1": dados.get("tensao_l1"),
+        "voltage_l2": dados.get("tensao_l2"),
+        "voltage_l3": dados.get("tensao_l3"),
+        "grid_voltage_l1": dados.get("tensao_rede_l1"),
+        "grid_voltage_l2": dados.get("tensao_rede_l2"),
+        "grid_voltage_l3": dados.get("tensao_rede_l3"),
         "current_l1": dados.get("corrente_l1"),
         "current_l2": dados.get("corrente_l2"),
         "current_l3": dados.get("corrente_l3"),
