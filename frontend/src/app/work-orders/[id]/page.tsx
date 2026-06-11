@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
@@ -363,13 +363,6 @@ export default function WorkOrderDetailPage() {
   const [partSearch, setPartSearch] = useState("");
   const [partResults, setPartResults] = useState([]);
   const [showPartDropdown, setShowPartDropdown] = useState(false);
-  const [showPartDropdown, setShowPartDropdown] = useState(false);
-  const [partSearch, setPartSearch] = useState("");
-  const [partResults, setPartResults] = useState<any[]>([]);
-  const [showPartDropdown, setShowPartDropdown] = useState(false);
-  const [partSearch, setPartSearch] = useState("");
-  const [partResults, setPartResults] = useState<any[]>([]);
-  const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAPR, setShowAPR] = useState(false);
   const [printMode, setPrintMode] = useState<"os"|"apr"|null>(null);
@@ -496,11 +489,7 @@ export default function WorkOrderDetailPage() {
   };
 
   const handleComplete = async () => {
-    if (materials.length === 0) {
-      if (!confirm("Nenhum material foi registrado nesta OS.\n\nDeseja concluir mesmo assim?")) return;
-    } else {
-      if (!confirm(`Confirmar conclusao da OS?\n\nMateriais registrados: ${materials.length} item(s)`)) return;
-    }
+    if (!confirm("Confirmar conclusao da OS?")) return;
     setSaving(true); setMsg("");
     try {
       const payload: any = { ...form, status: "completed", actual_end: new Date().toISOString() };
@@ -537,22 +526,8 @@ export default function WorkOrderDetailPage() {
   const addChecklistItem = () => { if (!newTask.trim()) return; setChecklist([...checklist, { id: Date.now().toString(), text: newTask.trim(), done: false }]); setNewTask(""); };
   const toggleChecklistItem = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i));
   const removeChecklistItem = (itemId: string) => setChecklist(checklist.filter(i => i.id !== itemId));
-  const searchParts = async (term: string) => {
-    setPartSearch(term);
-    setNewMaterial({ ...newMaterial, name: term });
-    if (term.length < 2) { setPartResults([]); setShowPartDropdown(false); return; }
-    try {
-      const r = await api.get("/parts/", { params: { search: term, limit: 8 } });
-      setPartResults(r.data);
-      setShowPartDropdown(r.data.length > 0);
-    } catch { setPartResults([]); setShowPartDropdown(false); }
-  };
-  const selectPart = (part: any) => {
-    setNewMaterial({ name: part.name, quantity: "1", unit: part.unit || "un" });
-    setPartSearch(part.name);
-    setShowPartDropdown(false);
-    setPartResults([]);
-  };
+  const searchParts = async (term) => { setPartSearch(term); setNewMaterial({ ...newMaterial, name: term }); if (term.length < 2) { setPartResults([]); setShowPartDropdown(false); return; } try { const r = await api.get("/parts/", { params: { search: term, limit: 8 } }); setPartResults(r.data); setShowPartDropdown(r.data.length > 0); } catch { setPartResults([]); setShowPartDropdown(false); } };
+  const selectPart = (part) => { setNewMaterial({ name: part.name, quantity: "1", unit: part.unit || "un" }); setPartSearch(part.name); setShowPartDropdown(false); setPartResults([]); };
   const addMaterial = () => { if (!newMaterial.name.trim()) return; setMaterials([...materials, { id: Date.now().toString(), ...newMaterial }]); setNewMaterial({ name: "", quantity: "1", unit: "un" }); setPartSearch(""); setShowPartDropdown(false); };
   const removeMaterial = (matId: string) => setMaterials(materials.filter(m => m.id !== matId));
   const updateMaterial = (matId: string, field: string, value: string) => setMaterials(materials.map(m => m.id === matId ? { ...m, [field]: value } : m));
@@ -755,22 +730,8 @@ export default function WorkOrderDetailPage() {
               ))}
             </div>
           )}
-          <div className="grid grid-cols-12 gap-2 items-center relative">
-            <div className="col-span-6 relative">
-              <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={partSearch} onChange={e => searchParts(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Buscar peca do almoxarifado..." autoComplete="off" />
-              {showPartDropdown && partResults.length > 0 && (
-                <div className="absolute z-50 top-full left-0 right-0 bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
-                  {partResults.map((p: any) => (
-                    <button key={p.id} type="button" onClick={() => selectPart(p)} className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-50 last:border-0">
-                      <span className="font-medium text-slate-800">{p.name}</span>
-                      <span className="text-xs text-slate-400 ml-2">{p.code}</span>
-                      <span className="text-xs text-blue-600 ml-2">{p.unit}</span>
-                      {p.quantity_stock != null && <span className="text-xs text-green-600 ml-2">Estoque: {p.quantity_stock}</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="grid grid-cols-12 gap-2 items-center">
+            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Buscar peca do almoxarifado..." onChange={e => searchParts(e.target.value)} value={partSearch} autoComplete="off" />
             <input type="number" className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.quantity} onChange={e => setNewMaterial({ ...newMaterial, quantity: e.target.value })} min="0" step="0.1" />
             <select className="col-span-3 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}>
               {["un","kg","L","m","m²","cx","par","jogo"].map(u => <option key={u} value={u}>{u}</option>)}
