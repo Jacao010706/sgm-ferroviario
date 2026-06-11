@@ -526,8 +526,8 @@ export default function WorkOrderDetailPage() {
   const addChecklistItem = () => { if (!newTask.trim()) return; setChecklist([...checklist, { id: Date.now().toString(), text: newTask.trim(), done: false }]); setNewTask(""); };
   const toggleChecklistItem = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i));
   const removeChecklistItem = (itemId: string) => setChecklist(checklist.filter(i => i.id !== itemId));
-  const searchParts = async (term) => { setPartSearch(term); setNewMaterial({ ...newMaterial, name: term }); if (term.length < 2) { setPartResults([]); setShowPartDropdown(false); return; } try { const r = await api.get("/parts/", { params: { search: term, limit: 8 } }); setPartResults(r.data); setShowPartDropdown(r.data.length > 0); } catch { setPartResults([]); setShowPartDropdown(false); } };
-  const selectPart = (part) => { setNewMaterial({ name: part.name, quantity: "1", unit: part.unit || "un" }); setPartSearch(part.name); setShowPartDropdown(false); setPartResults([]); };
+  const searchParts = async (term: string) => { setPartSearch(term); setNewMaterial({ ...newMaterial, name: term }); if (term.length < 2) { setPartResults([]); setShowPartDropdown(false); return; } try { const r = await api.get("/parts/", { params: { search: term, limit: 8 } }); setPartResults(r.data); setShowPartDropdown(r.data.length > 0); } catch { setPartResults([]); setShowPartDropdown(false); } };
+  const selectPart = (part: any) => { setNewMaterial({ name: part.name, quantity: "1", unit: part.unit || "un" }); setPartSearch(part.name); setShowPartDropdown(false); setPartResults([]); };
   const addMaterial = () => { if (!newMaterial.name.trim()) return; setMaterials([...materials, { id: Date.now().toString(), ...newMaterial }]); setNewMaterial({ name: "", quantity: "1", unit: "un" }); setPartSearch(""); setShowPartDropdown(false); };
   const removeMaterial = (matId: string) => setMaterials(materials.filter(m => m.id !== matId));
   const updateMaterial = (matId: string, field: string, value: string) => setMaterials(materials.map(m => m.id === matId ? { ...m, [field]: value } : m));
