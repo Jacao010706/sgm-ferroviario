@@ -731,7 +731,7 @@ export default function WorkOrderDetailPage() {
             </div>
           )}
           <div className="grid grid-cols-12 gap-2 items-center">
-            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Buscar peca do almoxarifado..." onChange={e => searchParts(e.target.value)} value={partSearch} autoComplete="off" />
+            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={partSearch} onChange={e => searchParts(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Buscar peca do almoxarifado..." autoComplete="off" />
             <input type="number" className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.quantity} onChange={e => setNewMaterial({ ...newMaterial, quantity: e.target.value })} min="0" step="0.1" />
             <select className="col-span-3 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}>
               {["un","kg","L","m","m²","cx","par","jogo"].map(u => <option key={u} value={u}>{u}</option>)}
