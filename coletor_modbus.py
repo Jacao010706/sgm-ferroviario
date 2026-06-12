@@ -190,7 +190,7 @@ def ler_gerador(ip, slave_id, tag):
                 def isError(self): return False
             result = FakeResult(regs_stemac)
         else:
-            result = client.read_holding_registers(address=1000, count=50)
+            result = client.read_holding_registers(address=1000, count=80)
 
         if result.isError():
             log.warning(f"{tag} ({ip}): erro ao ler registros - {result}")
