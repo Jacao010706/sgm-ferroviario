@@ -1,20 +1,13 @@
-﻿"use client";
+"use client";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
 import { Plus, RefreshCw, X, Users, UserPlus, Trash2, Pencil, Mail, Phone, BadgeCheck } from "lucide-react";
 import clsx from "clsx";
 
-const ROLE_LABEL: Record<string, string> = {
-  ADMIN: "Administrador", MANAGER: "Gestor", TECHNICIAN: "Tecnico", ENGINEER: "Engenheiro", OPERATOR: "Operador", admin: "Administrador", manager: "Gestor", technician: "Tecnico", engineer: "Engenheiro", operator: "Operador",
-  operator: "Operador", viewer: "Visualizador",
-};
+const ROLE_LABEL: Record<string, string> = { ADMIN: "Administrador", MANAGER: "Gestor", TECHNICIAN: "Tecnico", ENGINEER: "Engenheiro", OPERATOR: "Operador", VIEWER: "Visualizador", admin: "Administrador", manager: "Gestor", technician: "Tecnico", engineer: "Engenheiro", operator: "Operador", viewer: "Visualizador" };
 
-const ROLE_BADGE: Record<string, string> = {
-  ADMIN: "bg-red-100 text-red-700", MANAGER: "bg-purple-100 text-purple-700", admin: "bg-red-100 text-red-700", manager: "bg-purple-100 text-purple-700",
-  TECHNICIAN: "bg-blue-100 text-blue-700", ENGINEER: "bg-orange-100 text-orange-700", OPERATOR: "bg-green-100 text-green-700", technician: "bg-blue-100 text-blue-700", engineer: "bg-orange-100 text-orange-700", operator: "bg-green-100 text-green-700",
-  viewer: "bg-slate-100 text-slate-600",
-};
+const ROLE_BADGE: Record<string, string> = { ADMIN: "bg-red-100 text-red-700", MANAGER: "bg-purple-100 text-purple-700", TECHNICIAN: "bg-blue-100 text-blue-700", ENGINEER: "bg-orange-100 text-orange-700", OPERATOR: "bg-green-100 text-green-700", VIEWER: "bg-slate-100 text-slate-600", admin: "bg-red-100 text-red-700", manager: "bg-purple-100 text-purple-700", technician: "bg-blue-100 text-blue-700", engineer: "bg-orange-100 text-orange-700", operator: "bg-green-100 text-green-700", viewer: "bg-slate-100 text-slate-600" };
 
 const emptyTeam = { name: "", specialty: "", description: "" };
 const emptyUser = { name: "", email: "", password: "", role: "technician", badge_number: "", phone: "" };
