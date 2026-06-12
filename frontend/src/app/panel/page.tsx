@@ -51,7 +51,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mo
 
 function DetailPanel({ station, asset, vals, onClose }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void }) {
   const v = (key: string) => vals?.[key]?.value;
-  const fmt = (val: any, unit: string, dec = 1) => val != null ? Number(val).toFixed(dec) + " " + unit : "---";
+  const fmt = (val: any, unit: string, dec = 0) => val != null ? Number(val).toFixed(dec) + (unit ? " " + unit : "") : "---";
   const running = v("voltage_l1") != null && v("voltage_l1") > 0;
   const mode = v("mode");
   const fuel = v("fuel_level");
@@ -270,8 +270,8 @@ export default function PanelPage() {
                   </div>
                   <div className="px-1 py-1" style={{borderTop:`1px solid ${borderColor}33`,fontSize:"8px"}}>
                     <div className="flex justify-between">
-                      <span style={{color:"#00bfff"}}>{gridV?gridV+"V":"--"}</span>
-                      <span style={{color:temp>80?"#ff4444":"#aaa"}}>{temp?temp+"C":"--"}</span>
+                      <span style={{color:"#00bfff"}}>{gridV?Math.round(Number(gridV))+"V":"--"}</span>
+                      <span style={{color:temp>80?"#ff4444":"#aaa"}}>{temp?Math.round(Number(temp))+"C":"--"}</span>
                       <span style={{color:fuelLow?"#ff4444":fuel>50?"#00aa00":"#ffd700"}}>{fuel!=null?fuel+"%":"--"}</span>
                     </div>
                   </div>
