@@ -147,27 +147,6 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
           <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
           {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"bg-green-900 text-green-300":"bg-red-900 text-red-300"}`}>{cmdMsg.text}</div>}
           <div className="flex gap-2">
-            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"start")}
-              className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-40"
-              style={{background:"#003300",border:"1px solid #00ff41",color:"#00ff41"}}>
-              {cmdLoading?"AGUARDE...":"▶ LIGAR"}
-            </button>
-            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"stop")}
-              className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-40"
-              style={{background:"#330000",border:"1px solid #ff4444",color:"#ff4444"}}>
-              {cmdLoading?"AGUARDE...":"■ DESLIGAR"}
-            </button>
-            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"auto")}
-              className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-40"
-              style={{background:"#1a1a00",border:"1px solid #ffd700",color:"#ffd700"}}>
-              {cmdLoading?"AGUARDE...":"⟳ AUTO"}
-            </button>
-          </div>
-        </div>
-        <div className="mb-3">
-          <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
-          {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"bg-green-900 text-green-300":"bg-red-900 text-red-300"}`}>{cmdMsg.text}</div>}
-          <div className="flex gap-2">
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"start")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#003300",border:"1px solid #00ff41",color:"#00ff41"}}>{cmdLoading?"AGUARDE...":"LIGAR"}</button>
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"stop")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#330000",border:"1px solid #ff4444",color:"#ff4444"}}>{cmdLoading?"AGUARDE...":"DESLIGAR"}</button>
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"auto")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#1a1a00",border:"1px solid #ffd700",color:"#ffd700"}}>{cmdLoading?"AGUARDE...":"AUTO"}</button>
