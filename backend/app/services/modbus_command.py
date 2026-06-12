@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 import time
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
@@ -49,7 +49,7 @@ def _enviar_dse(ip, slave_id, action):
     if action not in DSE_SCF:
         raise ComandoError(f"Acao '{action}' nao reconhecida para DSE.")
     if action == "start":
-        _escrever_dse_key(ip, slave_id, "auto")
+        _escrever_dse_key(ip, slave_id, "manual")
         time.sleep(1)
         _escrever_dse_key(ip, slave_id, "start")
         return
