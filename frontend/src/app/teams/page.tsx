@@ -6,13 +6,13 @@ import { Plus, RefreshCw, X, Users, UserPlus, Trash2, Pencil, Mail, Phone, Badge
 import clsx from "clsx";
 
 const ROLE_LABEL: Record<string, string> = {
-  admin: "Administrador", manager: "Gestor", technician: "Tecnico",
+  ADMIN: "Administrador", admin: "Administrador", MANAGER: "Gestor", manager: "Gestor", TECHNICIAN: "Tecnico", technician: "Tecnico", ENGINEER: "Engenheiro", engineer: "Engenheiro", OPERATOR: "Operador", operator: "Operador",
   operator: "Operador", viewer: "Visualizador",
 };
 
 const ROLE_BADGE: Record<string, string> = {
-  admin: "bg-red-100 text-red-700", manager: "bg-purple-100 text-purple-700",
-  technician: "bg-blue-100 text-blue-700", operator: "bg-green-100 text-green-700",
+  ADMIN: "bg-red-100 text-red-700", admin: "bg-red-100 text-red-700", MANAGER: "bg-purple-100 text-purple-700", manager: "bg-purple-100 text-purple-700",
+  TECHNICIAN: "bg-blue-100 text-blue-700", technician: "bg-blue-100 text-blue-700", ENGINEER: "bg-orange-100 text-orange-700", engineer: "bg-orange-100 text-orange-700", OPERATOR: "bg-green-100 text-green-700", operator: "bg-green-100 text-green-700",
   viewer: "bg-slate-100 text-slate-600",
 };
 
