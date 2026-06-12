@@ -220,3 +220,27 @@ async def simulate_readings(
     await r_client.publish(f"telemetry:{asset_id}", json.dumps(payload))
     await r_client.aclose()
     return {"simulated": len(readings), "readings": payload["readings"]}
+
+# ---------------------------------------------------------------------------
+# Registro de URL do coletor local
+# ---------------------------------------------------------------------------
+_coletor_url: dict = {"url": None}
+
+@router.post("/coletor/register")
+async def register_coletor(body: dict, _: User = Depends(get_current_user)):
+    """Coletor local registra sua URL publica (cloudflared tunnel)."""
+    url = body.get("url")
+    secret = body.get("secret")
+    if secret != "sgm-trensurb-2026":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not url:
+        raise HTTPException(status_code=400, detail="url obrigatorio")
+    _coletor_url["url"] = url
+    import structlog
+    structlog.get_logger().info("Coletor registrado", url=url)
+    return {"ok": True, "url": url}
+
+@router.get("/coletor/url")
+async def get_coletor_url(_: User = Depends(get_current_user)):
+    """Retorna a URL atual do coletor."""
+    return {"url": _coletor_url.get("url")}

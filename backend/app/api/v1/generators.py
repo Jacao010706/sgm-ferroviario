@@ -23,7 +23,7 @@ class ComandoResponse(BaseModel):
 
 # Mapeamento asset_id -> (tag, tipo, ip_coletor)
 # O coletor roda na rede interna da Trensurb em 10.80.0.100:8888
-COLETOR_URL = "https://tap-venues-corporate-suitable.trycloudflare.com/command"
+COLETOR_URL = None
 COLETOR_SECRET = "sgm-trensurb-2026"
 
 GERADORES_CONFIG = {
@@ -76,9 +76,13 @@ async def comando_gerador(
 
     log.info(f"Comando '{body.action}' por {current_user.email} -> {tag} [{tipo}]")
 
+    from app.api.v1.iot import _coletor_url
+    coletor_url = _coletor_url.get("url")
+    if not coletor_url:
+        raise HTTPException(status_code=503, detail="Coletor offline.")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
-            r = await client.post(COLETOR_URL, json={
+            r = await client.post(coletor_url + "/command", json={
                 "secret": COLETOR_SECRET,
                 "tag": tag,
                 "action": body.action,

@@ -413,6 +413,43 @@ def iniciar_servidor_http():
     server = HTTPServer(("0.0.0.0", 8888), CommandHandler)
     log.info("Servidor HTTP de comandos iniciado em 0.0.0.0:8888")
     server.serve_forever()
+
+import subprocess as _subprocess
+import re as _re
+
+def iniciar_tunnel_e_registrar(token, api_base):
+    try:
+        proc = _subprocess.Popen(
+            ['cloudflared.exe', 'tunnel', '--url', 'http://localhost:8888'],
+            stdout=_subprocess.PIPE, stderr=_subprocess.PIPE
+        )
+        import time as _time
+        url = None
+        for _ in range(30):
+            line = proc.stderr.readline().decode('utf-8', errors='ignore')
+            m = _re.search(r'https://[a-z0-9-]+\.trycloudflare\.com', line)
+            if m:
+                url = m.group(0)
+                break
+            _time.sleep(1)
+        if url:
+            try:
+                r = _requests.post(
+                    api_base + '/iot/coletor/register',
+                    json={'url': url, 'secret': 'sgm-trensurb-2026'},
+                    headers={'Authorization': 'Bearer ' + token},
+                    timeout=10
+                )
+                log.info(f'Tunnel registrado: {url} status={r.status_code}')
+            except Exception as e:
+                log.error(f'Erro ao registrar tunnel: {e}')
+        else:
+            log.warning('Nao foi possivel obter URL do tunnel')
+        return proc
+    except Exception as e:
+        log.error(f'Erro ao iniciar cloudflared: {e}')
+        return None
+
 def main():
     log.info("=== Coletor Modbus SGM Ferroviario iniciado ===")
     t = threading.Thread(target=iniciar_servidor_http, daemon=True)
@@ -420,11 +457,14 @@ def main():
     token = None
     token_ciclos = 0
 
+    _tunnel_proc = None
     while True:
         # Renova token a cada 100 ciclos (~1h40min) ou na primeira vez
         if token is None or token_ciclos >= 100:
             token = obter_token()
             token_ciclos = 0
+            if _tunnel_proc is None and token:
+                _tunnel_proc = iniciar_tunnel_e_registrar(token, API_BASE)
             if token is None:
                 log.error("Sem token - aguardando 30s para tentar novamente")
                 time.sleep(30)
