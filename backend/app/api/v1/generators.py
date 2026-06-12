@@ -23,7 +23,7 @@ class ComandoResponse(BaseModel):
 
 # Mapeamento asset_id -> (tag, tipo, ip_coletor)
 # O coletor roda na rede interna da Trensurb em 10.80.0.100:8888
-COLETOR_URL = "http://10.3.10.193:8888/command"
+COLETOR_URL = "https://tap-venues-corporate-suitable.trycloudflare.com/command"
 COLETOR_SECRET = "sgm-trensurb-2026"
 
 GERADORES_CONFIG = {
