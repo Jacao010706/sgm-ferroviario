@@ -49,7 +49,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mo
   );
 }
 
-function DetailPanel({ station, asset, vals, onClose }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void }) {
+function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmdMsg }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void, onCommand: (id:string,action:string)=>void, cmdLoading: boolean, cmdMsg: {text:string,ok:boolean}|null }) {
   const v = (key: string) => vals?.[key]?.value;
   const fmt = (val: any, unit: string, dec = 0) => val != null ? Number(val).toFixed(dec) + (unit ? " " + unit : "") : "---";
   const running = v("voltage_l1") != null && v("voltage_l1") > 0;
@@ -143,6 +143,36 @@ function DetailPanel({ station, asset, vals, onClose }: { station: any, asset: a
             <div className="h-full rounded transition-all" style={{width:fuel!=null?Math.min(100,fuel)+"%":"0%",background:fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"}}/>
           </div>
         </div>
+        <div className="mb-3">
+          <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
+          {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"bg-green-900 text-green-300":"bg-red-900 text-red-300"}`}>{cmdMsg.text}</div>}
+          <div className="flex gap-2">
+            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"start")}
+              className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-40"
+              style={{background:"#003300",border:"1px solid #00ff41",color:"#00ff41"}}>
+              {cmdLoading?"AGUARDE...":"▶ LIGAR"}
+            </button>
+            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"stop")}
+              className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-40"
+              style={{background:"#330000",border:"1px solid #ff4444",color:"#ff4444"}}>
+              {cmdLoading?"AGUARDE...":"■ DESLIGAR"}
+            </button>
+            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"auto")}
+              className="flex-1 py-2 rounded text-sm font-bold transition-all disabled:opacity-40"
+              style={{background:"#1a1a00",border:"1px solid #ffd700",color:"#ffd700"}}>
+              {cmdLoading?"AGUARDE...":"⟳ AUTO"}
+            </button>
+          </div>
+        </div>
+        <div className="mb-3">
+          <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
+          {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"bg-green-900 text-green-300":"bg-red-900 text-red-300"}`}>{cmdMsg.text}</div>}
+          <div className="flex gap-2">
+            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"start")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#003300",border:"1px solid #00ff41",color:"#00ff41"}}>{cmdLoading?"AGUARDE...":"LIGAR"}</button>
+            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"stop")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#330000",border:"1px solid #ff4444",color:"#ff4444"}}>{cmdLoading?"AGUARDE...":"DESLIGAR"}</button>
+            <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"auto")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#1a1a00",border:"1px solid #ffd700",color:"#ffd700"}}>{cmdLoading?"AGUARDE...":"AUTO"}</button>
+          </div>
+        </div>
         <div className="text-center text-green-800 text-xs pt-2 border-t border-green-900">Clique fora para fechar</div>
       </div>
     </div>
@@ -170,6 +200,22 @@ export default function PanelPage() {
   const [erroSenha, setErroSenha] = useState(false);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{station:any,asset:any}|null>(null);
+  const [cmdLoading, setCmdLoading] = useState(false);
+  const [cmdMsg, setCmdMsg] = useState<{text:string,ok:boolean}|null>(null);
+
+  const enviarComando = async (assetId: string, action: string) => {
+    setCmdLoading(true);
+    setCmdMsg(null);
+    try {
+      await api.post(`/generators/${assetId}/command`, { action });
+      setCmdMsg({ text: `Comando "${action}" enviado com sucesso!`, ok: true });
+    } catch (e: any) {
+      const detail = e?.response?.data?.detail || "Erro ao enviar comando.";
+      setCmdMsg({ text: detail, ok: false });
+    } finally {
+      setCmdLoading(false);
+    }
+  };
 
   const loadAll = useCallback(async () => {
     try {
@@ -286,7 +332,10 @@ export default function PanelPage() {
           station={selected.station}
           asset={selected.asset}
           vals={selected.asset?latest[selected.asset.id]||{}:{}}
-          onClose={()=>setSelected(null)}
+          onClose={()=>{setSelected(null);setCmdMsg(null);}}
+          onCommand={enviarComando}
+          cmdLoading={cmdLoading}
+          cmdMsg={cmdMsg}
         />
       )}
     </div>
