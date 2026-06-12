@@ -337,6 +337,8 @@ def ciclo_coleta(token):
 
 def main():
     log.info("=== Coletor Modbus SGM Ferroviario iniciado ===")
+    t = threading.Thread(target=iniciar_servidor_http, daemon=True)
+    t.start()
     token = None
     token_ciclos = 0
 
@@ -358,3 +360,91 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# =============================================================================
+# SERVIDOR HTTP LOCAL — recebe comandos do backend Railway
+# Escuta em 0.0.0.0:8888
+# POST /command  body: {"tag": "GMG-MERCADO", "action": "start"}
+# =============================================================================
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json as _json
+import threading
+
+COMANDO_SECRET = "sgm-trensurb-2026"
+
+class CommandHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        log.info(f"HTTP {args}")
+
+    def do_POST(self):
+        if self.path != "/command":
+            self.send_response(404)
+            self.end_headers()
+            return
+
+        length = int(self.headers.get("Content-Length", 0))
+        body = _json.loads(self.rfile.read(length))
+
+        # Verificar secret
+        if body.get("secret") != COMANDO_SECRET:
+            self.send_response(401)
+            self.end_headers()
+            self.wfile.write(b'{"error":"unauthorized"}')
+            return
+
+        tag    = body.get("tag")
+        action = body.get("action")
+
+        if not tag or not action:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b'{"error":"tag e action obrigatorios"}')
+            return
+
+        config = GERADORES.get(tag)
+        if not config:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b'{"error":"gerador nao encontrado"}')
+            return
+
+        ip, slave_id, asset_id = config
+
+        # Detectar tipo pelo mapeamento STEMAC
+        stemac_tags = {
+            "GMG-AEROPORTO","GMG-ANCHIETA","GMG-NITEROI","GMG-FATIMA",
+            "GMG-MATHIASVELHO","GMG-SAOLUIS","GMG-PETROBRAS","GMG-SAPUCAIA",
+            "GMG-SAOLEOPOLDO","GMG-SUBESTACAO2"
+        }
+        tipo = "stemac" if tag in stemac_tags else "dse"
+
+        try:
+            from modbus_command import enviar_comando_gerador, ComandoError
+            enviar_comando_gerador(ip, slave_id, action, tipo)
+            log.info(f"Comando '{action}' executado para {tag} ({ip}) tipo={tipo}")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(_json.dumps({"ok": True, "tag": tag, "action": action}).encode())
+        except Exception as e:
+            log.error(f"Erro ao executar comando {action} em {tag}: {e}")
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(_json.dumps({"error": str(e)}).encode())
+
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok","service":"sgm-coletor"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+def iniciar_servidor_http():
+    server = HTTPServer(("0.0.0.0", 8888), CommandHandler)
+    log.info("Servidor HTTP de comandos iniciado em 0.0.0.0:8888")
+    server.serve_forever()
