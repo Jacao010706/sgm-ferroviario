@@ -198,8 +198,8 @@ export default function PanelPage() {
   useEffect(() => { loadAll(); }, [loadAll]);
   useEffect(() => { const i = setInterval(loadAll, 60000); return () => clearInterval(i); }, [loadAll]);
 
-  const getAssetByCode = (code: string) =>
-    assets.find(a => a.tag?.includes(code) || a.name?.toLowerCase().includes(STATIONS.find(s=>s.code===code)?.name.toLowerCase()||""));
+  const CODE_TO_TAG: Record<string,string> = { MR:"GMG-MERCADO",RD:"GMG-RODOVIARIA",SP:"GMG-SAOPEDRO",FR:"GMG-FARRAPOS",AP:"GMG-AEROPORTO",AN:"GMG-ANCHIETA",NT:"GMG-NITEROI",FT:"GMG-FATIMA",CN:"GMG-CANOAS",MV:"GMG-MATHIASVELHO",SL:"GMG-SAOLEOPOLDO",PB:"GMG-PETROBRAS",ES:"GMG-ESTEIO",LP:"GMG-LUIZPASTEUR",SC:"GMG-SAPUCAIA",UN:"GMG-UNISINOS",SO:"GMG-RIOSINOS",RS:"GMG-RIOSINOS",SF:"GMG-SANTOAFONSO",IN:"GMG-INDUSTRIAL",FN:"GMG-FENAC",NH:"GMG-NOVOHAMBURGO",SUB:"GMG-SUBESTACAO2",B1:"GMG-BACIA1",B2:"GMG-BACIA2" };
+  const getAssetByCode = (code: string) => assets.find(a => a.tag === CODE_TO_TAG[code]);
   const getVal = (assetId: string, sensor: string) => latest[assetId]?.[sensor]?.value;
   const row1 = STATIONS.slice(0,12);
   const row2 = STATIONS.slice(12,25);
