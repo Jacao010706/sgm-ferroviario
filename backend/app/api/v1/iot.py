@@ -149,9 +149,11 @@ async def post_asset_readings(
         ("grid_voltage_l1", ReadingType.VOLTAGE, "V", "grid_voltage_l1"),
         ("grid_voltage_l2", ReadingType.VOLTAGE, "V", "grid_voltage_l2"),
         ("grid_voltage_l3", ReadingType.VOLTAGE, "V", "grid_voltage_l3"),
+        ("grid_voltage_l1", ReadingType.VOLTAGE, "V", "grid_voltage_l1"),
+        ("grid_freq",     ReadingType.FREQUENCY, "Hz", "grid_frequency"),
     ]
     saved = 0
-    elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3"}
+    elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3","grid_voltage_l1","grid_voltage_l2","grid_voltage_l3"}
     for field, rtype, unit, sensor_id in mapping:
         val = body.get(field)
         if val is None:
