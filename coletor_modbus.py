@@ -434,7 +434,7 @@ def iniciar_tunnel_e_registrar(token, api_base):
             _time.sleep(1)
         if url:
             try:
-                r = _requests.post(
+                r = requests.post(
                     api_base + '/iot/coletor/register',
                     json={'url': url, 'secret': 'sgm-trensurb-2026'},
                     headers={'Authorization': 'Bearer ' + token},
