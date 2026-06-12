@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
@@ -130,7 +130,7 @@ function DetailPanel({ station, asset, vals, onClose }: { station: any, asset: a
             <div className="text-xs text-green-600 mb-1">MEDICOES</div>
             <Row label="Frequencia" val={fmt(v("frequency"),"Hz")} />
             <Row label="Temperatura" val={fmt(v("temperature"),"C",0)} color={temp>80?"#ff4444":"#00ff41"} />
-            <Row label="Bateria" val={fmt(v("battery_voltage"),"V")} />
+            <Row label="Bateria" val={fmt(v("battery"),"V")} />
             <Row label="Horas" val={fmt(v("runtime_hours"),"h",0)} />
           </div>
         </div>
