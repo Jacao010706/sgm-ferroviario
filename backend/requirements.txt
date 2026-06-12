@@ -9,20 +9,20 @@ asyncpg==0.29.0
 alembic==1.13.1
 # Cache
 redis[hiredis]==5.0.3
-# Autenticação
+# AutenticaÃ§Ã£o
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==3.2.2
-# Validação
+# ValidaÃ§Ã£o
 pydantic==2.7.0
 pydantic-settings==2.2.1
 email-validator==2.1.1
 # HTTP client (ERP connectors)
 httpx==0.27.0
-# Relatórios
+# RelatÃ³rios
 openpyxl==3.1.2
 jinja2==3.1.3
-# Utilitários
+# UtilitÃ¡rios
 python-dotenv==1.0.1
 arrow==1.3.0
 structlog==24.1.0
@@ -33,3 +33,6 @@ aiomqtt==1.2.1
 # Filas (cliente leve)
 celery==5.3.6
 cloudinary>=1.36.0
+
+# Modbus TCP
+pymodbus==3.6.9
