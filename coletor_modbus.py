@@ -5,6 +5,9 @@ Executa a cada 60 segundos.
 """
 
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json as _json
 import requests
 import logging
 from pymodbus.client import ModbusTcpClient
@@ -335,43 +338,6 @@ def ciclo_coleta(token):
     log.info(f"Ciclo concluido: {ok} OK, {falha} falhas")
 
 
-def main():
-    log.info("=== Coletor Modbus SGM Ferroviario iniciado ===")
-    t = threading.Thread(target=iniciar_servidor_http, daemon=True)
-    t.start()
-    token = None
-    token_ciclos = 0
-
-    while True:
-        # Renova token a cada 100 ciclos (~1h40min) ou na primeira vez
-        if token is None or token_ciclos >= 100:
-            token = obter_token()
-            token_ciclos = 0
-            if token is None:
-                log.error("Sem token - aguardando 30s para tentar novamente")
-                time.sleep(30)
-                continue
-
-        ciclo_coleta(token)
-        token_ciclos += 1
-        log.info(f"Aguardando {INTERVALO_SEGUNDOS}s ate proximo ciclo...")
-        time.sleep(INTERVALO_SEGUNDOS)
-
-
-if __name__ == "__main__":
-    main()
-
-# =============================================================================
-# SERVIDOR HTTP LOCAL — recebe comandos do backend Railway
-# Escuta em 0.0.0.0:8888
-# POST /command  body: {"tag": "GMG-MERCADO", "action": "start"}
-# =============================================================================
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import json as _json
-import threading
-
-COMANDO_SECRET = "sgm-trensurb-2026"
-
 class CommandHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         log.info(f"HTTP {args}")
@@ -443,8 +409,41 @@ class CommandHandler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
 
-
 def iniciar_servidor_http():
     server = HTTPServer(("0.0.0.0", 8888), CommandHandler)
     log.info("Servidor HTTP de comandos iniciado em 0.0.0.0:8888")
     server.serve_forever()
+def main():
+    log.info("=== Coletor Modbus SGM Ferroviario iniciado ===")
+    t = threading.Thread(target=iniciar_servidor_http, daemon=True)
+    t.start()
+    token = None
+    token_ciclos = 0
+
+    while True:
+        # Renova token a cada 100 ciclos (~1h40min) ou na primeira vez
+        if token is None or token_ciclos >= 100:
+            token = obter_token()
+            token_ciclos = 0
+            if token is None:
+                log.error("Sem token - aguardando 30s para tentar novamente")
+                time.sleep(30)
+                continue
+
+        ciclo_coleta(token)
+        token_ciclos += 1
+        log.info(f"Aguardando {INTERVALO_SEGUNDOS}s ate proximo ciclo...")
+        time.sleep(INTERVALO_SEGUNDOS)
+
+
+if __name__ == "__main__":
+    main()
+
+# =============================================================================
+# SERVIDOR HTTP LOCAL — recebe comandos do backend Railway
+# Escuta em 0.0.0.0:8888
+# POST /command  body: {"tag": "GMG-MERCADO", "action": "start"}
+# =============================================================================
+
+COMANDO_SECRET = "sgm-trensurb-2026"
+
