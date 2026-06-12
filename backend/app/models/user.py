@@ -8,11 +8,12 @@ from app.core.database import Base
 
 
 class UserRole(str, enum.Enum):
-    ADMIN = "admin"
-    MANAGER = "manager"        # Gestor de manutenção
-    TECHNICIAN = "technician"  # Técnico de campo
-    OPERATOR = "operator"      # Operador SCADA
-    VIEWER = "viewer"
+    ADMIN = "ADMIN"
+    MANAGER = "MANAGER"
+    TECHNICIAN = "TECHNICIAN"
+    ENGINEER = "ENGINEER"
+    OPERATOR = "OPERATOR"
+    VIEWER = "VIEWER"
 
 
 class User(Base):
