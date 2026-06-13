@@ -286,7 +286,7 @@ export default function PanelPage() {
                   style={{border:`1px solid ${borderColor}`,background:"#0a0a0a"}}
                   onClick={()=>setSelected({station,asset})}>
                   <div className="flex items-center justify-between px-2 py-1" style={{background:"#0f0f0f",borderBottom:`1px solid ${borderColor}33`}}>
-                    <span className="font-bold" style={{color:borderColor,fontSize:"11px"}}>{station.code}</span>
+                    <span className="font-bold" style={{color:borderColor,fontSize:"14px"}}>{station.code}</span>
                     <span className="text-xs" style={{color:borderColor,fontSize:"9px"}}>{mode===1?"AUTO":mode===0?"MAN":"---"}</span>
                     <div className="w-2 h-2 rounded-full" style={{background:running?"#00ff41":mode!=null?"#ffd700":"#333"}}/>
                   </div>
