@@ -367,6 +367,63 @@ def ler_alarmes_stemac(ip, tag, token, asset_id):
     finally:
         client.close()
 
+
+STEMAC_ALARMS = {
+    (0, 8):  'Baixa Tensao Bateria',
+    (0, 10): 'Sobrecarga no GMG',
+    (1, 0):  'Falha Sensor Temperatura',
+    (1, 1):  'Alta Temperatura Agua',
+    (1, 2):  'Alta Temperatura Agua Critica',
+    (1, 3):  'Baixa Temperatura Agua',
+    (1, 4):  'Pressao Baixa do Oleo',
+    (1, 5):  'Emergencia Acionada',
+    (1, 6):  'Falha na Partida do GMG',
+    (6, 9):  'Nivel Baixo Combustivel',
+    (6, 11): 'Nivel Super Baixo Combustivel',
+    (7, 5):  'Alta Temperatura Mancal',
+    (7, 8):  'Falha Fluxo Agua',
+    (7, 12): 'Nivel Agua Radiador Baixo',
+    (7, 15): 'Sobrevelocidade',
+    (8, 0):  'Alta Temperatura Oleo',
+    (8, 1):  'Pressao Baixa Oleo',
+}
+
+STEMAC_TAGS = {'GMG-AEROPORTO','GMG-ANCHIETA','GMG-NITEROI','GMG-FATIMA','GMG-MATHIASVELHO','GMG-SAOLUIS','GMG-PETROBRAS','GMG-SAPUCAIA','GMG-SAOLEOPOLDO','GMG-SUBESTACAO2'}
+
+def ler_alarmes_stemac(ip, tag, token, asset_id):
+    client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
+    try:
+        if not client.connect():
+            return
+        result = client.read_input_registers(address=0, count=10)
+        if result.isError():
+            return
+        regs = result.registers
+        for (reg_idx, bit), descricao in STEMAC_ALARMS.items():
+            if reg_idx < len(regs) and (regs[reg_idx] & (1 << bit)):
+                titulo = f"{descricao} - {tag}"
+                severity = "high" if any(x in descricao for x in ["Pressao","Emergencia","Sobrevelocidade","Critica"]) else "medium"
+                payload = {
+                    "title": titulo,
+                    "description": f"Alarme Modbus ST2160: {descricao}",
+                    "asset_id": asset_id,
+                    "severity": severity,
+                    "source": "modbus_alarm",
+                    "metric_name": "alarm",
+                    "metric_value": 1,
+                    "threshold_value": 0,
+                }
+                try:
+                    headers = {"Authorization": f"Bearer {token}"}
+                    requests.post(f"{API_BASE}/alerts/", json=payload, headers=headers, timeout=5)
+                    log.info(f"{tag}: alarme STEMAC - {descricao}")
+                except Exception as e:
+                    log.error(f"{tag}: erro alarme STEMAC - {e}")
+    except Exception as e:
+        log.error(f"{tag}: erro ler alarmes STEMAC - {e}")
+    finally:
+        client.close()
+
 def ciclo_coleta(token):
     """Executa um ciclo completo de coleta para todos os geradores."""
     ok = 0
