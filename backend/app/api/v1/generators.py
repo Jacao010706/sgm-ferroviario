@@ -92,7 +92,7 @@ async def comando_gerador(
         except Exception:
             pass
     if not coletor_url:
-        raise HTTPException(status_code=503, detail="Coletor offline. Aguarde o coletor iniciar.")
+        raise HTTPException(status_code=503, detail="Coletor offline. Reinicie o coletor_modbus.py na maquina da Trensurb para reconectar automaticamente.")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(coletor_url + "/command", json={
