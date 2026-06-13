@@ -110,9 +110,9 @@ REG_STEMAC = {
     "nivel_tanque":  61,   # % (direto)
     "bateria":       58,   # V bateria (fator 0.1)
     "horas_funcio":  56,   # horas (direto)
-    "tensao_l1":     0,    # gerador desligado
-    "tensao_l2":     0,
-    "tensao_l3":     0,
+    "tensao_l1":     74,   # V gerador fase-neutro
+    "tensao_l2":     75,
+    "tensao_l3":     76,
     "corrente_l1":   0,
     "corrente_l2":   0,
     "corrente_l3":   0,
@@ -214,7 +214,7 @@ def ler_gerador(ip, slave_id, tag):
                 return regs[idx]
             return 0
 
-        f1 = 0.0 if is_stemac else 0.1
+        f1 = 1.0 if is_stemac else 0.1
         fv = 1.0 if is_stemac else 0.1
         ff = 0.01 if is_stemac else 0.1
 
