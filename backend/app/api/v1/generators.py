@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 router = APIRouter(prefix="/generators", tags=["generators"])
 
 class ComandoRequest(BaseModel):
-    action: Literal["start", "stop", "auto"]
+    action: Literal["start", "stop", "auto", "manual"]
 
 class ComandoResponse(BaseModel):
     success: bool
