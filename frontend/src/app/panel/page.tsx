@@ -301,7 +301,7 @@ export default function PanelPage() {
                     <div className="flex justify-between">
                       <span style={{color:"#00bfff",fontSize:"13px",fontWeight:"bold"}}>{gridV?Math.round(Number(gridV))+"V":"--"}</span>
                       <span style={{color:temp>80?"#ff4444":"#aaa",fontSize:"13px",fontWeight:"bold"}}>{temp?Math.round(Number(temp))+"C":"--"}</span>
-                      <span style={{color:fuelLow?"#ff4444":fuel>50?"#00aa00":"#ffd700",fontSize:"13px",fontWeight:"bold"}}>{fuel!=null?fuel+"%":"--"}</span>
+                      <span style={{color:fuel<20?"#ff0000":fuel<=50?"#ffd700":"#00aa00",fontSize:"13px",fontWeight:"bold"}}>{fuel!=null?fuel+"%":"--"}</span>
                     </div>
                   </div>
                 </div>
