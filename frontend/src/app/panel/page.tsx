@@ -328,7 +328,7 @@ export default function PanelPage() {
             <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS</span>
           </div>
           <div style={{columnCount:3,columnGap:'16px',padding:'4px 8px'}}>
-            {alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).map((alert,idx)=>(
+            {Array.from(new Map(alerts.map((a)=>[a.title,a])).values()).map((alert,idx)=>(
               <div key={idx} className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
                 <span style={{fontSize:'14px',fontWeight:'bold',color:alert.severity==='high'?'#f87171':'#facc15',whiteSpace:'nowrap'}}>{alert.title}</span>
