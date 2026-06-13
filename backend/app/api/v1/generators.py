@@ -75,6 +75,7 @@ async def comando_gerador(
     tag, tipo = config
 
     log.info(f"Comando '{body.action}' por {current_user.email} -> {tag} [{tipo}]")
+    log.info(f"current_user.role={current_user.role} CARGOS={CARGOS_AUTORIZADOS}")
 
     from app.core.coletor_state import _coletor_url
     coletor_url = _coletor_url.get("url")
