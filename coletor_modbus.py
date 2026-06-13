@@ -300,6 +300,73 @@ def criar_alerta_combustivel(asset_id, tag, nivel, token):
     except Exception as e:
         log.error(f"{tag}: erro ao criar alerta - {e}")
 
+
+# Mapeamento de alarmes STEMAC ST2160
+# Registradores 3x (FC04) - cada bit representa um alarme
+STEMAC_ALARMS = {
+    # reg_offset (0-based), bit, descricao
+    (0, 8):  'Baixa Tensao Bateria',
+    (0, 10): 'Sobrecarga no GMG',
+    (1, 0):  'Falha Sensor Temperatura',
+    (1, 1):  'Alta Temperatura Agua',
+    (1, 2):  'Alta Temperatura Agua Critica',
+    (1, 3):  'Baixa Temperatura Agua',
+    (1, 4):  'Pressao Baixa do Oleo',
+    (1, 5):  'Emergencia Acionada',
+    (1, 6):  'Falha na Partida do GMG',
+    (1, 7):  'Falha na Parada do GMG',
+    (6, 9):  'Nivel Baixo Combustivel',
+    (6, 10): 'Nivel Baixo Combustivel',
+    (6, 11): 'Nivel Super Baixo Combustivel',
+    (7, 5):  'Alta Temperatura Mancal',
+    (7, 8):  'Falha Fluxo Agua',
+    (7, 12): 'Nivel Agua Radiador Baixo',
+    (7, 15): 'Sobrevelocidade',
+    (8, 0):  'Alta Temperatura Oleo',
+    (8, 1):  'Pressao Baixa Oleo Externo',
+    (8, 2):  'Alta Temperatura Agua Externo',
+}
+
+def ler_alarmes_stemac(ip, tag, token, asset_id):
+    """Le registradores de alarme do STEMAC ST2160 e cria alertas no SGM."""
+    client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
+    try:
+        if not client.connect():
+            return
+        # Ler 10 registradores de alarme (3x0001 a 3x0010) via FC04
+        result = client.read_input_registers(address=0, count=10)
+        if result.isError():
+            return
+        regs = result.registers
+        alarmes_ativos = []
+        for (reg_idx, bit), descricao in STEMAC_ALARMS.items():
+            if reg_idx < len(regs):
+                if regs[reg_idx] & (1 << bit):
+                    alarmes_ativos.append(descricao)
+        if alarmes_ativos:
+            for alarme in alarmes_ativos:
+                titulo = f"{alarme} - {tag}"
+                headers = {"Authorization": f"Bearer {token}"}
+                payload = {
+                    "title": titulo,
+                    "description": f"Alarme detectado via Modbus ST2160: {alarme}",
+                    "asset_id": asset_id,
+                    "severity": "high" if any(x in alarme for x in ["Pressao", "Emergencia", "Sobrevelocidade", "Critica"]) else "medium",
+                    "source": "modbus_alarm",
+                    "metric_name": "alarm",
+                    "metric_value": 1,
+                    "threshold_value": 0,
+                }
+                try:
+                    requests.post(f"{API_BASE}/alerts/", json=payload, headers=headers, timeout=5)
+                    log.info(f"{tag}: alarme STEMAC criado - {alarme}")
+                except Exception as e:
+                    log.error(f"{tag}: erro ao criar alarme STEMAC - {e}")
+    except Exception as e:
+        log.error(f"{tag}: erro ao ler alarmes STEMAC - {e}")
+    finally:
+        client.close()
+
 def ciclo_coleta(token):
     """Executa um ciclo completo de coleta para todos os geradores."""
     ok = 0
@@ -309,6 +376,9 @@ def ciclo_coleta(token):
         if dados:
             if enviar_leitura(asset_id, dados, token):
                 ok += 1
+                # Ler alarmes STEMAC
+                if tag in {"GMG-AEROPORTO","GMG-ANCHIETA","GMG-NITEROI","GMG-FATIMA","GMG-MATHIASVELHO","GMG-SAOLUIS","GMG-PETROBRAS","GMG-SAPUCAIA","GMG-SAOLEOPOLDO","GMG-SUBESTACAO2"}:
+                    ler_alarmes_stemac(ip, tag, token, asset_id)
                 nivel = dados.get("nivel_tanque", 100)
                 if nivel > 0 and nivel < 50 and asset_id not in ALERTAS_ENVIADOS:
                     criar_alerta_combustivel(asset_id, tag, nivel, token)
