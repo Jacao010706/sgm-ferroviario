@@ -327,6 +327,8 @@ STEMAC_ALARMS = {
     (8, 2):  'Alta Temperatura Agua Externo',
 }
 
+_alarmes_ativos_cache = set()
+
 def ler_alarmes_stemac(ip, tag, token, asset_id):
     """Le registradores de alarme do STEMAC ST2160 e cria alertas no SGM."""
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
@@ -352,7 +354,7 @@ def ler_alarmes_stemac(ip, tag, token, asset_id):
                     "description": f"Alarme detectado via Modbus ST2160: {alarme}",
                     "asset_id": asset_id,
                     "severity": "high" if any(x in alarme for x in ["Pressao", "Emergencia", "Sobrevelocidade", "Critica"]) else "medium",
-                    "source": "modbus_alarm",
+                    "source": "iot_sensor",
                     "metric_name": "alarm",
                     "metric_value": 1,
                     "threshold_value": 0,
@@ -390,6 +392,8 @@ STEMAC_ALARMS = {
 
 STEMAC_TAGS = {'GMG-AEROPORTO','GMG-ANCHIETA','GMG-NITEROI','GMG-FATIMA','GMG-MATHIASVELHO','GMG-SAOLUIS','GMG-PETROBRAS','GMG-SAPUCAIA','GMG-SAOLEOPOLDO','GMG-SUBESTACAO2'}
 
+_alarmes_ativos_cache = set()
+
 def ler_alarmes_stemac(ip, tag, token, asset_id):
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
     try:
@@ -408,21 +412,17 @@ def ler_alarmes_stemac(ip, tag, token, asset_id):
                     "description": f"Alarme Modbus ST2160: {descricao}",
                     "asset_id": asset_id,
                     "severity": severity,
-                    "source": "modbus_alarm",
+                    "source": "iot_sensor",
                     "metric_name": "alarm",
                     "metric_value": 1,
                     "threshold_value": 0,
                 }
                 try:
                     headers = {"Authorization": f"Bearer {token}"}
-                    # Verificar se ja existe alarme ativo com este titulo
-                    existing = requests.get(f"{API_BASE}/alerts/", headers=headers, params={"status":"active","limit":100}, timeout=5)
-                    titles = [a.get("title") for a in existing.json()] if existing.status_code == 200 else []
-                    if titulo not in titles:
+                    if titulo not in _alarmes_ativos_cache:
                         requests.post(f"{API_BASE}/alerts/", json=payload, headers=headers, timeout=5)
+                        _alarmes_ativos_cache.add(titulo)
                         log.info(f"{tag}: alarme STEMAC criado - {descricao}")
-                    else:
-                        log.debug(f"{tag}: alarme STEMAC ja existe - {descricao}")
                 except Exception as e:
                     log.error(f"{tag}: erro alarme STEMAC - {e}")
     except Exception as e:
