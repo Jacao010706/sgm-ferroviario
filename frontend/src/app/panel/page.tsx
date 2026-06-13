@@ -317,39 +317,10 @@ export default function PanelPage() {
           </div>
         ))}
       </div>
-      {alerts.length > 0 && (
-        <div className="mx-2 mb-2 rounded border border-red-900" style={{background:"#0a0000",maxHeight:"80px",overflowY:"auto"}}>
-          <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-            <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS ({alerts.length})</span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-0 px-2 py-1">
-            {alerts.filter((a,i,arr)=>arr.findIndex(b=>b.title===a.title)===i).map((alert:any,i:number)=>(
-              <div key={i} className="flex items-center gap-1">
-                <div className={w-1.5 h-1.5 rounded-full \}/>
-                <span className={	ext-xs }>{alert.title}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {alerts.length > 0 && (
-        <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'80px',overflowY:'auto'}}>
-          <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-            <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS ({alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).length})</span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-0 px-2 py-1">
-            {alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).map((alert,i)=>(
-              <div key={i} className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
-                <span className="text-xs" style={{color:alert.severity==='high'?'#f87171':'#facc15'}}>{alert.title}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      
+      
 
+      
       {alerts.length > 0 && (
         <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'80px',overflowY:'auto'}}>
           <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
@@ -357,8 +328,8 @@ export default function PanelPage() {
             <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS</span>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-0 px-2 py-1">
-            {alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).map((alert,i)=>(
-              <div key={i} className="flex items-center gap-1">
+            {alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).map((alert,idx)=>(
+              <div key={idx} className="flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
                 <span className="text-xs" style={{color:alert.severity==='high'?'#f87171':'#facc15'}}>{alert.title}</span>
               </div>
