@@ -151,21 +151,6 @@ REG_CUSTOM = {
     "GMG-SAPUCAIA":     {**REG_STEMAC},
     "GMG-SAOLEOPOLDO":  {**REG_STEMAC},
     "GMG-SUBESTACAO2":  {**REG_STEMAC},
-    "GMG-CANOAS": {
-        "temperatura":   1025,
-        "nivel_tanque":  1027,
-        "bateria":       1028,
-        "frequencia":    1031,
-        "tensao_l1":     1033,
-        "tensao_l2":     1035,
-        "tensao_l3":     1037,
-        "tensao_rede_l1":1067,
-          "tensao_rede_l2":1069,
-          "tensao_rede_l3":1071,
-        "corrente_l1":   1045,
-        "corrente_l2":   1047,
-        "corrente_l3":   1049,
-    }
 }
 
 def ler_gerador(ip, slave_id, tag):
