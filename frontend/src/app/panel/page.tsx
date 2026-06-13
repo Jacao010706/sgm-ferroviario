@@ -327,7 +327,7 @@ export default function PanelPage() {
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
             <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS</span>
           </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gridAutoFlow:'column',gridTemplateRows:'repeat(5,auto)',gap:'2px 16px',padding:'4px 8px'}}>
+          <div style={{columnCount:3,columnGap:'16px',padding:'4px 8px'}}>
             {alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).map((alert,idx)=>(
               <div key={idx} className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
