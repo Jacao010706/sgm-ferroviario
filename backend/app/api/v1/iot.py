@@ -224,7 +224,7 @@ async def simulate_readings(
 # ---------------------------------------------------------------------------
 # Registro de URL do coletor local
 # ---------------------------------------------------------------------------
-_coletor_url: dict = {"url": None}
+from app.core.coletor_state import _coletor_url
 
 @router.post("/coletor/register")
 async def register_coletor(body: dict, _: User = Depends(get_current_user)):

@@ -76,7 +76,7 @@ async def comando_gerador(
 
     log.info(f"Comando '{body.action}' por {current_user.email} -> {tag} [{tipo}]")
 
-    from app.api.v1.iot import _coletor_url
+    from app.core.coletor_state import _coletor_url
     coletor_url = _coletor_url.get("url")
     if not coletor_url:
         raise HTTPException(status_code=503, detail="Coletor offline.")
