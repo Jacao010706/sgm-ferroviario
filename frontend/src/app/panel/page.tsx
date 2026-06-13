@@ -322,16 +322,16 @@ export default function PanelPage() {
 
       
       {alerts.length > 0 && (
-        <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'200px',overflowY:'auto'}}>
+        <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'160px',overflowY:'auto'}}>
           <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
             <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
             <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS</span>
           </div>
-          <div className="flex flex-col gap-1 px-2 py-1">
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gridAutoFlow:'column',gridTemplateRows:'repeat(5,auto)',gap:'2px 16px',padding:'4px 8px'}}>
             {alerts.filter((a,i,arr)=>arr.findIndex((b)=>b.title===a.title)===i).map((alert,idx)=>(
               <div key={idx} className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
-                <span style={{fontSize:'14px',fontWeight:'bold',color:alert.severity==='high'?'#f87171':'#facc15'}}>{alert.title}</span>
+                <span style={{fontSize:'14px',fontWeight:'bold',color:alert.severity==='high'?'#f87171':'#facc15',whiteSpace:'nowrap'}}>{alert.title}</span>
               </div>
             ))}
           </div>
