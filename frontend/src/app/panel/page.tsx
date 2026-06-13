@@ -295,9 +295,9 @@ export default function PanelPage() {
                   </div>
                   <div className="px-1 py-1" style={{borderTop:`1px solid ${borderColor}33`,fontSize:"8px"}}>
                     <div className="flex justify-between">
-                      <span style={{color:"#00bfff"}}>{gridV?Math.round(Number(gridV))+"V":"--"}</span>
-                      <span style={{color:temp>80?"#ff4444":"#aaa"}}>{temp?Math.round(Number(temp))+"C":"--"}</span>
-                      <span style={{color:fuelLow?"#ff4444":fuel>50?"#00aa00":"#ffd700"}}>{fuel!=null?fuel+"%":"--"}</span>
+                      <span style={{color:"#00bfff",fontSize:"13px",fontWeight:"bold"}}>{gridV?Math.round(Number(gridV))+"V":"--"}</span>
+                      <span style={{color:temp>80?"#ff4444":"#aaa",fontSize:"13px",fontWeight:"bold"}}>{temp?Math.round(Number(temp))+"C":"--"}</span>
+                      <span style={{color:fuelLow?"#ff4444":fuel>50?"#00aa00":"#ffd700",fontSize:"13px",fontWeight:"bold"}}>{fuel!=null?fuel+"%":"--"}</span>
                     </div>
                   </div>
                 </div>
