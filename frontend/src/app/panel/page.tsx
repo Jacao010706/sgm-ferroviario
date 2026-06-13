@@ -52,7 +52,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mo
 function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmdMsg }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void, onCommand: (id:string,action:string)=>void, cmdLoading: boolean, cmdMsg: {text:string,ok:boolean}|null }) {
   const v = (key: string) => vals?.[key]?.value;
   const fmt = (val: any, unit: string, dec = 0) => val != null ? Number(val).toFixed(dec) + (unit ? " " + unit : "") : "---";
-  const running = v("voltage_l1") != null && v("voltage_l1") > 0;
+  const running = v("voltage_l1") != null && v("voltage_l1") > 150;
   const mode = v("mode");
   const fuel = v("fuel_level");
   const temp = v("temperature");
