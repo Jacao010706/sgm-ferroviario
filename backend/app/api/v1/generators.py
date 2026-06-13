@@ -78,9 +78,21 @@ async def comando_gerador(
     log.info(f"current_user.role={current_user.role} CARGOS={CARGOS_AUTORIZADOS}")
 
     from app.core.coletor_state import _coletor_url
+    import redis.asyncio as _redis
+    from app.core.config import settings as _settings
     coletor_url = _coletor_url.get("url")
     if not coletor_url:
-        raise HTTPException(status_code=503, detail="Coletor offline.")
+        try:
+            _r = _redis.from_url(_settings.REDIS_URL)
+            _v = await _r.get("sgm:coletor_url")
+            await _r.aclose()
+            if _v:
+                coletor_url = _v.decode() if isinstance(_v, bytes) else _v
+                _coletor_url["url"] = coletor_url
+        except Exception:
+            pass
+    if not coletor_url:
+        raise HTTPException(status_code=503, detail="Coletor offline. Aguarde o coletor iniciar.")
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(coletor_url + "/command", json={

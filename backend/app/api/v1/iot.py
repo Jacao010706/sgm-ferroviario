@@ -228,7 +228,6 @@ from app.core.coletor_state import _coletor_url
 
 @router.post("/coletor/register")
 async def register_coletor(body: dict, _: User = Depends(get_current_user)):
-    """Coletor local registra sua URL publica (cloudflared tunnel)."""
     url = body.get("url")
     secret = body.get("secret")
     if secret != "sgm-trensurb-2026":
@@ -236,11 +235,27 @@ async def register_coletor(body: dict, _: User = Depends(get_current_user)):
     if not url:
         raise HTTPException(status_code=400, detail="url obrigatorio")
     _coletor_url["url"] = url
+    try:
+        r_client = redis.from_url(settings.REDIS_URL)
+        await r_client.set("sgm:coletor_url", url, ex=86400)
+        await r_client.aclose()
+    except Exception as e:
+        pass
     import structlog
     structlog.get_logger().info("Coletor registrado", url=url)
     return {"ok": True, "url": url}
 
 @router.get("/coletor/url")
 async def get_coletor_url(_: User = Depends(get_current_user)):
-    """Retorna a URL atual do coletor."""
-    return {"url": _coletor_url.get("url")}
+    url = _coletor_url.get("url")
+    if not url:
+        try:
+            r_client = redis.from_url(settings.REDIS_URL)
+            url = await r_client.get("sgm:coletor_url")
+            await r_client.aclose()
+            if url:
+                url = url.decode() if isinstance(url, bytes) else url
+                _coletor_url["url"] = url
+        except Exception:
+            pass
+    return {"url": url}
