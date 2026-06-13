@@ -415,8 +415,14 @@ def ler_alarmes_stemac(ip, tag, token, asset_id):
                 }
                 try:
                     headers = {"Authorization": f"Bearer {token}"}
-                    requests.post(f"{API_BASE}/alerts/", json=payload, headers=headers, timeout=5)
-                    log.info(f"{tag}: alarme STEMAC - {descricao}")
+                    # Verificar se ja existe alarme ativo com este titulo
+                    existing = requests.get(f"{API_BASE}/alerts/", headers=headers, params={"status":"active","limit":100}, timeout=5)
+                    titles = [a.get("title") for a in existing.json()] if existing.status_code == 200 else []
+                    if titulo not in titles:
+                        requests.post(f"{API_BASE}/alerts/", json=payload, headers=headers, timeout=5)
+                        log.info(f"{tag}: alarme STEMAC criado - {descricao}")
+                    else:
+                        log.debug(f"{tag}: alarme STEMAC ja existe - {descricao}")
                 except Exception as e:
                     log.error(f"{tag}: erro alarme STEMAC - {e}")
     except Exception as e:
