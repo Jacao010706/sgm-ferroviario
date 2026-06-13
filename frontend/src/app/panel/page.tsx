@@ -3,48 +3,55 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
 function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mode: any, fuelLevel: any, gridVoltage: any, voltageL1: any, running: boolean }) {
-  const color = running ? "#00ff41" : mode === 1 ? "#00ff41" : mode === 0 ? "#ffd700" : "#555";
+  const color = running ? "#4488ff" : mode === 1 ? "#4488ff" : mode === 0 ? "#ffd700" : "#555";
   const fuel = fuelLevel ?? 0;
+  const fuelColor = fuel > 50 ? "#00aa00" : fuel > 20 ? "#ffd700" : "#ff0000";
+  const gridColor = "#00cc44";
   return (
-    <svg viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-      <rect width="200" height="240" fill="#0a0a0a" rx="4"/>
-      <text x="100" y="14" textAnchor="middle" fill="#00bfff" fontSize="7" fontFamily="monospace">REDE</text>
-      <rect x="70" y="17" width="60" height="14" fill="#001a2e" stroke="#00bfff" strokeWidth="1" rx="2"/>
-      <text x="100" y="27" textAnchor="middle" fill="#00bfff" fontSize="7" fontFamily="monospace">{gridVoltage ? gridVoltage+"V" : "---"}</text>
-      <line x1="100" y1="31" x2="100" y2="44" stroke="#00bfff" strokeWidth="1.5"/>
-      <line x1="85" y1="37" x2="115" y2="37" stroke="#00bfff" strokeWidth="1"/>
-      <circle cx="85" cy="37" r="2" fill="#00bfff"/>
-      <circle cx="100" cy="37" r="2" fill="#00bfff"/>
-      <circle cx="115" cy="37" r="2" fill="#00bfff"/>
-      <line x1="100" y1="44" x2="100" y2="60" stroke={color} strokeWidth="1.5"/>
-      <ellipse cx="100" cy="64" rx="16" ry="7" fill="none" stroke={color} strokeWidth="1.2"/>
-      <ellipse cx="100" cy="74" rx="16" ry="7" fill="none" stroke={color} strokeWidth="1.2"/>
-      <line x1="84" y1="64" x2="84" y2="74" stroke={color} strokeWidth="0.8"/>
-      <line x1="116" y1="64" x2="116" y2="74" stroke={color} strokeWidth="0.8"/>
-      <line x1="100" y1="81" x2="100" y2="98" stroke={color} strokeWidth="1.5"/>
-      <rect x="30" y="98" width="140" height="70" fill="#001a00" stroke={color} strokeWidth="1.5" rx="4"/>
-      <rect x="36" y="104" width="55" height="58" fill="#002200" stroke={color} strokeWidth="1" rx="3"/>
-      <text x="63" y="116" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">MOTOR</text>
-      <rect x="40" y="120" width="9" height="18" fill={running?"#004400":"#001a00"} stroke={color} strokeWidth="0.8" rx="1"/>
-      <rect x="53" y="120" width="9" height="18" fill={running?"#004400":"#001a00"} stroke={color} strokeWidth="0.8" rx="1"/>
-      <rect x="66" y="120" width="9" height="18" fill={running?"#004400":"#001a00"} stroke={color} strokeWidth="0.8" rx="1"/>
-      <line x1="36" y1="148" x2="91" y2="148" stroke={color} strokeWidth="0.8"/>
-      <rect x="95" y="104" width="68" height="58" fill="#002200" stroke={color} strokeWidth="1" rx="3"/>
-      <text x="129" y="116" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">ALTERNADOR</text>
-      <ellipse cx="115" cy="136" rx="10" ry="12" fill="none" stroke={color} strokeWidth="1.2"/>
-      <ellipse cx="143" cy="136" rx="10" ry="12" fill="none" stroke={color} strokeWidth="1.2"/>
-      <text x="129" y="152" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">{voltageL1 ? voltageL1+"V" : "0V"}</text>
-      <rect x="155" y="94" width="6" height="12" fill="#333" stroke="#555" strokeWidth="0.8" rx="1"/>
-      {running && <ellipse cx="158" cy="92" rx="4" ry="2" fill="#ff6600" opacity="0.6"/>}
-      <rect x="32" y="175" width="136" height="14" fill="#001a00" stroke={color} strokeWidth="1" rx="2"/>
-      <rect x="33" y="176" width={Math.max(0,Math.min(134,134*fuel/100))} height="12"
-        fill={fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"} rx="1" opacity="0.85"/>
-      <text x="100" y="186" textAnchor="middle" fill="white" fontSize="7" fontFamily="monospace">{fuel}%</text>
-      <circle cx="42" cy="206" r="5" fill={running?"#00ff41":"#333"} stroke={color} strokeWidth="0.8"/>
-      <text x="52" y="209" fill={color} fontSize="7" fontFamily="monospace">{mode===1?"AUTO":mode===0?"MANUAL":"---"}</text>
-      <text x="158" y="209" textAnchor="end" fill={running?"#00ff41":"#666"} fontSize="7" fontFamily="monospace">{running?"OPERANDO":"PARADO"}</text>
-      <line x1="100" y1="168" x2="100" y2="175" stroke={color} strokeWidth="1.5"/>
-      <rect x="1" y="1" width="198" height="238" fill="none" stroke="#1a1a1a" strokeWidth="0.8" rx="4"/>
+    <svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+      <rect width="200" height="280" fill="#0a0a0a" rx="4"/>
+      <line x1="100" y1="8" x2="100" y2="22" stroke={gridColor} strokeWidth="1.5"/>
+      <line x1="80" y1="14" x2="120" y2="14" stroke={gridColor} strokeWidth="1"/>
+      <line x1="80" y1="14" x2="92" y2="22" stroke={gridColor} strokeWidth="1"/>
+      <line x1="120" y1="14" x2="108" y2="22" stroke={gridColor} strokeWidth="1"/>
+      <line x1="86" y1="18" x2="114" y2="18" stroke={gridColor} strokeWidth="0.8"/>
+      <circle cx="80" cy="14" r="2" fill={gridColor}/>
+      <circle cx="100" cy="14" r="2" fill={gridColor}/>
+      <circle cx="120" cy="14" r="2" fill={gridColor}/>
+      <rect x="68" y="22" width="64" height="14" fill="#001a0a" stroke={gridColor} strokeWidth="0.8" rx="2"/>
+      <text x="100" y="31.5" textAnchor="middle" fill={gridColor} fontSize="7" fontFamily="monospace">{gridVoltage ? gridVoltage+"V" : "---"}</text>
+      <line x1="100" y1="36" x2="100" y2="58" stroke={gridColor} strokeWidth="1.5"/>
+      <ellipse cx="100" cy="62" rx="18" ry="8" fill="none" stroke="#aaa" strokeWidth="1.2"/>
+      <ellipse cx="100" cy="74" rx="18" ry="8" fill="none" stroke="#aaa" strokeWidth="1.2"/>
+      <line x1="82" y1="62" x2="82" y2="74" stroke="#aaa" strokeWidth="0.8"/>
+      <line x1="118" y1="62" x2="118" y2="74" stroke="#aaa" strokeWidth="0.8"/>
+      <line x1="100" y1="82" x2="100" y2="100" stroke={color} strokeWidth="1.5"/>
+      <rect x="88" y="100" width="24" height="12" fill="#0a1a3a" stroke={color} strokeWidth="1" rx="2"/>
+      <text x="100" y="108.5" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">DJ</text>
+      <line x1="100" y1="112" x2="100" y2="130" stroke={color} strokeWidth="1.5"/>
+      <rect x="40" y="130" width="120" height="60" fill="#0a1a3a" stroke={color} strokeWidth="1.5" rx="4"/>
+      <rect x="46" y="136" width="50" height="48" fill="#0d2244" stroke={color} strokeWidth="0.8" rx="2"/>
+      <text x="71" y="147" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">MOTOR</text>
+      <rect x="50" y="151" width="8" height="16" fill={running?"#1a3a6a":"#0a1a3a"} stroke={color} strokeWidth="0.6" rx="1"/>
+      <rect x="62" y="151" width="8" height="16" fill={running?"#1a3a6a":"#0a1a3a"} stroke={color} strokeWidth="0.6" rx="1"/>
+      <rect x="74" y="151" width="8" height="16" fill={running?"#1a3a6a":"#0a1a3a"} stroke={color} strokeWidth="0.6" rx="1"/>
+      <rect x="100" y="136" width="54" height="48" fill="#0d2244" stroke={color} strokeWidth="0.8" rx="2"/>
+      <text x="127" y="147" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">GER</text>
+      <ellipse cx="116" cy="163" rx="9" ry="11" fill="none" stroke={color} strokeWidth="1"/>
+      <ellipse cx="138" cy="163" rx="9" ry="11" fill="none" stroke={color} strokeWidth="1"/>
+      <rect x="152" y="125" width="5" height="10" fill="#333" stroke="#555" strokeWidth="0.6" rx="1"/>
+      {running && <ellipse cx="154" cy="124" rx="4" ry="2" fill="#ff6600" opacity="0.5"/>}
+      <rect x="42" y="196" width="116" height="12" fill="#0a1a3a" stroke={color} strokeWidth="0.8" rx="2"/>
+      <rect x="43" y="197" width={Math.max(0,Math.min(114,114*fuel/100))} height="10" fill={fuelColor} rx="1" opacity="0.85"/>
+      <text x="100" y="205" textAnchor="middle" fill="white" fontSize="6" fontFamily="monospace">{fuel}%</text>
+      <circle cx="52" cy="220" r="4" fill={running?"#00ff41":"#333"} stroke={color} strokeWidth="0.6"/>
+      <text x="60" y="223" fill={color} fontSize="7" fontFamily="monospace">{mode===1?"AUTO":mode===0?"MANUAL":"---"}</text>
+      <text x="158" y="223" textAnchor="end" fill={running?"#00ff41":"#666"} fontSize="7" fontFamily="monospace">{running?"OPERANDO":"PARADO"}</text>
+      <line x1="40" y1="228" x2="160" y2="228" stroke="#1a2a3a" strokeWidth="0.8"/>
+      <text x="52" y="238" fill={gridColor} fontSize="8" fontFamily="monospace" fontWeight="bold">{gridVoltage ? gridVoltage+"V" : "--"}</text>
+      <text x="100" y="238" textAnchor="middle" fill="#aaa" fontSize="8" fontFamily="monospace" fontWeight="bold">{voltageL1&&voltageL1>150?voltageL1+"V":"--"}</text>
+      <text x="152" y="238" textAnchor="end" fill={fuelColor} fontSize="8" fontFamily="monospace" fontWeight="bold">{fuel!=null?fuel+"%":"--"}</text>
+      <rect x="1" y="1" width="198" height="278" fill="none" stroke="#1a2a3a" strokeWidth="0.8" rx="4"/>
     </svg>
   );
 }
