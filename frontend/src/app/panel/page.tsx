@@ -90,7 +90,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
             {([["L1","grid_voltage_l1"],["L2","grid_voltage_l2"],["L3","grid_voltage_l3"]] as [string,string][]).map(([l,k]) => (
               <div key={l} className="rounded p-2 text-center" style={{background:"#001a2e",border:"1px solid #00bfff44"}}>
                 <div className="text-blue-400 text-xs">{l}</div>
-                <div className="text-blue-300 font-bold text-sm">{fmt(v(k),"V",0)}</div>
+                <div className="text-blue-300 font-bold text-sm">{running ? fmt(v(k),"V",0) : "0 V"}</div>
               </div>
             ))}
           </div>
@@ -105,7 +105,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
             {([["L1","voltage_l1"],["L2","voltage_l2"],["L3","voltage_l3"]] as [string,string][]).map(([l,k]) => (
               <div key={l} className="rounded p-2 text-center" style={{background:"#001a00",border:`1px solid ${color}44`}}>
                 <div className="text-xs" style={{color}}>{l} Tensao</div>
-                <div className="font-bold text-sm" style={{color}}>{fmt(v(k),"V",0)}</div>
+                <div className="font-bold text-sm" style={{color}}>{running ? fmt(v(k),"V",0) : "0 V"}</div>
               </div>
             ))}
           </div>
@@ -113,7 +113,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
             {([["I1","current_l1"],["I2","current_l2"],["I3","current_l3"]] as [string,string][]).map(([l,k]) => (
               <div key={l} className="rounded p-2 text-center" style={{background:"#001a00",border:`1px solid ${color}44`}}>
                 <div className="text-xs" style={{color}}>{l} Corrente</div>
-                <div className="font-bold text-sm" style={{color}}>{fmt(v(k),"A",0)}</div>
+                <div className="font-bold text-sm" style={{color}}>{running ? fmt(v(k),"A",0) : "0 A"}</div>
               </div>
             ))}
           </div>
