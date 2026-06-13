@@ -323,6 +323,7 @@ def ciclo_coleta(token):
     log.info(f"Ciclo concluido: {ok} OK, {falha} falhas")
 
 
+COMANDO_SECRET = "sgm-trensurb-2026"
 class CommandHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         log.info(f"HTTP {args}")
@@ -470,5 +471,4 @@ if __name__ == "__main__":
 # POST /command  body: {"tag": "GMG-MERCADO", "action": "start"}
 # =============================================================================
 
-COMANDO_SECRET = "sgm-trensurb-2026"
 
