@@ -223,7 +223,7 @@ export default function PanelPage() {
       setLatest(readings);
       setLastUpdate(new Date().toLocaleTimeString("pt-BR"));
       try {
-        const al = await api.get("/alerts/", { params: { status: "active", limit: 20 } });
+        const al = await api.get("/alerts/", { params: { status: "active", limit: 100 } });
         setAlerts(al.data);
       } catch { setAlerts([]); }
     } catch(e) { console.error(e); }
