@@ -47,10 +47,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mo
       <circle cx="52" cy="220" r="4" fill={running?"#00ff41":"#333"} stroke={color} strokeWidth="0.6"/>
       <text x="60" y="223" fill={color} fontSize="7" fontFamily="monospace">{mode===1?"AUTO":mode===0?"MANUAL":"---"}</text>
       <text x="158" y="223" textAnchor="end" fill={running?"#00ff41":"#666"} fontSize="7" fontFamily="monospace">{running?"OPERANDO":"PARADO"}</text>
-      <line x1="40" y1="228" x2="160" y2="228" stroke="#1a2a3a" strokeWidth="0.8"/>
-      <text x="52" y="238" fill={gridColor} fontSize="8" fontFamily="monospace" fontWeight="bold">{gridVoltage ? gridVoltage+"V" : "--"}</text>
-      <text x="100" y="238" textAnchor="middle" fill="#aaa" fontSize="8" fontFamily="monospace" fontWeight="bold">{voltageL1&&voltageL1>150?voltageL1+"V":"--"}</text>
-      <text x="152" y="238" textAnchor="end" fill={fuelColor} fontSize="8" fontFamily="monospace" fontWeight="bold">{fuel!=null?fuel+"%":"--"}</text>
+
       <rect x="1" y="1" width="198" height="278" fill="none" stroke="#1a2a3a" strokeWidth="0.8" rx="4"/>
     </svg>
   );
