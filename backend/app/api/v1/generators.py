@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Literal
 import logging
 import httpx
@@ -60,7 +60,7 @@ CARGOS_AUTORIZADOS = {"TECHNICIAN", "ENGINEER", "ADMIN", "technician", "engineer
 async def comando_gerador(
     asset_id: str,
     body: ComandoRequest,
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     current_user = Depends(get_current_user),
 ):
     if current_user.role not in CARGOS_AUTORIZADOS:
