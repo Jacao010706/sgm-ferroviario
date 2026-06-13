@@ -285,7 +285,7 @@ export default function PanelPage() {
               const temp=assetId?getVal(assetId,"temperature"):undefined;
               const running=voltL1!=null&&voltL1>0;
               const fuelLow=fuel!=null&&fuel<50;
-              const isStemac=STEMAC_CODES.has(station.code); const typeColor=isStemac?"#00bfff":"#ff8c00"; const borderColor=running?typeColor:mode===1?typeColor:mode===0?"#ffd700":"#333";
+              const isStemac=STEMAC_CODES.has(station.code); const typeColor=isStemac?"#00bfff":"#ff8c00"; const borderColor=running?typeColor:mode===0?"#ffd700":typeColor;
               return (
                 <div key={station.code} className="flex flex-col rounded cursor-pointer transition-all hover:brightness-125"
                   style={{border:`1px solid ${borderColor}`,background:"#0a0a0a"}}
