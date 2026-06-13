@@ -228,6 +228,7 @@ export default function PanelPage() {
   useEffect(() => { const i = setInterval(loadAll, 60000); return () => clearInterval(i); }, [loadAll]);
 
   const CODE_TO_TAG: Record<string,string> = { MR:"GMG-MERCADO",RD:"GMG-RODOVIARIA",SP:"GMG-SAOPEDRO",FR:"GMG-FARRAPOS",AP:"GMG-AEROPORTO",AN:"GMG-ANCHIETA",NT:"GMG-NITEROI",FT:"GMG-FATIMA",CN:"GMG-CANOAS",MV:"GMG-MATHIASVELHO",SL:"GMG-SAOLEOPOLDO",PB:"GMG-PETROBRAS",ES:"GMG-ESTEIO",LP:"GMG-LUIZPASTEUR",SC:"GMG-SAPUCAIA",UN:"GMG-UNISINOS",SO:"GMG-RIOSINOS",RS:"GMG-RIOSINOS",SF:"GMG-SANTOAFONSO",IN:"GMG-INDUSTRIAL",FN:"GMG-FENAC",NH:"GMG-NOVOHAMBURGO",SUB:"GMG-SUBESTACAO2",B1:"GMG-BACIA1",B2:"GMG-BACIA2" };
+  const STEMAC_CODES = new Set(["AP","AN","NT","FT","MV","SL","PB","SC","SO","SUB"]);
   const getAssetByCode = (code: string) => assets.find(a => a.tag === CODE_TO_TAG[code]);
   const getVal = (assetId: string, sensor: string) => latest[assetId]?.[sensor]?.value;
   const row1 = STATIONS.slice(0,12);
@@ -284,7 +285,7 @@ export default function PanelPage() {
               const temp=assetId?getVal(assetId,"temperature"):undefined;
               const running=voltL1!=null&&voltL1>0;
               const fuelLow=fuel!=null&&fuel<50;
-              const borderColor=running?"#00ff41":mode===1?"#00ff41":mode===0?"#ffd700":"#333";
+              const isStemac=STEMAC_CODES.has(station.code); const typeColor=isStemac?"#00bfff":"#ff8c00"; const borderColor=running?typeColor:mode===1?typeColor:mode===0?"#ffd700":"#333";
               return (
                 <div key={station.code} className="flex flex-col rounded cursor-pointer transition-all hover:brightness-125"
                   style={{border:`1px solid ${borderColor}`,background:"#0a0a0a"}}
