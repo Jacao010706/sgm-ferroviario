@@ -95,7 +95,7 @@ const running = isRunning != null ? isRunning > 0 : (v("voltage_l1") != null && 
             {([["L1","grid_voltage_l1"],["L2","grid_voltage_l2"],["L3","grid_voltage_l3"]] as [string,string][]).map(([l,k]) => (
               <div key={l} className="rounded p-2 text-center" style={{background:"#001a2e",border:"1px solid #00bfff44"}}>
                 <div className="text-blue-400 text-xs">{l}</div>
-                <div className="text-blue-300 font-bold text-sm">{running ? fmt(v(k),"V",0) : "0 V"}</div>
+                <div className="text-blue-300 font-bold text-sm">{{fmt(v(k),"V",0)}}</div>
               </div>
             ))}
           </div>
