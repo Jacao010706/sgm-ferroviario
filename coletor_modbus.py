@@ -207,7 +207,7 @@ def ler_gerador(ip, slave_id, tag):
 
         dados = {
             "status":        r(reg_map["status"]),
-            "rpm":           r(24) if not is_stemac else 0,
+            "rpm":           (r(24) if r(24) != 65535 else 0) if not is_stemac else 0,
             "tensao_l1":     r(reg_map["tensao_l1"]) * f1,
             "tensao_l2":     r(reg_map["tensao_l2"]) * f1,
             "tensao_l3":     r(reg_map["tensao_l3"]) * f1,
@@ -258,8 +258,6 @@ def enviar_leitura(asset_id, dados, token):
         "rpm":        dados.get("rpm", 0),
         "is_running": 1 if (dados.get("rpm", 0) > 0) else 0,
         "battery_voltage": dados.get("bateria"),
-        "rpm":        dados.get("rpm", 0),
-        "is_running": 1 if dados.get("rpm", 0) > 0 else 0,
     }
     try:
         r = requests.post(
