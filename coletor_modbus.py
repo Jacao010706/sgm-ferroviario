@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 API_BASE = "https://laudable-peace-production-09cd.up.railway.app/api/v1"
 API_EMAIL = "admin2@sgm.com"
 API_PASSWORD = "admin123"
-INTERVALO_SEGUNDOS = 60
+INTERVALO_SEGUNDOS = 15
 MODBUS_PORT = 502
 MODBUS_TIMEOUT = 5
 
