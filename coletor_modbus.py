@@ -86,8 +86,6 @@ REG = {
     "status":        1025,  # bitmask estado DSE
     "rpm":           1030,  # RPM motor (0=parado)
 }
-
-
 def obter_token():
     """Autentica na API e retorna o token de acesso."""
     try:
@@ -207,10 +205,10 @@ def ler_gerador(ip, slave_id, tag):
 
         dados = {
             "status":        r(reg_map["status"]),
-            "rpm":           r(30) if not is_stemac else 0,
-           "tensao_l1":     r(reg_map["tensao_l1"]) * f1 if r(30) > 0 else 0,
-"tensao_l2":     r(reg_map["tensao_l2"]) * f1 if r(30) > 0 else 0,
-"tensao_l3":     r(reg_map["tensao_l3"]) * f1 if r(30) > 0 else 0,
+           "rpm":           r(1030) if not is_stemac else 0,
+"tensao_l1":     r(reg_map["tensao_l1"]) * f1 if r(1030) > 0 else 0,
+"tensao_l2":     r(reg_map["tensao_l2"]) * f1 if r(1030) > 0 else 0,
+"tensao_l3":     r(reg_map["tensao_l3"]) * f1 if r(1030) > 0 else 0,
             "corrente_l1":   r(reg_map["corrente_l1"]) * f1,
             "corrente_l2":   r(reg_map["corrente_l2"]) * f1,
             "corrente_l3":   r(reg_map["corrente_l3"]) * f1,
