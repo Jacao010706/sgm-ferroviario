@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
@@ -48,7 +48,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
         style={{ background: "#080808" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-green-800">
           <div>
-            <div className="text-green-400 font-bold text-base tracking-widest">{station.code} &mdash; {station.name}</div>
+            <div className="text-green-400 font-bold text-base tracking-widest">{station.code} — {station.name}</div>
             <div className="text-green-700 text-xs">{asset?.name || "Gerador"}</div>
           </div>
           <div className="flex items-center gap-3">
