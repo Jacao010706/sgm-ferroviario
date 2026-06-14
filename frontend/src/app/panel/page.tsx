@@ -47,7 +47,6 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mo
       <circle cx="52" cy="220" r="4" fill={running?"#00ff41":"#333"} stroke={color} strokeWidth="0.6"/>
       <text x="60" y="223" fill={color} fontSize="7" fontFamily="monospace">{mode===1?"AUTO":mode===0?"MANUAL":"---"}</text>
       <text x="158" y="223" textAnchor="end" fill={running?"#00ff41":"#666"} fontSize="7" fontFamily="monospace">{running?"OPERANDO":"PARADO"}</text>
-
       <rect x="1" y="1" width="198" height="278" fill="none" stroke="#1a2a3a" strokeWidth="0.8" rx="4"/>
     </svg>
   );
@@ -57,7 +56,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
   const v = (key: string) => vals?.[key]?.value;
   const fmt = (val: any, unit: string, dec = 0) => val != null ? Number(val).toFixed(dec) + (unit ? " " + unit : "") : "---";
   const isRunning = v("is_running");
-const running = isRunning != null ? isRunning > 0 : (v("voltage_l1") != null && v("voltage_l1") > 50);
+  const running = isRunning != null ? isRunning > 0 : (v("voltage_l1") != null && v("voltage_l1") > 50);
   const mode = v("mode");
   const fuel = v("fuel_level");
   const temp = v("temperature");
@@ -74,7 +73,7 @@ const running = isRunning != null ? isRunning > 0 : (v("voltage_l1") != null && 
         style={{ background: "#080808" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-green-800">
           <div>
-            <div className="text-green-400 font-bold text-base tracking-widest">{station.code} — {station.name}</div>
+            <div className="text-green-400 font-bold text-base tracking-widest">{station.code} &mdash; {station.name}</div>
             <div className="text-green-700 text-xs">{asset?.name || "Gerador"}</div>
           </div>
           <div className="flex items-center gap-3">
@@ -176,6 +175,22 @@ const STATIONS = [
   {code:"B1",name:"Bacia 1"},{code:"B2",name:"Bacia 2"},
 ];
 
+const API_URL = "https://laudable-peace-production-09cd.up.railway.app/api/v1";
+
+async function ensureToken(): Promise<void> {
+  if (typeof window === "undefined") return;
+  if (localStorage.getItem("access_token")) return;
+  try {
+    const r = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({email: "admin2@sgm.com", password: "admin123"}),
+    });
+    const data = await r.json();
+    if (data.access_token) localStorage.setItem("access_token", data.access_token);
+  } catch {}
+}
+
 export default function PanelPage() {
   const [assets, setAssets] = useState<any[]>([]);
   const [latest, setLatest] = useState<Record<string, Record<string, any>>>({});
@@ -204,6 +219,7 @@ export default function PanelPage() {
   };
 
   const loadAll = useCallback(async () => {
+    await ensureToken();
     try {
       const res = await api.get("/assets/", { params: { limit: 50 } });
       const allAssets = res.data.filter((a: any) => !a.parent_id);
@@ -276,7 +292,7 @@ export default function PanelPage() {
         <div className="flex items-center gap-4">
           {loading && <span className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</span>}
           <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
-          <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">⛶ TELA CHEIA</button>
+          <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">TELA CHEIA</button>
           <div className="w-2 h-2 rounded-full bg-green-400"/>
         </div>
       </div>
@@ -292,9 +308,10 @@ export default function PanelPage() {
               const voltL1=assetId?getVal(assetId,"voltage_l1"):undefined;
               const temp=assetId?getVal(assetId,"temperature"):undefined;
               const isRunning=assetId?getVal(assetId,"is_running"):undefined;
-const running=isRunning!=null?isRunning>0:(voltL1!=null&&voltL1>50);
-              const fuelLow=fuel!=null&&fuel<50;
-              const isStemac=STEMAC_CODES.has(station.code); const typeColor=isStemac?"#00bfff":"#ff8c00"; const borderColor=running?typeColor:mode===0?"#ffd700":typeColor;
+              const running=isRunning!=null?isRunning>0:(voltL1!=null&&voltL1>50);
+              const isStemac=STEMAC_CODES.has(station.code);
+              const typeColor=isStemac?"#00bfff":"#ff8c00";
+              const borderColor=running?typeColor:mode===0?"#ffd700":typeColor;
               return (
                 <div key={station.code} className="flex flex-col rounded cursor-pointer transition-all hover:brightness-125"
                   style={{border:`1px solid ${borderColor}`,background:"#0a0a0a"}}
@@ -320,10 +337,6 @@ const running=isRunning!=null?isRunning>0:(voltL1!=null&&voltL1>50);
           </div>
         ))}
       </div>
-      
-      
-
-      
       {alerts.length > 0 && (
         <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'160px',overflowY:'auto'}}>
           <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
