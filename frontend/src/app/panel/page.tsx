@@ -1,28 +1,82 @@
-﻿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
-
-const DSE_IMAGE = "data:image/png;base64,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";
 
 function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, battery }: { mode: any, fuelLevel: any, gridVoltage: any, voltageL1: any, running: boolean, temp: any, battery: any }) {
   const color = running ? "#ff3333" : "#4488ff";
   const fuel = fuelLevel ?? 0;
   const fuelColor = fuel > 50 ? "#00aa00" : fuel > 20 ? "#ffd700" : "#ff0000";
+  const gridColor = "#00cc44";
   return (
     <svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <rect width="200" height="280" fill="#0a0a0a" rx="4"/>
-      <image href={DSE_IMAGE} x="29" y="2" width="142" height="210" style={{filter: running ? "hue-rotate(200deg) saturate(2) brightness(1.3)" : "saturate(0.6) brightness(0.7)"}}/>
-      <rect x="1" y="210" width="198" height="1" fill={color} opacity="0.4"/>
-      <rect x="10" y="216" width="180" height="12" fill="#0a1530" stroke={color} strokeWidth="0.8" rx="3"/>
-      <rect x="11" y="217" width={Math.max(0,Math.min(178,178*fuel/100))} height="10" fill={fuelColor} rx="2" opacity="0.9"/>
-      <text x="100" y="227" textAnchor="middle" fill="white" fontSize="7" fontFamily="monospace">{fuel}%</text>
-      <circle cx="20" cy="244" r="5" fill={running?"#00ff41":"#333"} stroke={color} strokeWidth="0.8"/>
-      <text x="30" y="248" fill={color} fontSize="8" fontFamily="monospace">{mode===1?"AUTO":mode===0?"MANUAL":"---"}</text>
-      <text x="190" y="248" textAnchor="end" fill={running?"#00ff41":"#666"} fontSize="8" fontFamily="monospace">{running?"OPERANDO":"PARADO"}</text>
-      <text x="20" y="264" fill="#888" fontSize="7" fontFamily="monospace">{temp ? Math.round(Number(temp))+"C" : "--"}</text>
-      <text x="100" y="264" textAnchor="middle" fill="#00cc44" fontSize="7" fontFamily="monospace">{gridVoltage ? Math.round(Number(gridVoltage))+"V" : "---"}</text>
-      <text x="190" y="264" textAnchor="end" fill="#888" fontSize="7" fontFamily="monospace">{battery ? Number(battery).toFixed(1)+"V" : "--"}</text>
-      <rect x="1" y="1" width="198" height="278" fill="none" stroke={color} strokeWidth="1" rx="4"/>
+
+      <line x1="100" y1="12" x2="100" y2="2" stroke={gridColor} strokeWidth="2"/>
+      <line x1="72" y1="2" x2="128" y2="2" stroke={gridColor} strokeWidth="1.5"/>
+      <line x1="72" y1="2" x2="86" y2="12" stroke={gridColor} strokeWidth="1.5"/>
+      <line x1="128" y1="2" x2="114" y2="12" stroke={gridColor} strokeWidth="1.5"/>
+      <line x1="79" y1="7" x2="121" y2="7" stroke={gridColor} strokeWidth="1"/>
+      <circle cx="72" cy="2" r="3" fill={gridColor}/>
+      <circle cx="100" cy="2" r="3" fill={gridColor}/>
+      <circle cx="128" cy="2" r="3" fill={gridColor}/>
+      <rect x="58" y="12" width="84" height="16" fill="#001a0a" stroke={gridColor} strokeWidth="1" rx="3"/>
+      <text x="100" y="23" textAnchor="middle" fill={gridColor} fontSize="8" fontFamily="monospace">{gridVoltage ? Math.round(Number(gridVoltage))+"V" : "---"}</text>
+
+      <line x1="100" y1="28" x2="100" y2="48" stroke={gridColor} strokeWidth="2"/>
+
+      <ellipse cx="100" cy="54" rx="24" ry="9" fill="none" stroke="#999" strokeWidth="1.5"/>
+      <ellipse cx="100" cy="67" rx="24" ry="9" fill="none" stroke="#999" strokeWidth="1.5"/>
+      <line x1="76" y1="54" x2="76" y2="67" stroke="#999" strokeWidth="1.2"/>
+      <line x1="124" y1="54" x2="124" y2="67" stroke="#999" strokeWidth="1.2"/>
+
+      <line x1="100" y1="76" x2="100" y2="94" stroke={color} strokeWidth="2"/>
+
+      <rect x="84" y="94" width="32" height="14" fill="#0a1a3a" stroke={color} strokeWidth="1" rx="2"/>
+      <line x1="93" y1="94" x2="93" y2="108" stroke={color} strokeWidth="1"/>
+      <line x1="100" y1="94" x2="100" y2="108" stroke={color} strokeWidth="1"/>
+      <line x1="107" y1="94" x2="107" y2="108" stroke={color} strokeWidth="1"/>
+      <circle cx="93" cy="101" r="3" fill="none" stroke={color} strokeWidth="1"/>
+      <circle cx="100" cy="101" r="3" fill="none" stroke={color} strokeWidth="1"/>
+      <circle cx="107" cy="101" r="3" fill="none" stroke={color} strokeWidth="1"/>
+
+      <line x1="100" y1="108" x2="100" y2="124" stroke={color} strokeWidth="2"/>
+
+      <rect x="10" y="124" width="180" height="96" fill="#0a1530" stroke={color} strokeWidth="1.5" rx="6"/>
+
+      <rect x="16" y="130" width="78" height="84" fill="#0d1f44" stroke={color} strokeWidth="1" rx="4"/>
+      <text x="55" y="143" textAnchor="middle" fill={color} fontSize="7" fontFamily="monospace" fontWeight="bold">MOTOR</text>
+      <rect x="22" y="149" width="14" height="24" fill={running?"#1a3a6a":"#0a1530"} stroke={color} strokeWidth="0.8" rx="2"/>
+      <rect x="40" y="149" width="14" height="24" fill={running?"#1a3a6a":"#0a1530"} stroke={color} strokeWidth="0.8" rx="2"/>
+      <rect x="58" y="149" width="14" height="24" fill={running?"#1a3a6a":"#0a1530"} stroke={color} strokeWidth="0.8" rx="2"/>
+      <rect x="22" y="177" width="60" height="7" fill={running?"#1a3a6a":"#0a1530"} stroke={color} strokeWidth="0.8" rx="1"/>
+      <text x="55" y="197" textAnchor="middle" fill={running?"#00ff41":"#555"} fontSize="7" fontFamily="monospace">{running?"1800 RPM":"0 RPM"}</text>
+      <text x="55" y="207" textAnchor="middle" fill={color} fontSize="6" fontFamily="monospace">DSE7420 MKII</text>
+
+      <rect x="100" y="130" width="84" height="84" fill="#0d1f44" stroke={color} strokeWidth="1" rx="4"/>
+      <text x="142" y="143" textAnchor="middle" fill={color} fontSize="7" fontFamily="monospace" fontWeight="bold">ALTERNADOR</text>
+      <ellipse cx="122" cy="172" rx="13" ry="17" fill="none" stroke={color} strokeWidth="1.2"/>
+      <ellipse cx="142" cy="172" rx="13" ry="17" fill="none" stroke={color} strokeWidth="1.2"/>
+      <ellipse cx="162" cy="172" rx="13" ry="17" fill="none" stroke={color} strokeWidth="1.2"/>
+      <line x1="100" y1="172" x2="108" y2="172" stroke={color} strokeWidth="1"/>
+      <line x1="172" y1="172" x2="180" y2="172" stroke={color} strokeWidth="1"/>
+      <text x="142" y="200" textAnchor="middle" fill={color} fontSize="7" fontFamily="monospace">{running ? (voltageL1 ? Math.round(Number(voltageL1))+"V" : "---") : "0V"}</text>
+      <text x="142" y="210" textAnchor="middle" fill={running?"#00ff41":"#555"} fontSize="6" fontFamily="monospace">{running?"OPER.":"PARADO"}</text>
+
+      <rect x="178" y="118" width="6" height="12" fill="#333" stroke="#555" strokeWidth="0.8" rx="1"/>
+      {running && <ellipse cx="181" cy="117" rx="5" ry="3" fill="#ff6600" opacity="0.7"/>}
+
+      <rect x="10" y="226" width="180" height="12" fill="#0a1530" stroke={color} strokeWidth="0.8" rx="3"/>
+      <rect x="11" y="227" width={Math.max(0,Math.min(178,178*fuel/100))} height="10" fill={fuelColor} rx="2" opacity="0.9"/>
+      <text x="100" y="236" textAnchor="middle" fill="white" fontSize="7" fontFamily="monospace">{fuel}%</text>
+
+      <circle cx="22" cy="252" r="5" fill={running?"#00ff41":"#333"} stroke={color} strokeWidth="0.8"/>
+      <text x="32" y="256" fill={color} fontSize="8" fontFamily="monospace">{mode===1?"AUTO":mode===0?"MANUAL":"---"}</text>
+      <text x="188" y="256" textAnchor="end" fill={running?"#00ff41":"#666"} fontSize="8" fontFamily="monospace">{running?"OPERANDO":"PARADO"}</text>
+
+      <text x="22" y="272" fill="#888" fontSize="7" fontFamily="monospace">{temp ? Math.round(Number(temp))+"C" : "--"}</text>
+      <text x="100" y="272" textAnchor="middle" fill="#888" fontSize="7" fontFamily="monospace">{battery ? Number(battery).toFixed(1)+"V bat" : "--"}</text>
+
+      <rect x="1" y="1" width="198" height="278" fill="none" stroke="#1a2a3a" strokeWidth="0.8" rx="4"/>
     </svg>
   );
 }
@@ -48,7 +102,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
         style={{ background: "#080808" }} onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4 pb-2 border-b border-green-800">
           <div>
-            <div className="text-green-400 font-bold text-base tracking-widest">{station.code} — {station.name}</div>
+            <div className="text-green-400 font-bold text-base tracking-widest">{station.code} &mdash; {station.name}</div>
             <div className="text-green-700 text-xs">{asset?.name || "Gerador"}</div>
           </div>
           <div className="flex items-center gap-3">
@@ -82,7 +136,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
           <div className="text-xs font-bold mb-1 tracking-wider" style={{color}}>GERADOR</div>
           <div className="grid grid-cols-3 gap-2 mb-2">
             {([["L1","voltage_l1"],["L2","voltage_l2"],["L3","voltage_l3"]] as [string,string][]).map(([l,k]) => (
-              <div key={l} className="rounded p-2 text-center" style={{background:"#001a00",border:}}>
+              <div key={l} className="rounded p-2 text-center" style={{background:"#001a00",border:`1px solid ${color}44`}}>
                 <div className="text-xs" style={{color}}>{l} Tensao</div>
                 <div className="font-bold text-sm" style={{color}}>{running ? fmt(v(k),"V",0) : "0 V"}</div>
               </div>
@@ -90,7 +144,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
           </div>
           <div className="grid grid-cols-3 gap-2">
             {([["I1","current_l1"],["I2","current_l2"],["I3","current_l3"]] as [string,string][]).map(([l,k]) => (
-              <div key={l} className="rounded p-2 text-center" style={{background:"#001a00",border:}}>
+              <div key={l} className="rounded p-2 text-center" style={{background:"#001a00",border:`1px solid ${color}44`}}>
                 <div className="text-xs" style={{color}}>{l} Corrente</div>
                 <div className="font-bold text-sm" style={{color}}>{running ? fmt(v(k),"A",0) : "0 A"}</div>
               </div>
@@ -98,14 +152,14 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
           </div>
         </div>
         <div className="mb-3 grid grid-cols-2 gap-2">
-          <div className="rounded p-2" style={{background:"#0a1a00",border:}}>
+          <div className="rounded p-2" style={{background:"#0a1a00",border:`1px solid ${color}44`}}>
             <div className="text-xs text-green-600 mb-1">POTENCIA</div>
             <Row label="kW" val={fmt(v("power_kw"),"kW")} />
             <Row label="kVA" val={fmt(v("power_kva"),"kVA")} />
             <Row label="kVAr" val={fmt(v("power_kvar"),"kVAr")} />
             <Row label="Fator P" val={fmt(v("power_factor"),"",2)} />
           </div>
-          <div className="rounded p-2" style={{background:"#0a1a00",border:}}>
+          <div className="rounded p-2" style={{background:"#0a1a00",border:`1px solid ${color}44`}}>
             <div className="text-xs text-green-600 mb-1">MEDICOES</div>
             <Row label="Frequencia" val={fmt(v("frequency"),"Hz")} />
             <Row label="Temperatura" val={fmt(v("temperature"),"C",0)} color={temp>80?"#ff4444":"#00ff41"} />
@@ -113,7 +167,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
             <Row label="Horas" val={fmt(v("runtime_hours"),"h",0)} />
           </div>
         </div>
-        <div className="mb-3 rounded p-2" style={{background:"#0a1a00",border:}}>
+        <div className="mb-3 rounded p-2" style={{background:"#0a1a00",border:`1px solid ${color}44`}}>
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs text-green-600">NIVEL DE COMBUSTIVEL</span>
             <span className="font-bold text-sm" style={{color:fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"}}>{fuel!=null?fuel+"%":"---"}</span>
@@ -124,7 +178,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
         </div>
         <div className="mb-3">
           <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
-          {cmdMsg && <div className={}>{cmdMsg.text}</div>}
+          {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"bg-green-900 text-green-300":"bg-red-900 text-red-300"}`}>{cmdMsg.text}</div>}
           <div className="flex gap-2">
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"start")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#003300",border:"1px solid #00ff41",color:"#00ff41"}}>{cmdLoading?"AGUARDE...":"LIGAR"}</button>
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"manual")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#1a1000",border:"1px solid #ff8c00",color:"#ff8c00"}}>{cmdLoading?"AGUARDE...":"MANUAL"}</button>
@@ -299,6 +353,13 @@ export default function PanelPage() {
                   </div>
                   <div className="flex-1 flex items-center justify-center p-1">
                     <GeneratorSVG mode={mode} fuelLevel={fuel} gridVoltage={gridV} voltageL1={voltL1} running={running} temp={temp} battery={battery}/>
+                  </div>
+                  <div className="px-1 py-1" style={{borderTop:`1px solid ${borderColor}33`,fontSize:"8px"}}>
+                    <div className="flex justify-between">
+                      <span style={{color:"#00bfff",fontSize:"13px",fontWeight:"bold"}}>{gridV?Math.round(Number(gridV))+"V":"--"}</span>
+                      <span style={{color:temp>80?"#ff4444":"#aaa",fontSize:"13px",fontWeight:"bold"}}>{temp?Math.round(Number(temp))+"C":"--"}</span>
+                      <span style={{color:fuel<20?"#ff0000":fuel<=50?"#ffd700":"#00aa00",fontSize:"13px",fontWeight:"bold"}}>{fuel!=null?fuel+"%":"--"}</span>
+                    </div>
                   </div>
                 </div>
               );
