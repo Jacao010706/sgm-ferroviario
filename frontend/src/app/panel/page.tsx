@@ -9,9 +9,9 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
   const fuel = fuelLevel ?? 0;
   const fuelColor = fuel > 50 ? "#00aa00" : fuel > 20 ? "#ffd700" : "#ff0000";
   return (
-    <svg viewBox="0 0 200 280" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+    <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <rect width="200" height="280" fill="#0a0a0a" rx="4"/>
-      <image href={DSE_IMAGE} x="29" y="2" width="142" height="210" style={{filter: running ? "hue-rotate(200deg) saturate(2) brightness(1.3)" : "saturate(0.6) brightness(0.7)"}}/>
+      <image href={DSE_IMAGE} x="5" y="2" width="190" height="220" style={{filter: running ? "hue-rotate(200deg) saturate(2) brightness(1.3)" : "saturate(0.6) brightness(0.7)"}}/>
       <rect x="1" y="210" width="198" height="1" fill={color} opacity="0.4"/>
       <rect x="10" y="216" width="180" height="12" fill="#0a1530" stroke={color} strokeWidth="0.8" rx="3"/>
       <rect x="11" y="217" width={Math.max(0,Math.min(178,178*fuel/100))} height="10" fill={fuelColor} rx="2" opacity="0.9"/>
