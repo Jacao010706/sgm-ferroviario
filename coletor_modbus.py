@@ -71,7 +71,7 @@ REG = {
     "nivel_tanque":  1027,  # % (direto)
     "bateria":       1029,  # V bateria (fator 0.1)
     "horas_funcio":  0,
-    "tensao_l1":     1059,  # V gerador (fator 0.1)
+    "tensao_l1":     1065,  # V gerador (fator 0.1)
     "tensao_l2":     1061,  # V gerador (fator 0.1)
     "tensao_l3":     1063,  # V gerador (fator 0.1)
     "corrente_l1":   0,
