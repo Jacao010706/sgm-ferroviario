@@ -84,7 +84,7 @@ REG = {
     "tensao_rede_l3":1071,  # V rede (fator 0.1)
     "freq_rede":     0,
     "status":        1025,  # bitmask estado DSE
-    "rpm":           1024,  # RPM motor (0=parado)
+    "rpm":           1030,  # RPM motor (0=parado)
 }
 
 
@@ -207,10 +207,10 @@ def ler_gerador(ip, slave_id, tag):
 
         dados = {
             "status":        r(reg_map["status"]),
-            "rpm":           (r(24) if r(24) != 65535 else 0) if not is_stemac else 0,
-            "tensao_l1":     r(reg_map["tensao_l1"]) * f1,
-            "tensao_l2":     r(reg_map["tensao_l2"]) * f1,
-            "tensao_l3":     r(reg_map["tensao_l3"]) * f1,
+            "rpm":           r(30) if not is_stemac else 0,
+           "tensao_l1":     r(reg_map["tensao_l1"]) * f1 if r(30) > 0 else 0,
+"tensao_l2":     r(reg_map["tensao_l2"]) * f1 if r(30) > 0 else 0,
+"tensao_l3":     r(reg_map["tensao_l3"]) * f1 if r(30) > 0 else 0,
             "corrente_l1":   r(reg_map["corrente_l1"]) * f1,
             "corrente_l2":   r(reg_map["corrente_l2"]) * f1,
             "corrente_l3":   r(reg_map["corrente_l3"]) * f1,
