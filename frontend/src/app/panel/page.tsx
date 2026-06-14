@@ -276,6 +276,7 @@ export default function PanelPage() {
         <div className="flex items-center gap-4">
           {loading && <span className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</span>}
           <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
+          <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">⛶ TELA CHEIA</button>
           <div className="w-2 h-2 rounded-full bg-green-400"/>
         </div>
       </div>
