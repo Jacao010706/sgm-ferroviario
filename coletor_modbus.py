@@ -1,4 +1,4 @@
-"""
+﻿"""
 Coletor Modbus TCP - Geradores DSE7420 MKII - Trensurb
 Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário.
 Executa a cada 60 segundos.
@@ -83,7 +83,8 @@ REG = {
     "tensao_rede_l2":1069,  # V rede (fator 0.1)
     "tensao_rede_l3":1071,  # V rede (fator 0.1)
     "freq_rede":     0,
-    "status":        0
+    "status":        1025,  # bitmask estado DSE
+    "rpm":           1024,  # RPM motor (0=parado)
 }
 
 
@@ -122,7 +123,8 @@ REG_STEMAC = {
     "tensao_rede_l2":72,
     "tensao_rede_l3":73,
     "freq_rede":     87,   # Hz rede (fator 0.01)
-    "status":        0,
+    "status":        1025,  # bitmask estado DSE
+    "rpm":           1024,  # RPM motor (0=parado),
 }
 
 REG_CUSTOM = {
@@ -205,6 +207,7 @@ def ler_gerador(ip, slave_id, tag):
 
         dados = {
             "status":        r(reg_map["status"]),
+            "rpm":           r(24) if not is_stemac else 0,
             "tensao_l1":     r(reg_map["tensao_l1"]) * f1,
             "tensao_l2":     r(reg_map["tensao_l2"]) * f1,
             "tensao_l3":     r(reg_map["tensao_l3"]) * f1,
@@ -252,7 +255,11 @@ def enviar_leitura(asset_id, dados, token):
         "temperature":dados.get("temperatura"),
         "fuel_level": dados.get("nivel_tanque"),
         "runtime_hours": dados.get("horas_funcio"),
+        "rpm":        dados.get("rpm", 0),
+        "is_running": 1 if (dados.get("rpm", 0) > 0) else 0,
         "battery_voltage": dados.get("bateria"),
+        "rpm":        dados.get("rpm", 0),
+        "is_running": 1 if dados.get("rpm", 0) > 0 else 0,
     }
     try:
         r = requests.post(

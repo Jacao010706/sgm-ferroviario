@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
 function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mode: any, fuelLevel: any, gridVoltage: any, voltageL1: any, running: boolean }) {
-  const color = running ? "#4488ff" : mode === 1 ? "#4488ff" : mode === 0 ? "#ffd700" : "#555";
+  const color = running ? "#ff3333" : "#4488ff";
   const fuel = fuelLevel ?? 0;
   const fuelColor = fuel > 50 ? "#00aa00" : fuel > 20 ? "#ffd700" : "#ff0000";
   const gridColor = "#00cc44";
@@ -56,7 +56,8 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running }: { mo
 function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmdMsg }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void, onCommand: (id:string,action:string)=>void, cmdLoading: boolean, cmdMsg: {text:string,ok:boolean}|null }) {
   const v = (key: string) => vals?.[key]?.value;
   const fmt = (val: any, unit: string, dec = 0) => val != null ? Number(val).toFixed(dec) + (unit ? " " + unit : "") : "---";
-  const running = v("voltage_l1") != null && v("voltage_l1") > 50;
+  const isRunning = v("is_running");
+const running = isRunning != null ? isRunning > 0 : (v("voltage_l1") != null && v("voltage_l1") > 50);
   const mode = v("mode");
   const fuel = v("fuel_level");
   const temp = v("temperature");
@@ -289,7 +290,8 @@ export default function PanelPage() {
               const gridV=assetId?getVal(assetId,"grid_voltage_l1"):undefined;
               const voltL1=assetId?getVal(assetId,"voltage_l1"):undefined;
               const temp=assetId?getVal(assetId,"temperature"):undefined;
-              const running=voltL1!=null&&voltL1>0;
+              const isRunning=assetId?getVal(assetId,"is_running"):undefined;
+const running=isRunning!=null?isRunning>0:(voltL1!=null&&voltL1>50);
               const fuelLow=fuel!=null&&fuel<50;
               const isStemac=STEMAC_CODES.has(station.code); const typeColor=isStemac?"#00bfff":"#ff8c00"; const borderColor=running?typeColor:mode===0?"#ffd700":typeColor;
               return (
