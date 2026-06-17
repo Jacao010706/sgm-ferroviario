@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
@@ -297,8 +297,13 @@ export default function PanelPage() {
                     <span className="text-xs" style={{color:borderColor,fontSize:"9px"}}>{mode===1?"AUTO":mode===0?"MAN":"---"}</span>
                     <div className="w-2 h-2 rounded-full" style={{background:running?"#00ff41":mode!=null?"#ffd700":"#333"}}/>
                   </div>
-                  <div className="flex-1 flex items-center justify-center p-1">
+                  <div className="flex items-center justify-center p-1" style={{height:"calc(100% - 48px)"}}>
                     <GeneratorSVG mode={mode} fuelLevel={fuel} gridVoltage={gridV} voltageL1={voltL1} running={running} temp={temp} battery={battery}/>
+                  </div>
+                  <div className="flex justify-between px-2 py-1 text-xs" style={{borderTop:`1px solid ${borderColor}33`}}>
+                    <span style={{color:"#888"}}>{temp!=null?Math.round(Number(temp))+"C":"--"}</span>
+                    <span style={{color:"#00cc44"}}>{gridV!=null?Math.round(Number(gridV))+"V":"---"}</span>
+                    <span style={{color:fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"}}>{fuel!=null?fuel+"%":"--"}</span>
                   </div>
                 </div>
               );
