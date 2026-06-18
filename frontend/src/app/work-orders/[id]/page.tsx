@@ -418,7 +418,7 @@ export default function WorkOrderDetailPage() {
     api.get("/contracted-companies/").then(r => setCompanies(r.data)).catch(() => {});
   }, [id]);
 
-  const handlePrint = () => {
+  const handlePrint = () => { /* v8 */
     const os = document.getElementById("print-area");
     const apr = document.getElementById("apr-print-area");
     if (!os) return;
