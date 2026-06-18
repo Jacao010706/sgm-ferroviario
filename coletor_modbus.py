@@ -30,6 +30,8 @@ API_BASE = "https://laudable-peace-production-09cd.up.railway.app/api/v1"
 API_EMAIL = "admin2@sgm.com"
 API_PASSWORD = "admin123"
 INTERVALO_SEGUNDOS = 15
+LIMPEZA_INTERVALO_HORAS = 24  # limpa leituras antigas a cada 24h
+_ultima_limpeza = 0  # timestamp da ultima limpeza
 MODBUS_PORT = 502
 MODBUS_TIMEOUT = 5
 
@@ -442,6 +444,17 @@ def ciclo_coleta(token):
             falha += 1
         time.sleep(0.5)
     log.info(f"Ciclo concluido: {ok} OK, {falha} falhas")
+    # Limpeza automatica do banco a cada 24h
+        global _ultima_limpeza
+        agora = time.time()
+        if agora - _ultima_limpeza > LIMPEZA_INTERVALO_HORAS * 3600:
+            try:
+                r = requests.post(f"{API_BASE}/iot/maintenance/cleanup", params={"days": 2}, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+                if r.status_code == 200:
+                    log.info(f"Limpeza automatica: {r.json().get('deleted', 0)} leituras removidas")
+                _ultima_limpeza = agora
+            except Exception as e:
+                log.warning(f"Erro na limpeza automatica: {e}")
 
 
 # =============================================================================
