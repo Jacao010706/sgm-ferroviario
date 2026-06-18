@@ -261,3 +261,17 @@ async def get_coletor_url(_: User = Depends(get_current_user)):
         except Exception:
             pass
     return {"url": url}
+@router.post("/maintenance/cleanup")
+async def cleanup_old_readings(
+    days: int = Query(7, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Remove leituras IoT mais antigas que X dias para liberar espaço no banco."""
+    from sqlalchemy import delete
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    result = await db.execute(
+        delete(IoTReading).where(IoTReading.timestamp < cutoff)
+    )
+    await db.commit()
+    return {"deleted": result.rowcount, "cutoff": cutoff.isoformat()}
