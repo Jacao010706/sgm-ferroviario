@@ -1,4 +1,4 @@
-"""
+﻿"""
 Coletor Modbus TCP - Geradores DSE7420 MKII - Trensurb
 Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário.
 Executa a cada 15 segundos.
@@ -444,17 +444,16 @@ def ciclo_coleta(token):
             falha += 1
         time.sleep(0.5)
     log.info(f"Ciclo concluido: {ok} OK, {falha} falhas")
-    # Limpeza automatica do banco a cada 24h
-        global _ultima_limpeza
-        agora = time.time()
-        if agora - _ultima_limpeza > LIMPEZA_INTERVALO_HORAS * 3600:
-            try:
-                r = requests.post(f"{API_BASE}/iot/maintenance/cleanup", params={"days": 2}, headers={"Authorization": f"Bearer {token}"}, timeout=30)
-                if r.status_code == 200:
-                    log.info(f"Limpeza automatica: {r.json().get('deleted', 0)} leituras removidas")
-                _ultima_limpeza = agora
-            except Exception as e:
-                log.warning(f"Erro na limpeza automatica: {e}")
+    global _ultima_limpeza
+    agora = time.time()
+    if agora - _ultima_limpeza > LIMPEZA_INTERVALO_HORAS * 3600:
+        try:
+            r = requests.post(f"{API_BASE}/iot/maintenance/cleanup", params={"days": 2}, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+            if r.status_code == 200:
+                log.info(f"Limpeza automatica: {r.json().get('deleted', 0)} leituras removidas")
+            _ultima_limpeza = agora
+        except Exception as e:
+            log.warning(f"Erro na limpeza automatica: {e}")
 
 
 # =============================================================================

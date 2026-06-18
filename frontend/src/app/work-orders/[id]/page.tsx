@@ -205,7 +205,7 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
           <tr>
             <td style={{width:"50%", verticalAlign:"top"}}>
               <strong>MANHÃ:</strong>
-              <div style={{minHeight: 160, paddingTop: 4}}>{form.observations || ""}</div>
+              <div style={{minHeight: 30, paddingTop: 4}}>{form.observations || ""}</div>
             </td>
             <td style={{width:"50%", verticalAlign:"top"}}>
               <strong>TARDE:</strong>
@@ -313,7 +313,7 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
       <table className="trensurb-table">
         <tbody>
           <tr><td className="section-title">OBSERVAÇÕES DA GESTÃO / SUPERVISÃO</td></tr>
-          <tr><td style={{minHeight:80, height:80}}>{form.observations || ""}&nbsp;</td></tr>
+          <tr><td style={{minHeight:30, height:30}}>{form.observations || ""}&nbsp;</td></tr>
         </tbody>
       </table>
 
