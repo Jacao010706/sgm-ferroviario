@@ -1,4 +1,4 @@
-﻿Copy-Item "C:\Users\Jacques\Downloads\work_order_page_v2_1.tsx" -Destination "C:\Users\Jacques\sgm-ferroviario\frontend\src\app\work-orders\[id]\page.tsx" -Force"use client";
+﻿"use client";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
