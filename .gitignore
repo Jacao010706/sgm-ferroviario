@@ -1,2 +1,23 @@
 
 coletor_modbus.log
+# Logs
+*.log
+*.log.bak
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Ferramentas locais
+cloudflared.exe
+cloudflared.log
+ngrok.zip
+ngrok.exe
+
+# Scripts temporários de fix
+fix_*.py
+debug_*.py
+monitor_*.py
+test_*.py
+check*.js

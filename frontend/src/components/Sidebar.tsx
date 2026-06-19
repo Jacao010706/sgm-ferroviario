@@ -3,12 +3,13 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, Fuel, AlertTriangle, Package, FileText } from "lucide-react";
+import { LayoutDashboard, Layers, ClipboardList, Radio, Bell, BarChart2, Settings, LogOut, Zap, Fuel, AlertTriangle, Package, FileText, Monitor } from "lucide-react";
 import clsx from "clsx";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/monitoring", label: "Monitoramento", icon: Radio },
+  { href: "/panel", label: "Painel CCO", icon: Monitor },
   { href: "/assets", label: "Ativos", icon: Layers },
   { href: "/work-orders", label: "Ordens de Servico", icon: ClipboardList },
   { href: "/maintenance-plans", label: "Planos de Manutencao", icon: Fuel },

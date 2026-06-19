@@ -1,10 +1,13 @@
-"""
+﻿"""
 Coletor Modbus TCP - Geradores DSE7420 MKII - Trensurb
 Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário.
-Executa a cada 60 segundos.
+Executa a cada 15 segundos.
 """
 
 import time
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import json as _json
 import requests
 import logging
 from pymodbus.client import ModbusTcpClient
@@ -26,7 +29,9 @@ log = logging.getLogger(__name__)
 API_BASE = "https://laudable-peace-production-09cd.up.railway.app/api/v1"
 API_EMAIL = "admin2@sgm.com"
 API_PASSWORD = "admin123"
-INTERVALO_SEGUNDOS = 60
+INTERVALO_SEGUNDOS = 15
+LIMPEZA_INTERVALO_HORAS = 24  # limpa leituras antigas a cada 24h
+_ultima_limpeza = 0  # timestamp da ultima limpeza
 MODBUS_PORT = 502
 MODBUS_TIMEOUT = 5
 
@@ -61,31 +66,145 @@ GERADORES = {
 
 # =============================================================================
 # REGISTROS MODBUS DSE7420 MKII
-# Fonte: DSE Modbus Manual - endereços base 0 (holding registers)
 # =============================================================================
 REG = {
-    "temperatura":   1025,  # °C (direto)
-    "nivel_tanque":  1027,  # % (direto)
-    "bateria":       1029,  # V bateria (fator 0.1)
-    "horas_funcio":  0,
-    "tensao_l1":     1059,  # V gerador (fator 0.1)
-    "tensao_l2":     1061,  # V gerador (fator 0.1)
-    "tensao_l3":     1063,  # V gerador (fator 0.1)
-    "corrente_l1":   0,
-    "corrente_l2":   0,
-    "corrente_l3":   0,
-    "frequencia":    0,
-    "potencia_kw":   0,
-    "tensao_rede_l1":1067,  # V rede (fator 0.1)
-    "tensao_rede_l2":1069,  # V rede (fator 0.1)
-    "tensao_rede_l3":1071,  # V rede (fator 0.1)
-    "freq_rede":     0,
-    "status":        0
+    "temperatura":    1025,
+    "nivel_tanque":   1027,
+    "bateria":        1029,
+    "horas_funcio":   0,
+    "tensao_l1":      1065,
+    "tensao_l2":      1061,
+    "tensao_l3":      1063,
+    "corrente_l1":    0,
+    "corrente_l2":    0,
+    "corrente_l3":    0,
+    "frequencia":     0,
+    "potencia_kw":    0,
+    "tensao_rede_l1": 1067,
+    "tensao_rede_l2": 1069,
+    "tensao_rede_l3": 1071,
+    "freq_rede":      0,
+    "status":         1025,
+    "rpm":            1030,
 }
 
+REG_STEMAC = {
+    "temperatura":    57,
+    "nivel_tanque":   61,
+    "bateria":        58,
+    "horas_funcio":   56,
+    "tensao_l1":      74,
+    "tensao_l2":      75,
+    "tensao_l3":      76,
+    "corrente_l1":    0,
+    "corrente_l2":    0,
+    "corrente_l3":    0,
+    "frequencia":     0,
+    "potencia_kw":    0,
+    "tensao_rede_l1": 71,
+    "tensao_rede_l2": 72,
+    "tensao_rede_l3": 73,
+    "freq_rede":      87,
+    "status":         0,
+    "rpm":            0,
+}
 
+REG_CUSTOM = {
+    "GMG-CANOAS": {
+        "temperatura":    1025,
+        "nivel_tanque":   1027,
+        "bateria":        1028,
+        "frequencia":     1031,
+        "tensao_l1":      1033,
+        "tensao_l2":      1035,
+        "tensao_l3":      1037,
+        "tensao_rede_l1": 1067,
+        "tensao_rede_l2": 1069,
+        "tensao_rede_l3": 1071,
+        "corrente_l1":    1045,
+        "corrente_l2":    1047,
+        "corrente_l3":    1049,
+    },
+    "GMG-AEROPORTO":    {**REG_STEMAC},
+    "GMG-ANCHIETA":     {**REG_STEMAC},
+    "GMG-NITEROI":      {**REG_STEMAC},
+    "GMG-FATIMA":       {**REG_STEMAC},
+    "GMG-MATHIASVELHO": {**REG_STEMAC},
+    "GMG-SAOLUIS":      {**REG_STEMAC},
+    "GMG-PETROBRAS":    {**REG_STEMAC},
+    "GMG-SAPUCAIA":     {**REG_STEMAC},
+    "GMG-SAOLEOPOLDO":  {**REG_STEMAC},
+    "GMG-SUBESTACAO2":  {**REG_STEMAC},
+}
+
+STEMAC_TAGS = {
+    "GMG-AEROPORTO", "GMG-ANCHIETA", "GMG-NITEROI", "GMG-FATIMA",
+    "GMG-MATHIASVELHO", "GMG-SAOLUIS", "GMG-PETROBRAS", "GMG-SAPUCAIA",
+    "GMG-SAOLEOPOLDO", "GMG-SUBESTACAO2"
+}
+
+STEMAC_ALARMS = {
+    (0, 8):  "Baixa Tensao Bateria",
+    (0, 10): "Sobrecarga no GMG",
+    (1, 0):  "Falha Sensor Temperatura",
+    (1, 1):  "Alta Temperatura Agua",
+    (1, 2):  "Alta Temperatura Agua Critica",
+    (1, 3):  "Baixa Temperatura Agua",
+    (1, 4):  "Pressao Baixa do Oleo",
+    (1, 5):  "Emergencia Acionada",
+    (1, 6):  "Falha na Partida do GMG",
+    (6, 9):  "Nivel Baixo Combustivel",
+    (6, 11): "Nivel Super Baixo Combustivel",
+    (7, 5):  "Alta Temperatura Mancal",
+    (7, 8):  "Falha Fluxo Agua",
+    (7, 12): "Nivel Agua Radiador Baixo",
+    (7, 15): "Sobrevelocidade",
+    (8, 0):  "Alta Temperatura Oleo",
+    (8, 1):  "Pressao Baixa Oleo",
+}
+
+# =============================================================================
+# CACHE DE ALERTAS ATIVOS — consultado na API a cada ciclo
+# Evita duplicar alertas para o mesmo problema
+# =============================================================================
+_alertas_ativos_cache: set = set()  # titulos de alertas ativos na API
+_cache_ultima_atualizacao: float = 0.0
+CACHE_TTL = 60  # segundos entre atualizações do cache
+
+
+def atualizar_cache_alertas(token: str) -> None:
+    """Busca todos os alertas ativos na API e atualiza o cache local."""
+    global _alertas_ativos_cache, _cache_ultima_atualizacao
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        r = requests.get(
+            f"{API_BASE}/alerts/",
+            params={"status": "active", "limit": 500},
+            headers=headers,
+            timeout=10,
+        )
+        if r.status_code == 200:
+            alertas = r.json()
+            _alertas_ativos_cache = {a.get("title", "") for a in alertas}
+            _cache_ultima_atualizacao = time.time()
+    except Exception as e:
+        log.warning(f"Erro ao atualizar cache de alertas: {e}")
+
+
+def alerta_ja_existe(titulo: str) -> bool:
+    """Verifica se já existe um alerta ativo com este título no cache."""
+    return titulo in _alertas_ativos_cache
+
+
+def registrar_alerta_no_cache(titulo: str) -> None:
+    """Adiciona um título ao cache após criação."""
+    _alertas_ativos_cache.add(titulo)
+
+
+# =============================================================================
+# AUTENTICAÇÃO
+# =============================================================================
 def obter_token():
-    """Autentica na API e retorna o token de acesso."""
     try:
         r = requests.post(
             f"{API_BASE}/auth/login",
@@ -101,72 +220,10 @@ def obter_token():
         return None
 
 
-# Registros especificos por gerador (quando diferem do padrao)
-REG_STEMAC = {
-    "temperatura":   57,   # C (direto)
-    "nivel_tanque":  61,   # % (direto)
-    "bateria":       58,   # V bateria (fator 0.1)
-    "horas_funcio":  56,   # horas (direto)
-    "tensao_l1":     0,    # gerador desligado
-    "tensao_l2":     0,
-    "tensao_l3":     0,
-    "corrente_l1":   0,
-    "corrente_l2":   0,
-    "corrente_l3":   0,
-    "frequencia":    0,
-    "potencia_kw":   0,
-    "tensao_rede_l1":71,   # V rede (direto)
-    "tensao_rede_l2":72,
-    "tensao_rede_l3":73,
-    "freq_rede":     87,   # Hz rede (fator 0.01)
-    "status":        0,
-}
-
-REG_CUSTOM = {
-    "GMG-CANOAS": {
-        "temperatura":   1025,
-        "nivel_tanque":  1027,
-        "bateria":       1028,
-        "frequencia":    1031,
-        "tensao_l1":     1033,
-        "tensao_l2":     1035,
-        "tensao_l3":     1037,
-        "tensao_rede_l1":1039,
-        "tensao_rede_l2":1041,
-        "tensao_rede_l3":1043,
-        "corrente_l1":   1045,
-        "corrente_l2":   1047,
-        "corrente_l3":   1049,
-    },
-    "GMG-AEROPORTO":    {**REG_STEMAC},
-    "GMG-ANCHIETA":     {**REG_STEMAC},
-    "GMG-NITEROI":      {**REG_STEMAC},
-    "GMG-FATIMA":       {**REG_STEMAC},
-    "GMG-MATHIASVELHO": {**REG_STEMAC},
-    "GMG-SAOLUIS":      {**REG_STEMAC},
-    "GMG-PETROBRAS":    {**REG_STEMAC},
-    "GMG-SAPUCAIA":     {**REG_STEMAC},
-    "GMG-SAOLEOPOLDO":  {**REG_STEMAC},
-    "GMG-SUBESTACAO2":  {**REG_STEMAC},
-    "GMG-CANOAS": {
-        "temperatura":   1025,
-        "nivel_tanque":  1027,
-        "bateria":       1028,
-        "frequencia":    1031,
-        "tensao_l1":     1033,
-        "tensao_l2":     1035,
-        "tensao_l3":     1037,
-        "tensao_rede_l1":1039,
-        "tensao_rede_l2":1041,
-        "tensao_rede_l3":1043,
-        "corrente_l1":   1045,
-        "corrente_l2":   1047,
-        "corrente_l3":   1049,
-    }
-}
-
+# =============================================================================
+# LEITURA MODBUS
+# =============================================================================
 def ler_gerador(ip, slave_id, tag):
-    """Conecta ao DSE7420 via Modbus TCP e lê os registros."""
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
     dados = {}
     try:
@@ -174,10 +231,9 @@ def ler_gerador(ip, slave_id, tag):
             log.warning(f"{tag} ({ip}): sem conexao Modbus")
             return None
 
-        # Le registros conforme tipo do gerador
         is_stemac = tag in REG_CUSTOM and REG_CUSTOM[tag].get("temperatura", 1000) < 100
+
         if is_stemac:
-            # STEMAC: lê em blocos de 40 registros
             regs_stemac = [0] * 200
             for base in [0, 35, 56, 71, 86]:
                 rb = client.read_input_registers(address=base, count=35)
@@ -190,49 +246,48 @@ def ler_gerador(ip, slave_id, tag):
                 def isError(self): return False
             result = FakeResult(regs_stemac)
         else:
-            result = client.read_holding_registers(address=1000, count=50)
+            result = client.read_holding_registers(address=1000, count=80)
 
         if result.isError():
             log.warning(f"{tag} ({ip}): erro ao ler registros - {result}")
             return None
 
         regs = result.registers
-
         reg_map = {**REG, **REG_CUSTOM.get(tag, {})}
 
         def r(offset):
             if offset == 0:
                 return 0
-            if is_stemac:
-                idx = offset
-            else:
-                idx = offset - 1000
+            idx = offset if is_stemac else offset - 1000
             if 0 <= idx < len(regs):
                 return regs[idx]
             return 0
 
-        f1 = 0.0 if is_stemac else 0.1
+        f1 = 1.0 if is_stemac else 0.1
         fv = 1.0 if is_stemac else 0.1
         ff = 0.01 if is_stemac else 0.1
 
+        rpm = r(1030) if not is_stemac else 0
+
         dados = {
-            "status":        r(reg_map["status"]),
-            "tensao_l1":     r(reg_map["tensao_l1"]) * f1,
-            "tensao_l2":     r(reg_map["tensao_l2"]) * f1,
-            "tensao_l3":     r(reg_map["tensao_l3"]) * f1,
-            "corrente_l1":   r(reg_map["corrente_l1"]) * f1,
-            "corrente_l2":   r(reg_map["corrente_l2"]) * f1,
-            "corrente_l3":   r(reg_map["corrente_l3"]) * f1,
-            "frequencia":    r(reg_map["frequencia"]) * f1,
-            "potencia_kw":   r(reg_map["potencia_kw"]) * f1,
-            "temperatura":   r(reg_map["temperatura"]),
-            "nivel_tanque":  r(reg_map["nivel_tanque"]),
-            "bateria":       r(reg_map["bateria"]) * 0.1,
-            "horas_funcio":  r(reg_map["horas_funcio"]),
-            "tensao_rede_l1":r(reg_map["tensao_rede_l1"]) * fv,
-            "tensao_rede_l2":r(reg_map["tensao_rede_l2"]) * fv,
-            "tensao_rede_l3":r(reg_map["tensao_rede_l3"]) * fv,
-            "freq_rede":     r(reg_map["freq_rede"]) * ff,
+            "status":         r(reg_map["status"]),
+            "rpm":            rpm,
+            "tensao_l1":      r(reg_map["tensao_l1"]) * f1 if rpm > 0 else 0,
+            "tensao_l2":      r(reg_map["tensao_l2"]) * f1 if rpm > 0 else 0,
+            "tensao_l3":      r(reg_map["tensao_l3"]) * f1 if rpm > 0 else 0,
+            "corrente_l1":    r(reg_map["corrente_l1"]) * f1,
+            "corrente_l2":    r(reg_map["corrente_l2"]) * f1,
+            "corrente_l3":    r(reg_map["corrente_l3"]) * f1,
+            "frequencia":     r(reg_map["frequencia"]) * f1,
+            "potencia_kw":    r(reg_map["potencia_kw"]) * f1,
+            "temperatura":    r(reg_map["temperatura"]),
+            "nivel_tanque":   r(reg_map["nivel_tanque"]),
+            "bateria":        r(reg_map["bateria"]) * 0.1,
+            "horas_funcio":   r(reg_map["horas_funcio"]),
+            "tensao_rede_l1": r(reg_map["tensao_rede_l1"]) * fv,
+            "tensao_rede_l2": r(reg_map["tensao_rede_l2"]) * fv,
+            "tensao_rede_l3": r(reg_map["tensao_rede_l3"]) * fv,
+            "freq_rede":      r(reg_map["freq_rede"]) * ff,
         }
         log.info(f"{tag} ({ip}): lido OK | tanque={dados['nivel_tanque']}% temp={dados['temperatura']}C")
 
@@ -246,24 +301,28 @@ def ler_gerador(ip, slave_id, tag):
     return dados if dados else None
 
 
+# =============================================================================
+# ENVIO DE LEITURA
+# =============================================================================
 def enviar_leitura(asset_id, dados, token):
-    """Envia os dados lidos para a API do SGM."""
     headers = {"Authorization": f"Bearer {token}"}
     payload = {
-        "voltage_l1": dados.get("tensao_l1"),
-        "voltage_l2": dados.get("tensao_l2"),
-        "voltage_l3": dados.get("tensao_l3"),
+        "voltage_l1":      dados.get("tensao_l1"),
+        "voltage_l2":      dados.get("tensao_l2"),
+        "voltage_l3":      dados.get("tensao_l3"),
         "grid_voltage_l1": dados.get("tensao_rede_l1"),
         "grid_voltage_l2": dados.get("tensao_rede_l2"),
         "grid_voltage_l3": dados.get("tensao_rede_l3"),
-        "current_l1": dados.get("corrente_l1"),
-        "current_l2": dados.get("corrente_l2"),
-        "current_l3": dados.get("corrente_l3"),
-        "frequency":  dados.get("frequencia"),
-        "power_kw":   dados.get("potencia_kw"),
-        "temperature":dados.get("temperatura"),
-        "fuel_level": dados.get("nivel_tanque"),
-        "runtime_hours": dados.get("horas_funcio"),
+        "current_l1":      dados.get("corrente_l1"),
+        "current_l2":      dados.get("corrente_l2"),
+        "current_l3":      dados.get("corrente_l3"),
+        "frequency":       dados.get("frequencia"),
+        "power_kw":        dados.get("potencia_kw"),
+        "temperature":     dados.get("temperatura"),
+        "fuel_level":      dados.get("nivel_tanque"),
+        "runtime_hours":   dados.get("horas_funcio"),
+        "rpm":             dados.get("rpm", 0),
+        "is_running":      1 if dados.get("rpm", 0) > 0 else 0,
         "battery_voltage": dados.get("bateria"),
     }
     try:
@@ -283,37 +342,92 @@ def enviar_leitura(asset_id, dados, token):
         return False
 
 
-ALERTAS_ENVIADOS = set()  # evita duplicar alertas no mesmo ciclo
+# =============================================================================
+# ALERTAS — com deduplicação via cache da API
+# =============================================================================
+# Controle de combustível: quando normaliza, remove do cache para permitir
+# novo alerta se voltar a cair
+_combustivel_normalizado: set = set()
 
-def criar_alerta_combustivel(asset_id, tag, nivel, token):
-    """Cria alerta de baixo combustivel se ainda nao existe um ativo."""
+
+def criar_alerta(asset_id, titulo, descricao, severity, metric_name, metric_value, threshold, token):
+    """Cria um alerta na API apenas se não existir um ativo com o mesmo título."""
+    if alerta_ja_existe(titulo):
+        return
     headers = {"Authorization": f"Bearer {token}"}
     payload = {
-        "title": f"Combustivel baixo - {tag}",
-        "description": f"Nivel de combustivel em {nivel}%. Necessario abastecimento.",
+        "title": titulo,
+        "description": descricao,
         "asset_id": asset_id,
-        "severity": "high" if nivel < 30 else "medium",
+        "severity": severity,
         "source": "iot_sensor",
-        "metric_name": "fuel_level",
-        "metric_value": nivel,
-        "threshold_value": 50.0,
+        "metric_name": metric_name,
+        "metric_value": metric_value,
+        "threshold_value": threshold,
     }
     try:
-        r = requests.post(
-            f"{API_BASE}/alerts/",
-            json=payload,
-            headers=headers,
-            timeout=10,
-        )
+        r = requests.post(f"{API_BASE}/alerts/", json=payload, headers=headers, timeout=10)
         if r.status_code in (200, 201):
-            log.info(f"{tag}: alerta de combustivel criado ({nivel}%)")
+            registrar_alerta_no_cache(titulo)
+            log.info(f"Alerta criado: {titulo}")
         else:
-            log.warning(f"{tag}: erro ao criar alerta - {r.status_code}: {r.text[:100]}")
+            log.warning(f"Erro ao criar alerta {titulo}: {r.status_code}")
     except Exception as e:
-        log.error(f"{tag}: erro ao criar alerta - {e}")
+        log.error(f"Erro ao criar alerta {titulo}: {e}")
 
+
+def verificar_combustivel(asset_id, tag, nivel, token):
+    """Cria alerta de combustível baixo se necessário, uma única vez."""
+    titulo = f"Combustivel baixo - {tag}"
+    if nivel > 0 and nivel < 50:
+        criar_alerta(
+            asset_id, titulo,
+            f"Nivel de combustivel em {nivel}%. Necessario abastecimento.",
+            "high" if nivel < 30 else "medium",
+            "fuel_level", nivel, 50.0, token
+        )
+        _combustivel_normalizado.discard(asset_id)
+    elif nivel >= 50 and asset_id not in _combustivel_normalizado:
+        # Combustível normalizado — remove do cache para permitir novo alerta no futuro
+        _alertas_ativos_cache.discard(titulo)
+        _combustivel_normalizado.add(asset_id)
+
+
+def ler_alarmes_stemac(ip, tag, token, asset_id):
+    """Lê alarmes do STEMAC ST2160 e cria alertas sem duplicar."""
+    client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
+    try:
+        if not client.connect():
+            return
+        result = client.read_input_registers(address=0, count=10)
+        if result.isError():
+            return
+        regs = result.registers
+        for (reg_idx, bit), descricao in STEMAC_ALARMS.items():
+            if reg_idx < len(regs) and (regs[reg_idx] & (1 << bit)):
+                titulo = f"{descricao} - {tag}"
+                severity = "high" if any(x in descricao for x in ["Pressao", "Emergencia", "Sobrevelocidade", "Critica"]) else "medium"
+                criar_alerta(
+                    asset_id, titulo,
+                    f"Alarme Modbus ST2160: {descricao}",
+                    severity, "alarm", 1, 0, token
+                )
+    except Exception as e:
+        log.error(f"{tag}: erro ler alarmes STEMAC - {e}")
+    finally:
+        client.close()
+
+
+# =============================================================================
+# CICLO DE COLETA
+# =============================================================================
 def ciclo_coleta(token):
-    """Executa um ciclo completo de coleta para todos os geradores."""
+    global _cache_ultima_atualizacao
+
+    # Atualiza cache de alertas ativos a cada CACHE_TTL segundos
+    if time.time() - _cache_ultima_atualizacao > CACHE_TTL:
+        atualizar_cache_alertas(token)
+
     ok = 0
     falha = 0
     for tag, (ip, slave_id, asset_id) in GERADORES.items():
@@ -321,35 +435,153 @@ def ciclo_coleta(token):
         if dados:
             if enviar_leitura(asset_id, dados, token):
                 ok += 1
-                nivel = dados.get("nivel_tanque", 100)
-                if nivel > 0 and nivel < 50 and asset_id not in ALERTAS_ENVIADOS:
-                    criar_alerta_combustivel(asset_id, tag, nivel, token)
-                    ALERTAS_ENVIADOS.add(asset_id)
-                elif nivel >= 50 and asset_id in ALERTAS_ENVIADOS:
-                    ALERTAS_ENVIADOS.discard(asset_id)
+                if tag in STEMAC_TAGS:
+                    ler_alarmes_stemac(ip, tag, token, asset_id)
+                verificar_combustivel(asset_id, tag, dados.get("nivel_tanque", 100), token)
             else:
                 falha += 1
         else:
             falha += 1
         time.sleep(0.5)
     log.info(f"Ciclo concluido: {ok} OK, {falha} falhas")
+    global _ultima_limpeza
+    agora = time.time()
+    if agora - _ultima_limpeza > LIMPEZA_INTERVALO_HORAS * 3600:
+        try:
+            r = requests.post(f"{API_BASE}/iot/maintenance/cleanup", params={"days": 2}, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+            if r.status_code == 200:
+                log.info(f"Limpeza automatica: {r.json().get('deleted', 0)} leituras removidas")
+            _ultima_limpeza = agora
+        except Exception as e:
+            log.warning(f"Erro na limpeza automatica: {e}")
 
 
+# =============================================================================
+# SERVIDOR HTTP DE COMANDOS
+# =============================================================================
+COMANDO_SECRET = "sgm-trensurb-2026"
+
+class CommandHandler(BaseHTTPRequestHandler):
+    def log_message(self, format, *args):
+        log.info(f"HTTP {args}")
+
+    def do_POST(self):
+        if self.path != "/command":
+            self.send_response(404)
+            self.end_headers()
+            return
+        length = int(self.headers.get("Content-Length", 0))
+        body = _json.loads(self.rfile.read(length))
+        if body.get("secret") != COMANDO_SECRET:
+            self.send_response(401)
+            self.end_headers()
+            self.wfile.write(b'{"error":"unauthorized"}')
+            return
+        tag    = body.get("tag")
+        action = body.get("action")
+        if not tag or not action:
+            self.send_response(400)
+            self.end_headers()
+            self.wfile.write(b'{"error":"tag e action obrigatorios"}')
+            return
+        config = GERADORES.get(tag)
+        if not config:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b'{"error":"gerador nao encontrado"}')
+            return
+        ip, slave_id, asset_id = config
+        tipo = "stemac" if tag in STEMAC_TAGS else "dse"
+        try:
+            from modbus_command import enviar_comando_gerador
+            enviar_comando_gerador(ip, slave_id, action, tipo)
+            log.info(f"Comando '{action}' executado para {tag} ({ip}) tipo={tipo}")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(_json.dumps({"ok": True, "tag": tag, "action": action}).encode())
+        except Exception as e:
+            log.error(f"Erro ao executar comando {action} em {tag}: {e}")
+            self.send_response(502)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(_json.dumps({"error": str(e)}).encode())
+
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status":"ok","service":"sgm-coletor"}')
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+
+def iniciar_servidor_http():
+    server = HTTPServer(("0.0.0.0", 8888), CommandHandler)
+    log.info("Servidor HTTP de comandos iniciado em 0.0.0.0:8888")
+    server.serve_forever()
+
+
+import subprocess as _subprocess
+import re as _re
+
+
+def iniciar_tunnel_e_registrar(token, api_base):
+    try:
+        proc = _subprocess.Popen(
+            ["cloudflared.exe", "tunnel", "--url", "http://localhost:8888"],
+            stdout=_subprocess.PIPE, stderr=_subprocess.PIPE
+        )
+        import time as _time
+        url = None
+        for _ in range(30):
+            line = proc.stderr.readline().decode("utf-8", errors="ignore")
+            m = _re.search(r"https://[a-z0-9-]+\.trycloudflare\.com", line)
+            if m:
+                url = m.group(0)
+                break
+            _time.sleep(1)
+        if url:
+            try:
+                r = requests.post(
+                    api_base + "/iot/coletor/register",
+                    json={"url": url, "secret": "sgm-trensurb-2026"},
+                    headers={"Authorization": "Bearer " + token},
+                    timeout=10,
+                )
+                log.info(f"Tunnel registrado: {url} status={r.status_code}")
+            except Exception as e:
+                log.error(f"Erro ao registrar tunnel: {e}")
+        else:
+            log.warning("Nao foi possivel obter URL do tunnel")
+        return proc
+    except Exception as e:
+        log.error(f"Erro ao iniciar cloudflared: {e}")
+        return None
+
+
+# =============================================================================
+# MAIN
+# =============================================================================
 def main():
     log.info("=== Coletor Modbus SGM Ferroviario iniciado ===")
+    t = threading.Thread(target=iniciar_servidor_http, daemon=True)
+    t.start()
     token = None
     token_ciclos = 0
-
+    _tunnel_proc = None
     while True:
-        # Renova token a cada 100 ciclos (~1h40min) ou na primeira vez
         if token is None or token_ciclos >= 100:
             token = obter_token()
             token_ciclos = 0
+            if _tunnel_proc is None and token:
+                _tunnel_proc = iniciar_tunnel_e_registrar(token, API_BASE)
             if token is None:
                 log.error("Sem token - aguardando 30s para tentar novamente")
                 time.sleep(30)
                 continue
-
         ciclo_coleta(token)
         token_ciclos += 1
         log.info(f"Aguardando {INTERVALO_SEGUNDOS}s ate proximo ciclo...")

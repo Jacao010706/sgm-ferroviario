@@ -146,12 +146,16 @@ async def post_asset_readings(
         ("fuel_level",    ReadingType.FUEL_LEVEL,  "%",  "fuel_level"),
         ("runtime_hours", ReadingType.STATUS,      "h",  "runtime_hours"),
         ("battery_voltage", ReadingType.BATTERY_VOLTAGE, "V", "battery"),
+        ("rpm",        ReadingType.RPM,    "rpm", "rpm"),
+        ("is_running", ReadingType.STATUS,  "",    "is_running"),
         ("grid_voltage_l1", ReadingType.VOLTAGE, "V", "grid_voltage_l1"),
         ("grid_voltage_l2", ReadingType.VOLTAGE, "V", "grid_voltage_l2"),
         ("grid_voltage_l3", ReadingType.VOLTAGE, "V", "grid_voltage_l3"),
+        ("grid_voltage_l1", ReadingType.VOLTAGE, "V", "grid_voltage_l1"),
+        ("grid_freq",     ReadingType.FREQUENCY, "Hz", "grid_frequency"),
     ]
     saved = 0
-    elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3"}
+    elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3","grid_voltage_l1","grid_voltage_l2","grid_voltage_l3","rpm","is_running"}
     for field, rtype, unit, sensor_id in mapping:
         val = body.get(field)
         if val is None:
@@ -218,3 +222,56 @@ async def simulate_readings(
     await r_client.publish(f"telemetry:{asset_id}", json.dumps(payload))
     await r_client.aclose()
     return {"simulated": len(readings), "readings": payload["readings"]}
+
+# ---------------------------------------------------------------------------
+# Registro de URL do coletor local
+# ---------------------------------------------------------------------------
+from app.core.coletor_state import _coletor_url
+
+@router.post("/coletor/register")
+async def register_coletor(body: dict, _: User = Depends(get_current_user)):
+    url = body.get("url")
+    secret = body.get("secret")
+    if secret != "sgm-trensurb-2026":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not url:
+        raise HTTPException(status_code=400, detail="url obrigatorio")
+    _coletor_url["url"] = url
+    try:
+        r_client = redis.from_url(settings.REDIS_URL)
+        await r_client.set("sgm:coletor_url", url, ex=86400)
+        await r_client.aclose()
+    except Exception as e:
+        pass
+    import structlog
+    structlog.get_logger().info("Coletor registrado", url=url)
+    return {"ok": True, "url": url}
+
+@router.get("/coletor/url")
+async def get_coletor_url(_: User = Depends(get_current_user)):
+    url = _coletor_url.get("url")
+    if not url:
+        try:
+            r_client = redis.from_url(settings.REDIS_URL)
+            url = await r_client.get("sgm:coletor_url")
+            await r_client.aclose()
+            if url:
+                url = url.decode() if isinstance(url, bytes) else url
+                _coletor_url["url"] = url
+        except Exception:
+            pass
+    return {"url": url}
+@router.post("/maintenance/cleanup")
+async def cleanup_old_readings(
+    days: int = Query(7, ge=1, le=90),
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    """Remove leituras IoT mais antigas que X dias para liberar espaço no banco."""
+    from sqlalchemy import delete
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    result = await db.execute(
+        delete(IoTReading).where(IoTReading.timestamp < cutoff)
+    )
+    await db.commit()
+    return {"deleted": result.rowcount, "cutoff": cutoff.isoformat()}
