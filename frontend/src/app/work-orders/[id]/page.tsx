@@ -46,6 +46,8 @@ function PrintView({ order, asset, subAsset, form, checklist, materials }: any) 
           background: white;
           padding: 0;
           line-height: 1.15;
+          max-height: 277mm;
+          overflow: hidden;
         }
         .trensurb-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; table-layout: fixed; }
         .trensurb-table td, .trensurb-table th {
