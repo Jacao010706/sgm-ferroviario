@@ -38,21 +38,22 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
   const equipamento = (asset ? `${esc(asset.name)} (${esc(asset.tag)})` : "") + (subAsset ? ` &gt; ${esc(subAsset.name)}` : "");
 
   let checklistHtml = "";
-  if (checklist.length > 0) {
+  const checklistDoneItems = checklist.filter(i => i.done);
+  if (checklistDoneItems.length > 0) {
     const rows = [];
-    for (let i = 0; i < checklist.length; i += 2) {
-      const a = checklist[i];
-      const b = checklist[i + 1];
+    for (let i = 0; i < checklistDoneItems.length; i += 2) {
+      const a = checklistDoneItems[i];
+      const b = checklistDoneItems[i + 1];
       rows.push(`<tr>
-        <td style="text-align:center;width:4%">${a?.done ? "X" : ""}</td>
-        <td style="width:46%;${a?.done ? "" : "color:#999"}">${esc(a?.text)}</td>
-        <td style="text-align:center;width:4%">${b ? (b.done ? "X" : "") : ""}</td>
-        <td style="width:46%;${b?.done ? "" : "color:#999"}">${esc(b?.text || "")}</td>
+        <td style="text-align:center;width:4%;font-weight:bold">&#10003;</td>
+        <td style="width:46%;font-weight:bold">${esc(a?.text)}</td>
+        <td style="text-align:center;width:4%;font-weight:bold">${b ? "&#10003;" : ""}</td>
+        <td style="width:46%;font-weight:bold">${esc(b?.text || "")}</td>
       </tr>`);
     }
     checklistHtml = `
       <table class="tt">
-        <tr><th colspan="4">CHECKLIST (${checklistDone}/${checklist.length})</th></tr>
+        <tr><th colspan="4">CHECKLIST DE ATIVIDADES REALIZADAS (${checklistDoneItems.length})</th></tr>
         <tr><th style="width:4%">OK</th><th style="width:46%">Atividade</th><th style="width:4%">OK</th><th style="width:46%">Atividade</th></tr>
         ${rows.join("")}
       </table>`;
