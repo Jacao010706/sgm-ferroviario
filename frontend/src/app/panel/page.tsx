@@ -11,7 +11,44 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
   return (
     <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <rect width="200" height="280" fill="#0a0a0a" rx="4"/>
+      {/* Imagem do gerador (mantém posição original; a parte de cima sera mascarada) */}
       <image href={DSE_IMAGE} x="5" y="2" width="190" height="210" style={{filter: noComm ? "grayscale(1) brightness(0.55) contrast(0.9)" : running ? "hue-rotate(200deg) saturate(2) brightness(1.3)" : "saturate(0.6) brightness(0.7)"}}/>
+      {/* Mascara cobrindo a torre/linha/chave originais da imagem (substituidas por SVG vetorial abaixo) */}
+      <rect x="5" y="2" width="190" height="150" fill="#0a0a0a"/>
+      {/* Torre da rede (SVG vetorial) */}
+      <g>
+        <rect x="40" y="6" width="6" height="3" fill="#ff3399"/>
+        <rect x="35" y="9" width="16" height="3" fill="#ff3399"/>
+        <rect x="38" y="12" width="10" height="14" fill="#ff3399"/>
+        <line x1="43" y1="26" x2="43" y2="34" stroke="#ff3399" strokeWidth="2"/>
+      </g>
+      {/* Linha vertical da rede até a chave de rede */}
+      <line x1="43" y1="34" x2="43" y2="58" stroke={noComm?"#555":"#4488ff"} strokeWidth="1.5"/>
+      {/* Chave da rede: fechada quando parado(com comm), aberta quando running ou noComm */}
+      {(() => {
+        const gridClosed = !noComm && !running;
+        return (
+          <g>
+            <circle cx="43" cy="58" r="2" fill={gridClosed?"#00ff41":"#666"}/>
+            <line x1="43" y1="58" x2={gridClosed?43:50} y2={gridClosed?72:66} stroke={gridClosed?"#00ff41":"#999"} strokeWidth="1.5"/>
+            <circle cx="43" cy="72" r="2" fill={gridClosed?"#00ff41":"#666"}/>
+          </g>
+        );
+      })()}
+      {/* Linha vertical da chave de rede até a chave do gerador */}
+      <line x1="43" y1="72" x2="43" y2="120" stroke={running&&!noComm?color:"#444"} strokeWidth="1.5" strokeDasharray={noComm?"3,2":undefined}/>
+      {/* Chave do gerador: fechada quando running(com comm), aberta quando parado ou noComm */}
+      {(() => {
+        const genClosed = !noComm && running;
+        return (
+          <g>
+            <circle cx="43" cy="120" r="2" fill={genClosed?color:"#666"}/>
+            <line x1="43" y1="120" x2={genClosed?43:50} y2={genClosed?134:128} stroke={genClosed?color:"#999"} strokeWidth="1.5"/>
+            <circle cx="43" cy="134" r="2" fill={genClosed?color:"#666"}/>
+          </g>
+        );
+      })()}
+      <line x1="43" y1="134" x2="43" y2="150" stroke={running&&!noComm?color:"#444"} strokeWidth="1.5"/>
       <rect x="1" y="210" width="198" height="1" fill={color} opacity="0.4"/>
       <rect x="10" y="216" width="180" height="12" fill="#0a1530" stroke={color} strokeWidth="0.8" rx="3"/>
       <rect x="11" y="217" width={Math.max(0,Math.min(178,178*fuel/100))} height="10" fill={fuelColor} rx="2" opacity="0.9"/>
