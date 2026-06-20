@@ -11,7 +11,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
   return (
     <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <rect width="200" height="280" fill="#0a0a0a" rx="4"/>
-      <image href={DSE_IMAGE} x="5" y="2" width="190" height="210" style={{filter: noComm ? "sepia(1) saturate(4) hue-rotate(-15deg) brightness(0.9)" : running ? "hue-rotate(220deg) saturate(3) brightness(1.1)" : "saturate(0.6) brightness(0.7)"}}/>
+      <image href={DSE_IMAGE} x="5" y="2" width="190" height="210" style={{filter: noComm ? "grayscale(1) sepia(1) saturate(4) hue-rotate(-15deg) brightness(0.9)" : running ? "grayscale(1) sepia(1) saturate(5) hue-rotate(220deg) brightness(0.85) contrast(1.1)" : "saturate(0.6) brightness(0.7)"}}/>
       <rect x="1" y="210" width="198" height="1" fill={color} opacity="0.4"/>
       <rect x="10" y="216" width="180" height="12" fill="#0a1530" stroke={color} strokeWidth="0.8" rx="3"/>
       <rect x="11" y="217" width={Math.max(0,Math.min(178,178*fuel/100))} height="10" fill={fuelColor} rx="2" opacity="0.9"/>
