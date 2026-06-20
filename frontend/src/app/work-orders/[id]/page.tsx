@@ -45,9 +45,9 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
       const b = checklist[i + 1];
       rows.push(`<tr>
         <td style="text-align:center;width:4%">${a?.done ? "X" : ""}</td>
-        <td style="width:46%;${a?.done ? "text-decoration:line-through;color:#666" : ""}">${esc(a?.text)}</td>
+        <td style="width:46%;${a?.done ? "" : "color:#999"}">${esc(a?.text)}</td>
         <td style="text-align:center;width:4%">${b ? (b.done ? "X" : "") : ""}</td>
-        <td style="width:46%;${b?.done ? "text-decoration:line-through;color:#666" : ""}">${esc(b?.text || "")}</td>
+        <td style="width:46%;${b?.done ? "" : "color:#999"}">${esc(b?.text || "")}</td>
       </tr>`);
     }
     checklistHtml = `
