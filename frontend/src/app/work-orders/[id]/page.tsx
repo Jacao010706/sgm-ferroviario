@@ -19,286 +19,285 @@ interface ChecklistItem { id: string; text: string; done: boolean; }
 interface ContractedCompany { id: number; name: string; cnpj?: string; }
 interface Material { id: string; name: string; quantity: string; unit: string; }
 
-function PrintView({ order, asset, subAsset, form, checklist, materials }: any) {
+const esc = (s: any) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist: ChecklistItem[], materials: Material[]) {
   const now = new Date().toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
-  const checklistDone = checklist.filter((i: ChecklistItem) => i.done).length;
+  const checklistDone = checklist.filter(i => i.done).length;
   const periodicidade = order.maintenance_type === "preventive" ? (
     order.title?.toLowerCase().includes("mensal") ? "Mensal" :
     order.title?.toLowerCase().includes("semestral") ? "Semestral" :
     order.title?.toLowerCase().includes("anual") ? "Anual" :
     order.title?.toLowerCase().includes("bienal") ? "Bienal" : "Preventiva"
-  ) : MAINTENANCE_LABEL[order.maintenance_type] || order.maintenance_type;
+  ) : (MAINTENANCE_LABEL[order.maintenance_type] || order.maintenance_type);
 
-  return (
-    <div id="print-area" style={{ display: "none" }}>
-      <style>{`
-        @media print {
-          html, body { height: auto !important; }
-          body * { visibility: hidden !important; }
-          body.printing-os #print-area { visibility: visible !important; display: block !important; position: absolute; left: 0; top: 0; width: 100%; background: white; z-index: 99999; }
-          body.printing-os #print-area * { visibility: visible !important; }
-          @page { margin: 8mm; size: A4; }
-        }
-        #print-area {
-          font-family: Arial, sans-serif;
-          font-size: 8px;
-          color: #000;
-          background: white;
-          padding: 0;
-          line-height: 1.15;
-          max-height: 277mm;
-          overflow: hidden;
-        }
-        .trensurb-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; table-layout: fixed; }
-        .trensurb-table td, .trensurb-table th {
-          border: 1px solid #000;
-          padding: 1px 3px;
-          font-size: 7.5px;
-          vertical-align: top;
-          word-wrap: break-word;
-        }
-        .trensurb-table th {
-          background: #d9d9d9;
-          font-weight: bold;
-          text-align: center;
-          font-size: 7.5px;
-        }
-        .header-empresa {
-          text-align: center;
-          font-weight: bold;
-          font-size: 10px;
-          border: 1px solid #000;
-          padding: 2px;
-          margin-bottom: 0;
-        }
-        .header-senerg {
-          font-weight: bold;
-          font-size: 8px;
-          border: 1px solid #000;
-          border-top: none;
-          padding: 1px 3px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .section-title {
-          background: #d9d9d9;
-          font-weight: bold;
-          font-size: 7.5px;
-          border: 1px solid #000;
-          padding: 1px 3px;
-          text-transform: uppercase;
-        }
-        .no-print { display: block; }
-      `}</style>
+  const turno = form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "MANHA" : new Date(form.actual_start).getHours() < 18 ? "TARDE" : "NOITE") : "";
+  const dataExec = form.actual_start ? new Date(form.actual_start).toLocaleDateString("pt-BR") : "";
+  const horaIni = form.actual_start ? new Date(form.actual_start).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : "";
+  const horaFim = form.actual_end ? new Date(form.actual_end).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : "";
+  const equipamento = (asset ? `${esc(asset.name)} (${esc(asset.tag)})` : "") + (subAsset ? ` &gt; ${esc(subAsset.name)}` : "");
 
-      {/* CABECALHO */}
-      <div className="header-empresa">EMPRESA DE TRENS URBANOS DE PORTO ALEGRE S.A</div>
-      <div className="header-senerg">
-        <span>SENERG &ndash; ENERGIA</span>
-        <span style={{fontSize: 9}}>OS N&ordm;: <strong>{order.number}</strong></span>
-      </div>
+  let checklistHtml = "";
+  if (checklist.length > 0) {
+    const rows = [];
+    for (let i = 0; i < checklist.length; i += 2) {
+      const a = checklist[i];
+      const b = checklist[i + 1];
+      rows.push(`<tr>
+        <td style="text-align:center;width:4%">${a?.done ? "X" : ""}</td>
+        <td style="width:46%;${a?.done ? "text-decoration:line-through;color:#666" : ""}">${esc(a?.text)}</td>
+        <td style="text-align:center;width:4%">${b ? (b.done ? "X" : "") : ""}</td>
+        <td style="width:46%;${b?.done ? "text-decoration:line-through;color:#666" : ""}">${esc(b?.text || "")}</td>
+      </tr>`);
+    }
+    checklistHtml = `
+      <table class="tt">
+        <tr><th colspan="4">CHECKLIST (${checklistDone}/${checklist.length})</th></tr>
+        <tr><th style="width:4%">OK</th><th style="width:46%">Atividade</th><th style="width:4%">OK</th><th style="width:46%">Atividade</th></tr>
+        ${rows.join("")}
+      </table>`;
+  }
 
-      {/* INFO PRINCIPAL */}
-      <table className="trensurb-table" style={{marginTop: 0}}>
-        <tbody>
-          <tr>
-            <td style={{width:"16%"}}><strong>OS N&ordm;:</strong><br/>{order.number}</td>
-            <td style={{width:"18%"}}><strong>LOCAL:</strong><br/>Sala do GGD</td>
-            <td style={{width:"10%"}}><strong>SEMANA:</strong><br/>&nbsp;</td>
-            <td style={{width:"10%"}}><strong>TURNO:</strong><br/>{form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "MANHA" : new Date(form.actual_start).getHours() < 18 ? "TARDE" : "NOITE") : ""}</td>
-            <td style={{width:"46%"}}>
-              <table style={{width:"100%",borderCollapse:"collapse"}}><tbody>
-                <tr>
-                  <td style={{width:"75%",border:"none",padding:"0px"}}><strong>Fiscal Trensurb (1):</strong></td>
-                  <td style={{width:"25%",border:"none",padding:"0px"}}><strong>RE:</strong></td>
-                </tr>
-                <tr>
-                  <td style={{border:"none",padding:"0px"}}><strong>Fiscal Trensurb (2):</strong></td>
-                  <td style={{border:"none",padding:"0px"}}><strong>RE:</strong></td>
-                </tr>
-              </tbody></table>
-            </td>
-          </tr>
-          <tr>
-            <td colSpan={2}><strong>DATA DA EXECUCAO:</strong> {form.actual_start ? new Date(form.actual_start).toLocaleDateString("pt-BR") : ""}</td>
-            <td colSpan={3}><strong>EMPRESA CONTRATADA:</strong> {form.contractor_name || ""}</td>
-          </tr>
-        </tbody>
-      </table>
+  let materialsHtml = "";
+  if (materials.length > 0) {
+    const rows = materials.map((m, i) => `<tr>
+      <td style="text-align:center;width:5%">${i + 1}</td>
+      <td style="width:55%">${esc(m.name)}</td>
+      <td style="text-align:center;width:20%">${esc(m.quantity)}</td>
+      <td style="text-align:center;width:20%">${esc(m.unit)}</td>
+    </tr>`).join("");
+    materialsHtml = `
+      <table class="tt">
+        <tr><th colspan="4">MATERIAIS UTILIZADOS</th></tr>
+        <tr><th style="width:5%">#</th><th style="width:55%">Material / Peca</th><th style="width:20%">Qtd</th><th style="width:20%">Unidade</th></tr>
+        ${rows}
+      </table>`;
+  }
 
-      {/* TABELA DE SERVICOS */}
-      <table className="trensurb-table">
-        <thead>
-          <tr>
-            <th style={{width:"35%"}}>Descricao</th>
-            <th style={{width:"14%"}}>Periodicidade</th>
-            <th style={{width:"21%"}}>Equipamento</th>
-            <th style={{width:"10%"}}>Horario inicial</th>
-            <th style={{width:"10%"}}>Horario final</th>
-            <th style={{width:"5%"}}>Concluido?</th>
-            <th style={{width:"5%"}}>Modo auto?</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>{order.title}</td>
-            <td style={{textAlign:"center"}}>{periodicidade}</td>
-            <td>{asset ? `${asset.name} (${asset.tag})` : ""}{subAsset ? ` > ${subAsset.name}` : ""}</td>
-            <td style={{textAlign:"center"}}>{form.actual_start ? new Date(form.actual_start).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : ""}</td>
-            <td style={{textAlign:"center"}}>{form.actual_end ? new Date(form.actual_end).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : ""}</td>
-            <td style={{textAlign:"center"}}>{form.status === "completed" ? "Sim" : ""}</td>
-            <td style={{textAlign:"center"}}>&nbsp;</td>
-          </tr>
-        </tbody>
-      </table>
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>OS ${esc(order.number)}</title>
+<style>
+  @page { margin: 10mm; size: A4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 9px; color: #000; line-height: 1.25; }
+  table.tt { width: 100%; border-collapse: collapse; margin-bottom: 4px; table-layout: fixed; }
+  table.tt td, table.tt th { border: 1px solid #000; padding: 3px 5px; font-size: 9px; vertical-align: top; word-wrap: break-word; }
+  table.tt th { background: #d9d9d9; font-weight: bold; text-align: center; }
+  .header-empresa { text-align: center; font-weight: bold; font-size: 12px; border: 1px solid #000; padding: 4px; }
+  .header-senerg { font-weight: bold; font-size: 10px; border: 1px solid #000; border-top: none; padding: 3px 5px; display: flex; justify-content: space-between; }
+  .section-title { background: #d9d9d9; font-weight: bold; font-size: 9px; border: 1px solid #000; padding: 3px 5px; text-transform: uppercase; }
+  .footer-note { text-align: right; font-size: 8px; color: #666; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <div class="header-empresa">EMPRESA DE TRENS URBANOS DE PORTO ALEGRE S.A</div>
+  <div class="header-senerg">
+    <span>SENERG &ndash; ENERGIA</span>
+    <span>OS N&ordm;: <strong>${esc(order.number)}</strong></span>
+  </div>
 
-      {/* ATIVIDADES / OBSERVACOES */}
-      <table className="trensurb-table">
-        <tbody>
-          <tr>
-            <td colSpan={2} className="section-title">Descricao das atividades, relacao de materiais, observacoes e inconformidades:</td>
-          </tr>
-          <tr>
-            <td style={{width:"50%", verticalAlign:"top"}}>
-              <strong>MANHA:</strong>
-              <div style={{minHeight: 35, paddingTop: 2}}>{form.observations || ""}</div>
-            </td>
-            <td style={{width:"50%", verticalAlign:"top"}}>
-              <strong>TARDE:</strong>
-              <div style={{minHeight: 35}}>&nbsp;</div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* CHECKLIST */}
-      {checklist.length > 0 && (
-        <table className="trensurb-table">
-          <thead>
-            <tr>
-              <th colSpan={4}>CHECKLIST ({checklistDone}/{checklist.length})</th>
-            </tr>
-            <tr>
-              <th style={{width:"4%"}}>OK</th>
-              <th style={{width:"46%"}}>Atividade</th>
-              <th style={{width:"4%"}}>OK</th>
-              <th style={{width:"46%"}}>Atividade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Array.from({length: Math.ceil(checklist.length / 2)}, (_, i) => (
-              <tr key={i}>
-                <td style={{textAlign:"center"}}>{checklist[i*2]?.done ? "X" : ""}</td>
-                <td style={{textDecoration: checklist[i*2]?.done ? "line-through" : "none", color: checklist[i*2]?.done ? "#666" : "#000"}}>{checklist[i*2]?.text}</td>
-                <td style={{textAlign:"center"}}>{checklist[i*2+1] ? (checklist[i*2+1]?.done ? "X" : "") : ""}</td>
-                <td style={{textDecoration: checklist[i*2+1]?.done ? "line-through" : "none", color: checklist[i*2+1]?.done ? "#666" : "#000"}}>{checklist[i*2+1]?.text || ""}</td>
-              </tr>
-            ))}
-          </tbody>
+  <table class="tt" style="margin-top:0">
+    <tr>
+      <td style="width:16%"><strong>OS N&ordm;:</strong><br/>${esc(order.number)}</td>
+      <td style="width:18%"><strong>LOCAL:</strong><br/>Sala do GGD</td>
+      <td style="width:10%"><strong>SEMANA:</strong><br/>&nbsp;</td>
+      <td style="width:10%"><strong>TURNO:</strong><br/>${turno}</td>
+      <td style="width:46%">
+        <table style="width:100%;border-collapse:collapse">
+          <tr><td style="border:none;padding:1px 0;width:75%"><strong>Fiscal Trensurb (1):</strong></td><td style="border:none;padding:1px 0;width:25%"><strong>RE:</strong></td></tr>
+          <tr><td style="border:none;padding:1px 0"><strong>Fiscal Trensurb (2):</strong></td><td style="border:none;padding:1px 0"><strong>RE:</strong></td></tr>
         </table>
-      )}
+      </td>
+    </tr>
+    <tr>
+      <td colspan="2"><strong>DATA DA EXECUCAO:</strong> ${dataExec}</td>
+      <td colspan="3"><strong>EMPRESA CONTRATADA:</strong> ${esc(form.contractor_name || "")}</td>
+    </tr>
+  </table>
 
-      {/* MATERIAIS */}
-      {materials.length > 0 && (
-        <table className="trensurb-table">
-          <thead>
-            <tr><th colSpan={4}>MATERIAIS UTILIZADOS</th></tr>
-            <tr>
-              <th style={{width:"5%"}}>#</th>
-              <th style={{width:"55%"}}>Material / Peca</th>
-              <th style={{width:"20%"}}>Qtd</th>
-              <th style={{width:"20%"}}>Unidade</th>
-            </tr>
-          </thead>
-          <tbody>
-            {materials.map((mat: Material, i: number) => (
-              <tr key={mat.id}>
-                <td style={{textAlign:"center"}}>{i+1}</td>
-                <td>{mat.name}</td>
-                <td style={{textAlign:"center"}}>{mat.quantity}</td>
-                <td style={{textAlign:"center"}}>{mat.unit}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
+  <table class="tt">
+    <tr>
+      <th style="width:35%">Descricao</th>
+      <th style="width:14%">Periodicidade</th>
+      <th style="width:21%">Equipamento</th>
+      <th style="width:10%">Horario inicial</th>
+      <th style="width:10%">Horario final</th>
+      <th style="width:5%">Concluido?</th>
+      <th style="width:5%">Modo auto?</th>
+    </tr>
+    <tr>
+      <td>${esc(order.title)}</td>
+      <td style="text-align:center">${esc(periodicidade)}</td>
+      <td>${equipamento}</td>
+      <td style="text-align:center">${horaIni}</td>
+      <td style="text-align:center">${horaFim}</td>
+      <td style="text-align:center">${form.status === "completed" ? "Sim" : ""}</td>
+      <td style="text-align:center">&nbsp;</td>
+    </tr>
+  </table>
 
-      {/* CONDICOES DE SEGURANCA */}
-      <table className="trensurb-table">
-        <tbody>
-          <tr><td className="section-title" colSpan={4}>CONDICOES DE SEGURANCA: REALIZAR A APR ANTES DO INICIO DAS ATIVIDADES</td></tr>
-          <tr>
-            <td style={{width:"25%"}}><strong>EMPREGADOS</strong></td>
-            <td style={{width:"10%"}}><strong>RE</strong></td>
-            <td style={{width:"25%"}}><strong>EMPREGADOS</strong></td>
-            <td style={{width:"10%"}}><strong>RE</strong></td>
-          </tr>
-          <tr><td style={{height:12}}>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-          <tr><td style={{height:12}}>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
-        </tbody>
-      </table>
+  <table class="tt">
+    <tr><td colspan="2" class="section-title">Descricao das atividades, relacao de materiais, observacoes e inconformidades:</td></tr>
+    <tr>
+      <td style="width:50%;vertical-align:top"><strong>MANHA:</strong><div style="min-height:60px;padding-top:3px">${esc(form.observations || "")}</div></td>
+      <td style="width:50%;vertical-align:top"><strong>TARDE:</strong><div style="min-height:60px">&nbsp;</div></td>
+    </tr>
+  </table>
 
-      {/* ASSINATURAS */}
-      <table className="trensurb-table">
-        <tbody>
-          <tr>
-            <td style={{width:"33%"}}>
-              <strong>Programada por:</strong><br/>
-              <div style={{minHeight:10}}>&nbsp;</div>
-              <div style={{display:"flex", gap:8}}>
-                <span>RE:</span>
-                <span>Assinatura:</span>
-              </div>
-            </td>
-            <td style={{width:"34%"}}>
-              <strong>Preposto da CONTRATADA {form.contractor_name || ""}:</strong><br/>
-              <div style={{minHeight:10}}>{form.contractor_preposto || ""}</div>
-            </td>
-            <td style={{width:"33%"}}>
-              <strong>Fiscal Trensurb (M):</strong><br/>
-              <div style={{minHeight:10}}>&nbsp;</div>
-              <strong>Fiscal Trensurb (T):</strong><br/>
-              <div style={{minHeight:10}}>&nbsp;</div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+  ${checklistHtml}
+  ${materialsHtml}
 
-      {/* OBSERVACOES GESTAO */}
-      <table className="trensurb-table">
-        <tbody>
-          <tr><td className="section-title">OBSERVACOES DA GESTAO / SUPERVISAO</td></tr>
-          <tr><td style={{minHeight:20, height:20}}>{form.observations || ""}&nbsp;</td></tr>
-        </tbody>
-      </table>
+  <table class="tt">
+    <tr><td colspan="4" class="section-title">CONDICOES DE SEGURANCA: REALIZAR A APR ANTES DO INICIO DAS ATIVIDADES</td></tr>
+    <tr><td style="width:25%"><strong>EMPREGADOS</strong></td><td style="width:10%"><strong>RE</strong></td><td style="width:25%"><strong>EMPREGADOS</strong></td><td style="width:10%"><strong>RE</strong></td></tr>
+    <tr><td style="height:16px">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    <tr><td style="height:16px">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+  </table>
 
-      {/* RESPONSAVEL */}
-      <table className="trensurb-table">
-        <thead>
-          <tr><th colSpan={4}>RESPONSAVEL PELAS OBSERVACOES</th></tr>
-          <tr>
-            <th style={{width:"40%"}}>Nome</th>
-            <th style={{width:"15%"}}>RE</th>
-            <th style={{width:"20%"}}>Data</th>
-            <th style={{width:"25%"}}>Assinatura</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td style={{height:14}}>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-          </tr>
-        </tbody>
-      </table>
+  <table class="tt">
+    <tr>
+      <td style="width:33%"><strong>Programada por:</strong><br/><div style="min-height:16px">&nbsp;</div><div style="display:flex;gap:8px"><span>RE:</span><span>Assinatura:</span></div></td>
+      <td style="width:34%"><strong>Preposto da CONTRATADA ${esc(form.contractor_name || "")}:</strong><br/><div style="min-height:16px">${esc(form.contractor_preposto || "")}</div></td>
+      <td style="width:33%"><strong>Fiscal Trensurb (M):</strong><br/><div style="min-height:16px">&nbsp;</div><strong>Fiscal Trensurb (T):</strong><br/><div style="min-height:16px">&nbsp;</div></td>
+    </tr>
+  </table>
 
-      <div style={{textAlign:"right", fontSize:7, color:"#666", marginTop:2}}>
-        SGM Ferroviario &ndash; Emitido em: {now} | OS: {order.number}
-      </div>
-    </div>
-  );
+  <table class="tt">
+    <tr><td class="section-title">OBSERVACOES DA GESTAO / SUPERVISAO</td></tr>
+    <tr><td style="min-height:60px;height:60px">${esc(form.observations || "")}&nbsp;</td></tr>
+  </table>
+
+  <table class="tt">
+    <tr><th colspan="4">RESPONSAVEL PELAS OBSERVACOES</th></tr>
+    <tr><th style="width:40%">Nome</th><th style="width:15%">RE</th><th style="width:20%">Data</th><th style="width:25%">Assinatura</th></tr>
+    <tr><td style="height:20px">&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+  </table>
+
+  <div class="footer-note">SGM Ferroviario &ndash; Emitido em: ${now} | OS: ${esc(order.number)}</div>
+</body>
+</html>`;
+}
+
+function buildAPRHtml(order: any, asset: any, form: any, aprSelections: Record<string, boolean>) {
+  const epis = ["Capacete de seguranca","Protetor facial verde","Oculos de protecao","Protetor auditivo","Respirador","Perneira","Tapete isolante","Vara de manobra","Detector de tensao","Aterramento temporario","Fitas/cones","Radio comunicador"];
+  const riscoSections = [
+    {titulo:"Riscos Eletricos", itens:["Contato com partes energizadas","Arco eletrico / flash eletrico","Inducao eletromagnetica","Eletricidade estatica"]},
+    {titulo:"Riscos de Queda", itens:["Queda de mesmo nivel","Queda de nivel diferente","Queda de objetos/ferramentas"]},
+    {titulo:"Riscos de Incendio/Explosao", itens:["Presenca de gases inflamaveis","Curto circuito / faiscas","Materiais combustiveis no local"]},
+    {titulo:"Riscos Mecanicos", itens:["Contato com partes moveis de maquinas","Ferramentas inadequadas ou defeituosas","Projecao de particulas/fragmentos"]},
+    {titulo:"Riscos Ergonomicos", itens:["Postura inadequada em estruturas","Trabalhos agaixados em paineis","Levantamento e transporte manual de cargas (23kg)"]},
+    {titulo:"Riscos a Terceiros", itens:["Energizacao acidental","Colisao de veiculos"]},
+  ];
+
+  const selectedEpis = epis.filter(e => aprSelections[`epi_${e}`]);
+  const allRiscos = riscoSections.flatMap(s => s.itens);
+  const selectedRiscos = allRiscos.filter(r => aprSelections[`risco_${r}`]);
+
+  const turno = form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "Manha" : new Date(form.actual_start).getHours() < 18 ? "Tarde" : "Noite") : "";
+  const dataApr = form.actual_start ? new Date(form.actual_start).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR");
+
+  let episHtml = "";
+  if (selectedEpis.length > 0) {
+    const rows = [];
+    for (let i = 0; i < selectedEpis.length; i += 2) {
+      rows.push(`<tr>
+        <td style="text-align:center;width:5%">X</td><td style="width:45%">${esc(selectedEpis[i])}</td>
+        <td style="text-align:center;width:5%">${selectedEpis[i+1] ? "X" : ""}</td><td style="width:45%">${esc(selectedEpis[i+1] || "")}</td>
+      </tr>`);
+    }
+    episHtml = `<table class="tt"><tr><td colspan="4" class="section-title">Equipamentos de seguranca a serem utilizados</td></tr>${rows.join("")}</table>`;
+  }
+
+  let riscosHtml = "";
+  if (selectedRiscos.length > 0) {
+    const rows = selectedRiscos.map(r => `<tr><td style="text-align:center;width:5%">X</td><td>${esc(r)}</td></tr>`).join("");
+    riscosHtml = `<table class="tt"><tr><td colspan="2" class="section-title">Riscos Identificados</td></tr>${rows}</table>`;
+  }
+
+  const planejamento = [["a)","A equipe conferiu o servico a ser executado e esta apta a realizar as tarefas?"],["b)","Todos estao cientes do procedimento de trabalho para a atividade?"],["c)","O CCO foi informado da presenca da equipe na instalacao?"]]
+    .map(([letra, txt]) => `<tr><td style="width:85%"><strong>${letra}</strong> ${txt}</td><td style="text-align:center;width:15%">[ ] Sim [ ] Nao</td></tr>`).join("");
+
+  const outrosReq = ["Todo pessoal envolvido na atividade esta sem adornos (relogio, cracha, anel/alianca, etc.) ?","A equipe conferiu o servico a ser executado ? (Revisar)","A APR foi discutida e entendida por todos ?","Todos estao cientes que so deverao iniciar os servicos apos autorizacao ?"]
+    .map((txt, i) => `<tr><td style="width:85%"><strong>${i+1}</strong> ${txt}</td><td style="text-align:center;width:15%">[ ] Sim [ ] Nao</td></tr>`).join("");
+
+  const termino = ["Foram retirados os aterramentos temporarios ?","Foram retirados os cartoes de seguranca e os bloqueios das seccionadoras/disjuntores ?","Foi retirado todo pessoal e ferramental da area a ser reenergizada ?","Foi preenchido o Livro de Registros de Acesso (SEs e CBs) ?"]
+    .map((txt, i) => `<tr><td style="width:85%"><strong>${i+1}</strong> ${txt}</td><td style="text-align:center;width:15%">[ ] Sim [ ] Nao</td></tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>APR ${esc(order.number)}</title>
+<style>
+  @page { margin: 10mm; size: A4; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; font-size: 9px; color: #000; line-height: 1.25; }
+  table.tt { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
+  table.tt td, table.tt th { border: 1px solid #000; padding: 3px 5px; font-size: 9px; vertical-align: top; }
+  table.tt th { background: #d9d9d9; font-weight: bold; text-align: left; }
+  .section-title { background: #d9d9d9; font-weight: bold; }
+  .footer-note { text-align: right; font-size: 8px; color: #666; margin-top: 6px; }
+</style>
+</head>
+<body>
+  <table class="tt">
+    <tr><td colspan="3" style="text-align:center;font-weight:bold;font-size:11px">SENERG - Setor de Energia<br/><span style="font-size:9px;font-weight:normal">Check-List de Seguranca do Trabalho - Manutencao dos Sistemas de Abastecimento de Energia Eletrica</span></td></tr>
+    <tr>
+      <td style="width:40%"><strong>Numero (OS/PI):</strong> ${esc(order.number)}</td>
+      <td style="width:35%"><strong>Data:</strong> ${dataApr}</td>
+      <td style="width:25%"><strong>Turno:</strong> ${turno}</td>
+    </tr>
+    <tr><td colspan="2"><strong>Supervisor do CCO:</strong></td><td><strong>Ha outras equipes?</strong> [ ] Sim [ ] Nao</td></tr>
+    <tr><td colspan="3"><strong>Empresa Contratada:</strong> ${esc(form.contractor_name || "")} ${form.contractor_preposto ? `- Preposto: ${esc(form.contractor_preposto)}` : ""}</td></tr>
+  </table>
+
+  <table class="tt">
+    <tr><td class="section-title">Descricao dos servicos a serem executados</td></tr>
+    <tr><td style="height:30px">${esc(order.title)}${asset ? ` - ${esc(asset.name)} (${esc(asset.tag)})` : ""}</td></tr>
+  </table>
+
+  ${episHtml}
+  ${riscosHtml}
+
+  <table class="tt"><tr><td colspan="2" class="section-title">Planejamento</td></tr>${planejamento}</table>
+  <table class="tt"><tr><td colspan="2" class="section-title">Outros requisitos</td></tr>${outrosReq}</table>
+  <table class="tt"><tr><td colspan="2" class="section-title">Termino da manutencao (ANTES DA OPERACAO DE REENERGIZACAO)</td></tr>${termino}</table>
+
+  <table class="tt">
+    <tr><td colspan="3" class="section-title">Pessoal autorizado e ciente desta Permissao de Trabalho</td></tr>
+    <tr><th style="width:50%">Nome</th><th style="width:15%">RE</th><th style="width:35%">Visto</th></tr>
+    <tr style="height:18px"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+    <tr style="height:18px"><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>
+  </table>
+
+  <table class="tt">
+    <tr>
+      <td style="width:50%"><strong>Visto do Responsavel pela atividade:</strong><div style="min-height:18px">&nbsp;</div></td>
+      <td style="width:50%"><strong>Justificativa:</strong><div style="min-height:18px">&nbsp;</div></td>
+    </tr>
+  </table>
+
+  <div class="footer-note">SGM Ferroviario &ndash; APR/PT &ndash; OS: ${esc(order.number)} &ndash; Emitido em: ${new Date().toLocaleDateString("pt-BR")}</div>
+</body>
+</html>`;
+}
+
+function openPrintWindow(html: string) {
+  const w = window.open("", "_blank", "width=900,height=700");
+  if (!w) {
+    alert("O navegador bloqueou a janela de impressao. Permita pop-ups para este site.");
+    return;
+  }
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
+  w.onload = () => {
+    w.focus();
+    w.print();
+  };
 }
 
 export default function WorkOrderDetailPage() {
@@ -321,7 +320,6 @@ export default function WorkOrderDetailPage() {
   const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAPR, setShowAPR] = useState(false);
-  const [printMode, setPrintMode] = useState<"os"|"apr"|null>(null);
   const [aprSelections, setAprSelections] = useState<Record<string, boolean>>({});
   const toggleAPR = (key: string) => setAprSelections(prev => ({ ...prev, [key]: !prev[key] }));
   const [companies, setCompanies] = useState<ContractedCompany[]>([]);
@@ -375,27 +373,15 @@ export default function WorkOrderDetailPage() {
   }, [id]);
 
   const handlePrint = () => {
-    const os = document.getElementById("print-area");
-    const apr = document.getElementById("apr-print-area");
-    if (!os) return;
-    document.body.classList.add("printing-os");
-    os.style.display = "block";
-    if (apr) apr.style.display = "none";
-    window.print();
-    os.style.display = "none";
-    document.body.classList.remove("printing-os");
+    if (!order) return;
+    const html = buildOSHtml(order, asset, subAsset, form, checklist, materials);
+    openPrintWindow(html);
   };
 
   const handlePrintAPR = () => {
-    const os = document.getElementById("print-area");
-    const apr = document.getElementById("apr-print-area");
-    if (!apr) return;
-    document.body.classList.add("printing-apr");
-    apr.style.display = "block";
-    if (os) os.style.display = "none";
-    window.print();
-    apr.style.display = "none";
-    document.body.classList.remove("printing-apr");
+    if (!order) return;
+    const html = buildAPRHtml(order, asset, form, aprSelections);
+    openPrintWindow(html);
   };
 
   const openImportModal = () => {
@@ -528,8 +514,6 @@ export default function WorkOrderDetailPage() {
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-6 overflow-auto">
-        {order && <PrintView order={order} asset={asset} subAsset={subAsset} form={form} checklist={checklist} materials={materials} />}
-
         <button onClick={() => router.back()} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 text-sm">
           <ArrowLeft size={16} /> Voltar
         </button>
@@ -801,112 +785,6 @@ export default function WorkOrderDetailPage() {
                     ))}
                   </div>
                 </div>
-              </div>
-
-              <div id="apr-print-area" style={{display: "none"}}>
-                <style>{`
-                  @media print {
-                    html, body { height: auto !important; }
-                    @page { margin: 8mm; size: A4; }
-                  }
-                `}</style>
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"9px"}}>
-                  <tbody>
-                    <tr><td style={{border:"1px solid black",padding:"3px",textAlign:"center",fontWeight:"bold",fontSize:"10px"}} colSpan={3}>SENERG - Setor de Energia<br/><span style={{fontSize:"8px",fontWeight:"normal"}}>Check-List de Seguranca do Trabalho - Manutencao dos Sistemas de Abastecimento de Energia Eletrica</span></td></tr>
-                    <tr>
-                      <td style={{border:"1px solid black",padding:"3px",fontSize:"8px",width:"40%"}}><strong>Numero (OS/PI):</strong> {order.number}</td>
-                      <td style={{border:"1px solid black",padding:"3px",fontSize:"8px",width:"35%"}}><strong>Data:</strong> {form.actual_start ? new Date(form.actual_start).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR")}</td>
-                      <td style={{border:"1px solid black",padding:"3px",fontSize:"8px",width:"25%"}}><strong>Turno:</strong> {form.actual_start ? (new Date(form.actual_start).getHours() < 12 ? "Manha" : new Date(form.actual_start).getHours() < 18 ? "Tarde" : "Noite") : ""}</td>
-                    </tr>
-                    <tr>
-                      <td style={{border:"1px solid black",padding:"3px",fontSize:"8px"}} colSpan={2}><strong>Supervisor do CCO:</strong></td>
-                      <td style={{border:"1px solid black",padding:"3px",fontSize:"8px"}}><strong>Ha outras equipes?</strong> [ ] Sim [ ] Nao</td>
-                    </tr>
-                    <tr>
-                      <td style={{border:"1px solid black",padding:"3px",fontSize:"8px"}} colSpan={3}><strong>Empresa Contratada:</strong> {form.contractor_name || ""} {form.contractor_preposto ? `- Preposto: ${form.contractor_preposto}` : ""}</td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"9px"}}>
-                  <tbody>
-                    <tr><td style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Descricao dos servicos a serem executados</td></tr>
-                    <tr><td style={{border:"1px solid black",padding:"3px",height:"24px",fontSize:"8px"}}>{order.title}{asset ? ` - ${asset.name} (${asset.tag})` : ""}</td></tr>
-                  </tbody>
-                </table>
-
-                {Object.entries(aprSelections).some(([k,v]) => k.startsWith("epi_") && v) && (
-                  <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                    <tbody>
-                      <tr><td colSpan={4} style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Equipamentos de seguranca a serem utilizados</td></tr>
-                      {(() => {
-                        const sel = Object.entries(aprSelections).filter(([k,v]) => k.startsWith("epi_") && v).map(([k]) => k.replace("epi_",""));
-                        const rows: any[] = [];
-                        for(let i=0;i<sel.length;i+=2){
-                          rows.push(<tr key={i}><td style={{border:"1px solid black",padding:"2px",width:"5%",textAlign:"center"}}>X</td><td style={{border:"1px solid black",padding:"2px",width:"45%"}}>{sel[i]}</td><td style={{border:"1px solid black",padding:"2px",width:"5%",textAlign:"center"}}>{sel[i+1]?"X":""}</td><td style={{border:"1px solid black",padding:"2px",width:"45%"}}>{sel[i+1]||""}</td></tr>);
-                        }
-                        return rows;
-                      })()}
-                    </tbody>
-                  </table>
-                )}
-
-                {Object.entries(aprSelections).some(([k,v]) => k.startsWith("risco_") && v) && (
-                  <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                    <tbody>
-                      <tr><td colSpan={2} style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Riscos Identificados</td></tr>
-                      {Object.entries(aprSelections).filter(([k,v]) => k.startsWith("risco_") && v).map(([k]) => (
-                        <tr key={k}><td style={{border:"1px solid black",padding:"2px",width:"5%",textAlign:"center"}}>X</td><td style={{border:"1px solid black",padding:"2px"}}>{k.replace("risco_","")}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                  <tbody>
-                    <tr><td colSpan={2} style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Planejamento</td></tr>
-                    {[["a)","A equipe conferiu o servico a ser executado e esta apta a realizar as tarefas?"],["b)","Todos estao cientes do procedimento de trabalho para a atividade?"],["c)","O CCO foi informado da presenca da equipe na instalacao?"]].map((row,i) => (
-                      <tr key={i}><td style={{border:"1px solid black",padding:"2px",width:"85%"}}><strong>{row[0]}</strong> {row[1]}</td><td style={{border:"1px solid black",padding:"2px",width:"15%",textAlign:"center"}}>[ ] Sim [ ] Nao</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                  <tbody>
-                    <tr><td colSpan={2} style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Outros requisitos</td></tr>
-                    {["Todo pessoal envolvido na atividade esta sem adornos (relogio, cracha, anel/alianca, etc.) ?","A equipe conferiu o servico a ser executado ? (Revisar)","A APR foi discutida e entendida por todos ?","Todos estao cientes que so deverao iniciar os servicos apos autorizacao ?"].map((item,i) => (
-                      <tr key={i}><td style={{border:"1px solid black",padding:"2px",width:"85%"}}><strong>{i+1}</strong> {item}</td><td style={{border:"1px solid black",padding:"2px",width:"15%",textAlign:"center"}}>[ ] Sim [ ] Nao</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                  <tbody>
-                    <tr><td colSpan={2} style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Termino da manutencao (ANTES DA OPERACAO DE REENERGIZACAO)</td></tr>
-                    {["Foram retirados os aterramentos temporarios ?","Foram retirados os cartoes de seguranca e os bloqueios das seccionadoras/disjuntores ?","Foi retirado todo pessoal e ferramental da area a ser reenergizada ?","Foi preenchido o Livro de Registros de Acesso (SEs e CBs) ?"].map((item,i) => (
-                      <tr key={i}><td style={{border:"1px solid black",padding:"2px",width:"85%"}}><strong>{i+1}</strong> {item}</td><td style={{border:"1px solid black",padding:"2px",width:"15%",textAlign:"center"}}>[ ] Sim [ ] Nao</td></tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                  <tbody>
-                    <tr><td colSpan={3} style={{border:"1px solid black",padding:"2px",background:"#d9d9d9",fontWeight:"bold"}}>Pessoal autorizado e ciente desta Permissao de Trabalho</td></tr>
-                    <tr><th style={{border:"1px solid black",padding:"2px",width:"50%",textAlign:"left"}}>Nome</th><th style={{border:"1px solid black",padding:"2px",width:"15%"}}>RE</th><th style={{border:"1px solid black",padding:"2px",width:"35%"}}>Visto</th></tr>
-                    {[0,1].map(i => (<tr key={i} style={{height:"14px"}}><td style={{border:"1px solid black",padding:"2px"}}>&nbsp;</td><td style={{border:"1px solid black",padding:"2px"}}>&nbsp;</td><td style={{border:"1px solid black",padding:"2px"}}>&nbsp;</td></tr>))}
-                  </tbody>
-                </table>
-
-                <table style={{width:"100%",borderCollapse:"collapse",marginBottom:"4px",fontFamily:"Arial,sans-serif",fontSize:"8px"}}>
-                  <tbody>
-                    <tr>
-                      <td style={{border:"1px solid black",padding:"3px",width:"50%"}}><strong>Visto do Responsavel pela atividade:</strong><div style={{minHeight:"14px"}}>&nbsp;</div></td>
-                      <td style={{border:"1px solid black",padding:"3px",width:"50%"}}><strong>Justificativa:</strong><div style={{minHeight:"14px"}}>&nbsp;</div></td>
-                    </tr>
-                  </tbody>
-                </table>
-
-                <div style={{textAlign:"right",fontSize:"7px",color:"#666",marginTop:"2px",fontFamily:"Arial,sans-serif"}}>SGM Ferroviario &ndash; APR/PT &ndash; OS: {order.number} &ndash; Emitido em: {new Date().toLocaleDateString("pt-BR")}</div>
               </div>
             </div>
           </div>
