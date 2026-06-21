@@ -10,7 +10,7 @@ const ROLE_LABEL: Record<string, string> = { ADMIN: "Administrador", MANAGER: "G
 const ROLE_BADGE: Record<string, string> = { ADMIN: "bg-red-100 text-red-700", MANAGER: "bg-purple-100 text-purple-700", TECHNICIAN: "bg-blue-100 text-blue-700", ENGINEER: "bg-orange-100 text-orange-700", OPERATOR: "bg-green-100 text-green-700", VIEWER: "bg-slate-100 text-slate-600", admin: "bg-red-100 text-red-700", manager: "bg-purple-100 text-purple-700", technician: "bg-blue-100 text-blue-700", engineer: "bg-orange-100 text-orange-700", operator: "bg-green-100 text-green-700", viewer: "bg-slate-100 text-slate-600" };
 
 const emptyTeam = { name: "", specialty: "", description: "" };
-const emptyUser = { name: "", email: "", password: "", role: "technician", badge_number: "", phone: "" };
+const emptyUser = { name: "", email: "", password: "", role: "TECHNICIAN", badge_number: "", phone: "" };
 
 export default function TeamsPage() {
   const [teams, setTeams] = useState<any[]>([]);
@@ -48,7 +48,9 @@ export default function TeamsPage() {
       }
       setShowTeamModal(false); setTeamForm({ ...emptyTeam }); setEditingTeam(null); load();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Erro ao salvar equipe");
+      const detail = e?.response?.data?.detail;
+      const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? (detail[0]?.msg || "Erro de validacao") : "Erro ao salvar equipe";
+      setError(msg);
     } finally { setSaving(false); }
   };
 
@@ -74,7 +76,9 @@ export default function TeamsPage() {
 
         setShowUserModal(false); setUserForm({ ...emptyUser }); setEditingUser(null); load();
       } catch (e: any) {
-        setError(e?.response?.data?.detail || "Erro ao atualizar usuario");
+        const detail = e?.response?.data?.detail;
+        const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? (detail[0]?.msg || "Erro de validacao") : "Erro ao atualizar usuario";
+        setError(msg);
       } finally { setSaving(false); }
       return;
     }
@@ -92,7 +96,9 @@ export default function TeamsPage() {
       }
       setShowUserModal(false); setUserForm({ ...emptyUser }); load();
     } catch (e: any) {
-      setError(e?.response?.data?.detail || "Erro ao criar usuario");
+      const detail = e?.response?.data?.detail;
+      const msg = typeof detail === "string" ? detail : Array.isArray(detail) ? (detail[0]?.msg || "Erro de validacao") : "Erro ao criar usuario";
+      setError(msg);
     } finally { setSaving(false); }
   };
 
@@ -132,7 +138,7 @@ export default function TeamsPage() {
       name: user.name || "",
       email: user.email || "",
       password: "",
-      role: (user.role || "technician").toLowerCase(),
+      role: (user.role || "TECHNICIAN").toUpperCase(),
       badge_number: user.badge_number || "",
       phone: user.phone || "",
       team_id: user.team_id || "",
@@ -372,7 +378,7 @@ export default function TeamsPage() {
                   <div>
                     <label className={lbl}>Funcao</label>
                     <select className={inp} value={userForm.role} onChange={e => setUserForm({ ...userForm, role: e.target.value })}>
-                      {Object.entries(ROLE_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      {["ADMIN", "MANAGER", "TECHNICIAN", "ENGINEER", "OPERATOR", "VIEWER"].map(k => <option key={k} value={k}>{ROLE_LABEL[k]}</option>)}
                     </select>
                   </div>
                   <div><label className={lbl}>Telefone</label><input className={inp} value={userForm.phone} onChange={e => setUserForm({ ...userForm, phone: e.target.value })} placeholder="(51) 99999-9999" /></div>
