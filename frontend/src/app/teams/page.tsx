@@ -20,6 +20,7 @@ export default function TeamsPage() {
   const [showUserModal, setShowUserModal] = useState(false);
   const [showAddMember, setShowAddMember] = useState<string | null>(null);
   const [editingTeam, setEditingTeam] = useState<any>(null);
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [teamForm, setTeamForm] = useState<any>({ ...emptyTeam });
   const [userForm, setUserForm] = useState<any>({ ...emptyUser });
   const [saving, setSaving] = useState(false);
@@ -52,13 +53,43 @@ export default function TeamsPage() {
   };
 
   const handleUserSubmit = async () => {
+    if (editingUser) {
+      if (!userForm.name) { setError("Informe o nome"); return; }
+      setSaving(true); setError("");
+      try {
+        const payload: any = {
+          name: userForm.name,
+          role: userForm.role,
+          badge_number: userForm.badge_number || null,
+          phone: userForm.phone || null,
+        };
+        await api.patch(`/admin/users/${editingUser.id}`, payload);
+
+        const previousTeamId = editingUser.team_id || null;
+        const newTeamId = userForm.team_id || null;
+        if (previousTeamId !== newTeamId) {
+          if (previousTeamId) await api.delete(`/teams/${previousTeamId}/members/${editingUser.id}`).catch(() => {});
+          if (newTeamId) await api.post(`/teams/${newTeamId}/members/${editingUser.id}`).catch(() => {});
+        }
+
+        setShowUserModal(false); setUserForm({ ...emptyUser }); setEditingUser(null); load();
+      } catch (e: any) {
+        setError(e?.response?.data?.detail || "Erro ao atualizar usuario");
+      } finally { setSaving(false); }
+      return;
+    }
+
     if (!userForm.name || !userForm.email || !userForm.password) { setError("Preencha nome, email e senha"); return; }
     setSaving(true); setError("");
     try {
       const payload: any = { ...userForm };
       if (!payload.badge_number) delete payload.badge_number;
       if (!payload.phone) delete payload.phone;
-      await api.post("/admin/users", payload);
+      delete payload.team_id;
+      const res = await api.post("/admin/users", payload);
+      if (userForm.team_id && res?.data?.id) {
+        await api.post(`/teams/${userForm.team_id}/members/${res.data.id}`).catch(() => {});
+      }
       setShowUserModal(false); setUserForm({ ...emptyUser }); load();
     } catch (e: any) {
       setError(e?.response?.data?.detail || "Erro ao criar usuario");
@@ -95,6 +126,28 @@ export default function TeamsPage() {
     setShowTeamModal(true);
   };
 
+  const openEditUser = (user: any) => {
+    setEditingUser(user);
+    setUserForm({
+      name: user.name || "",
+      email: user.email || "",
+      password: "",
+      role: (user.role || "technician").toLowerCase(),
+      badge_number: user.badge_number || "",
+      phone: user.phone || "",
+      team_id: user.team_id || "",
+    });
+    setError("");
+    setShowUserModal(true);
+  };
+
+  const openNewUser = () => {
+    setEditingUser(null);
+    setUserForm({ ...emptyUser });
+    setError("");
+    setShowUserModal(true);
+  };
+
   const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
   const lbl = "block text-sm font-medium text-slate-700 mb-1";
 
@@ -110,7 +163,7 @@ export default function TeamsPage() {
             <p className="text-slate-500 text-sm">Gestao de equipes e membros</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => { setShowUserModal(true); setError(""); }} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <button onClick={openNewUser} className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
               <UserPlus size={15} /> Novo Usuario
             </button>
             <button onClick={() => { setEditingTeam(null); setTeamForm({ ...emptyTeam }); setError(""); setShowTeamModal(true); }} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
@@ -219,6 +272,7 @@ export default function TeamsPage() {
                           <div className="flex items-center gap-3">
                             {m.phone && <span className="text-xs text-slate-400 flex items-center gap-1"><Phone size={11}/>{m.phone}</span>}
                             {m.email && <span className="text-xs text-slate-400 flex items-center gap-1"><Mail size={11}/>{m.email}</span>}
+                            <button onClick={() => openEditUser(m)} className="p-1 hover:bg-blue-50 rounded text-slate-300 hover:text-blue-600"><Pencil size={14} /></button>
                             <button onClick={() => removeMember(team.id, m.id)} className="p-1 hover:bg-red-50 rounded text-slate-300 hover:text-red-500"><X size={14} /></button>
                           </div>
                         </div>
@@ -258,7 +312,10 @@ export default function TeamsPage() {
                       <td className="px-4 py-3 text-xs text-slate-500">{u.phone || "--"}</td>
                       <td className="px-4 py-3 text-xs">{team ? <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{team.name}</span> : <span className="text-slate-400">Sem equipe</span>}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => deactivateUser(u.id)} className="text-red-500 hover:underline text-xs">Desativar</button>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => openEditUser(u)} className="text-blue-600 hover:underline text-xs">Editar</button>
+                          <button onClick={() => deactivateUser(u.id)} className="text-red-500 hover:underline text-xs">Desativar</button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -295,16 +352,22 @@ export default function TeamsPage() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-lg font-bold text-slate-800">Novo Usuario</h2>
-                <button onClick={() => setShowUserModal(false)} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
+                <h2 className="text-lg font-bold text-slate-800">{editingUser ? "Editar Usuario" : "Novo Usuario"}</h2>
+                <button onClick={() => { setShowUserModal(false); setEditingUser(null); }} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
               </div>
               <div className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div><label className={lbl}>Nome *</label><input className={inp} value={userForm.name} onChange={e => setUserForm({ ...userForm, name: e.target.value })} placeholder="Nome completo" /></div>
                   <div><label className={lbl}>Matricula</label><input className={inp} value={userForm.badge_number} onChange={e => setUserForm({ ...userForm, badge_number: e.target.value })} placeholder="Ex: TEC001" /></div>
                 </div>
-                <div><label className={lbl}>Email *</label><input type="email" className={inp} value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} placeholder="email@empresa.com" /></div>
-                <div><label className={lbl}>Senha *</label><input type="password" className={inp} value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} placeholder="Senha inicial" /></div>
+                <div>
+                  <label className={lbl}>Email {editingUser ? "" : "*"}</label>
+                  <input type="email" className={inp} value={userForm.email} onChange={e => setUserForm({ ...userForm, email: e.target.value })} placeholder="email@empresa.com" disabled={!!editingUser} />
+                  {editingUser && <p className="text-xs text-slate-400 mt-1">O email nao pode ser alterado por aqui.</p>}
+                </div>
+                {!editingUser && (
+                  <div><label className={lbl}>Senha *</label><input type="password" className={inp} value={userForm.password} onChange={e => setUserForm({ ...userForm, password: e.target.value })} placeholder="Senha inicial" /></div>
+                )}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={lbl}>Funcao</label>
@@ -314,11 +377,18 @@ export default function TeamsPage() {
                   </div>
                   <div><label className={lbl}>Telefone</label><input className={inp} value={userForm.phone} onChange={e => setUserForm({ ...userForm, phone: e.target.value })} placeholder="(51) 99999-9999" /></div>
                 </div>
+                <div>
+                  <label className={lbl}>Equipe</label>
+                  <select className={inp} value={userForm.team_id || ""} onChange={e => setUserForm({ ...userForm, team_id: e.target.value })}>
+                    <option value="">Sem equipe</option>
+                    {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                  </select>
+                </div>
                 {error && <p className="text-red-600 text-sm">{error}</p>}
               </div>
               <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
-                <button onClick={() => setShowUserModal(false)} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
-                <button onClick={handleUserSubmit} disabled={saving} className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">{saving ? "Salvando..." : "Criar Usuario"}</button>
+                <button onClick={() => { setShowUserModal(false); setEditingUser(null); }} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
+                <button onClick={handleUserSubmit} disabled={saving} className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">{saving ? "Salvando..." : editingUser ? "Salvar Alteracoes" : "Criar Usuario"}</button>
               </div>
             </div>
           </div>
@@ -327,4 +397,3 @@ export default function TeamsPage() {
     </div>
   );
 }
-
