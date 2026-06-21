@@ -1,4 +1,4 @@
-import uuid
+﻿import uuid
 from datetime import datetime
 from sqlalchemy import String, Float, Boolean, DateTime, Enum as SAEnum, ForeignKey, Text, Integer, JSON, Interval
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -109,6 +109,9 @@ class WorkOrder(Base):
     contractor_document: Mapped[str | None] = mapped_column(String(20))
     internal_hours: Mapped[float | None] = mapped_column(Float)
     contractor_hours: Mapped[float | None] = mapped_column(Float)
+    contractor_preposto: Mapped[str | None] = mapped_column(String(200))
+    fiscal_1: Mapped[str | None] = mapped_column(String(200))
+    fiscal_2: Mapped[str | None] = mapped_column(String(200))
     # Campo para abastecimento de combustivel
     fuel_liters_added: Mapped[float | None] = mapped_column(Float, nullable=True)
     sub_asset_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assets.id"), nullable=True)

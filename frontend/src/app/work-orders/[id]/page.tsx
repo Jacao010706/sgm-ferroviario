@@ -58,6 +58,25 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
         ${rows.join("")}
       </table>`;
   }
+  if (checklist.length > 0) {
+    const rows = [];
+    for (let i = 0; i < checklist.length; i += 2) {
+      const a = checklist[i];
+      const b = checklist[i + 1];
+      rows.push(`<tr>
+        <td style="text-align:center;width:4%">${a?.done ? "X" : ""}</td>
+        <td style="width:46%;${a?.done ? "" : "color:#999"}">${esc(a?.text)}</td>
+        <td style="text-align:center;width:4%">${b ? (b.done ? "X" : "") : ""}</td>
+        <td style="width:46%;${b?.done ? "" : "color:#999"}">${esc(b?.text || "")}</td>
+      </tr>`);
+    }
+    checklistHtml = `
+      <table class="tt">
+        <tr><th colspan="4">CHECKLIST (${checklistDone}/${checklist.length})</th></tr>
+        <tr><th style="width:4%">OK</th><th style="width:46%">Atividade</th><th style="width:4%">OK</th><th style="width:46%">Atividade</th></tr>
+        ${rows.join("")}
+      </table>`;
+  }
 
   let materialsHtml = "";
   if (materials.length > 0) {
@@ -108,8 +127,8 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
       <td style="width:10%"><strong>TURNO:</strong><br/>${turno}</td>
       <td style="width:46%">
         <table style="width:100%;border-collapse:collapse">
-          <tr><td style="border:none;padding:1px 0;width:75%"><strong>Fiscal Trensurb (1):</strong></td><td style="border:none;padding:1px 0;width:25%"><strong>RE:</strong></td></tr>
-          <tr><td style="border:none;padding:1px 0"><strong>Fiscal Trensurb (2):</strong></td><td style="border:none;padding:1px 0"><strong>RE:</strong></td></tr>
+          <tr><td style="border:none;padding:1px 0;width:75%"><strong>Fiscal Trensurb (1):</strong> ${esc(form.fiscal_1 || "")}</td><td style="border:none;padding:1px 0;width:25%"><strong>RE:</strong></td></tr>
+          <tr><td style="border:none;padding:1px 0"><strong>Fiscal Trensurb (2):</strong> ${esc(form.fiscal_2 || "")}</td><td style="border:none;padding:1px 0"><strong>RE:</strong></td></tr>
         </table>
       </td>
     </tr>
@@ -162,7 +181,7 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
     <tr>
       <td style="width:33%"><strong>Programada por:</strong><br/><div style="min-height:16px">&nbsp;</div><div style="display:flex;gap:8px"><span>RE:</span><span>Assinatura:</span></div></td>
       <td style="width:34%"><strong>Preposto da CONTRATADA ${esc(form.contractor_name || "")}:</strong><br/><div style="min-height:16px">${esc(form.contractor_preposto || "")}</div></td>
-      <td style="width:33%"><strong>Fiscal Trensurb (M):</strong><br/><div style="min-height:16px">&nbsp;</div><strong>Fiscal Trensurb (T):</strong><br/><div style="min-height:16px">&nbsp;</div></td>
+      <td style="width:33%"><strong>Fiscal Trensurb (M):</strong><br/><div style="min-height:16px">${esc(form.fiscal_1 || "")}</div><strong>Fiscal Trensurb (T):</strong><br/><div style="min-height:16px">${esc(form.fiscal_2 || "")}</div></td>
     </tr>
   </table>
 
@@ -332,6 +351,8 @@ export default function WorkOrderDetailPage() {
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<string>("");
   const [importMode, setImportMode] = useState<"replace" | "append">("append");
+  const [fiscalSuggestions, setFiscalSuggestions] = useState<{ name: string }[]>([]);
+  const [fiscalDropdownOpen, setFiscalDropdownOpen] = useState<1 | 2 | null>(null);
 
   useEffect(() => {
     if (!id) return;
@@ -349,6 +370,8 @@ export default function WorkOrderDetailPage() {
         contractor_name: o.contractor_name || "",
         contractor_document: o.contractor_document || "",
         contractor_preposto: o.contractor_preposto || "",
+        fiscal_1: o.fiscal_1 || "",
+        fiscal_2: o.fiscal_2 || "",
         scheduled_start: o.scheduled_start ? o.scheduled_start.slice(0, 16) : "",
         scheduled_end: o.scheduled_end ? o.scheduled_end.slice(0, 16) : "",
         actual_start: o.actual_start ? o.actual_start.slice(0, 16) : "",
@@ -371,7 +394,16 @@ export default function WorkOrderDetailPage() {
       if (o.sub_asset_id) { const sub = allAssets.find((a: any) => a.id === o.sub_asset_id); if (sub) setSubAsset(sub); }
     }).catch(console.error).finally(() => setLoading(false));
     api.get("/contracted-companies/").then(r => setCompanies(r.data)).catch(() => {});
+    api.get("/fiscal-names/").then(r => setFiscalSuggestions(r.data)).catch(() => {});
   }, [id]);
+
+  const registerFiscalUse = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    api.post("/fiscal-names/use", { name: trimmed })
+      .then(() => api.get("/fiscal-names/").then(r => setFiscalSuggestions(r.data)))
+      .catch(() => {});
+  };
 
   const handlePrint = () => {
     if (!order) return;
@@ -591,6 +623,60 @@ export default function WorkOrderDetailPage() {
 
         <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4 space-y-4">
           <h2 className="font-semibold text-slate-700">Execucao</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="relative">
+              <label className={lbl}>Fiscal Trensurb (1)</label>
+              <div className="flex gap-2 items-center">
+                <User size={15} className="text-slate-400 shrink-0" />
+                <input
+                  className={inp}
+                  value={form.fiscal_1 || ""}
+                  onChange={e => setForm({ ...form, fiscal_1: e.target.value })}
+                  onFocus={() => setFiscalDropdownOpen(1)}
+                  onBlur={() => { setTimeout(() => setFiscalDropdownOpen(null), 150); registerFiscalUse(form.fiscal_1 || ""); }}
+                  placeholder="Nome do fiscal Trensurb"
+                  autoComplete="off"
+                />
+              </div>
+              {fiscalDropdownOpen === 1 && fiscalSuggestions.filter(f => !form.fiscal_1 || f.name.toLowerCase().includes(form.fiscal_1.toLowerCase())).length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {fiscalSuggestions.filter(f => !form.fiscal_1 || f.name.toLowerCase().includes(form.fiscal_1.toLowerCase())).map(f => (
+                    <button key={f.name} type="button"
+                      onMouseDown={() => { setForm((prev: any) => ({ ...prev, fiscal_1: f.name })); setFiscalDropdownOpen(null); registerFiscalUse(f.name); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-slate-700">
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="relative">
+              <label className={lbl}>Fiscal Trensurb (2)</label>
+              <div className="flex gap-2 items-center">
+                <User size={15} className="text-slate-400 shrink-0" />
+                <input
+                  className={inp}
+                  value={form.fiscal_2 || ""}
+                  onChange={e => setForm({ ...form, fiscal_2: e.target.value })}
+                  onFocus={() => setFiscalDropdownOpen(2)}
+                  onBlur={() => { setTimeout(() => setFiscalDropdownOpen(null), 150); registerFiscalUse(form.fiscal_2 || ""); }}
+                  placeholder="Nome do fiscal Trensurb (opcional)"
+                  autoComplete="off"
+                />
+              </div>
+              {fiscalDropdownOpen === 2 && fiscalSuggestions.filter(f => !form.fiscal_2 || f.name.toLowerCase().includes(form.fiscal_2.toLowerCase())).length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {fiscalSuggestions.filter(f => !form.fiscal_2 || f.name.toLowerCase().includes(form.fiscal_2.toLowerCase())).map(f => (
+                    <button key={f.name} type="button"
+                      onMouseDown={() => { setForm((prev: any) => ({ ...prev, fiscal_2: f.name })); setFiscalDropdownOpen(null); registerFiscalUse(f.name); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-slate-700">
+                      {f.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={lbl}>Empresa Terceirizada</label>
