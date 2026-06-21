@@ -353,6 +353,8 @@ export default function WorkOrderDetailPage() {
   const [importMode, setImportMode] = useState<"replace" | "append">("append");
   const [fiscalSuggestions, setFiscalSuggestions] = useState<{ name: string }[]>([]);
   const [fiscalDropdownOpen, setFiscalDropdownOpen] = useState<1 | 2 | null>(null);
+  const [companyPrepostos, setCompanyPrepostos] = useState<{ id: number; company_id: number; name: string }[]>([]);
+  const [prepostoDropdownOpen, setPrepostoDropdownOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -397,11 +399,32 @@ export default function WorkOrderDetailPage() {
     api.get("/fiscal-names/").then(r => setFiscalSuggestions(r.data)).catch(() => {});
   }, [id]);
 
+  // Carrega os prepostos da empresa selecionada sempre que contractor_name mudar
+  useEffect(() => {
+    const company = companies.find(c => c.name === form.contractor_name);
+    if (!company) { setCompanyPrepostos([]); return; }
+    api.get("/company-prepostos/", { params: { company_id: company.id } })
+      .then(r => setCompanyPrepostos(r.data))
+      .catch(() => setCompanyPrepostos([]));
+  }, [form.contractor_name, companies]);
+
   const registerFiscalUse = (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
     api.post("/fiscal-names/use", { name: trimmed })
       .then(() => api.get("/fiscal-names/").then(r => setFiscalSuggestions(r.data)))
+      .catch(() => {});
+  };
+
+  const registerPrepostoUse = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const company = companies.find(c => c.name === form.contractor_name);
+    if (!company) return;
+    const exists = companyPrepostos.some(p => p.name.toLowerCase() === trimmed.toLowerCase());
+    if (exists) return;
+    api.post("/company-prepostos/", { company_id: company.id, name: trimmed })
+      .then(r => setCompanyPrepostos(prev => [...prev, r.data]))
       .catch(() => {});
   };
 
@@ -687,12 +710,34 @@ export default function WorkOrderDetailPage() {
                 </button>
               </div>
             </div>
-            <div>
+            <div className="relative">
               <label className={lbl}>Tecnico Preposto</label>
               <div className="flex gap-2 items-center">
                 <User size={15} className="text-slate-400 shrink-0" />
-                <input className={inp} value={form.contractor_preposto || ""} onChange={e => setForm({ ...form, contractor_preposto: e.target.value })} placeholder="Nome e funcao do preposto" />
+                <input
+                  className={inp}
+                  value={form.contractor_preposto || ""}
+                  onChange={e => setForm({ ...form, contractor_preposto: e.target.value })}
+                  onFocus={() => setPrepostoDropdownOpen(true)}
+                  onBlur={() => { setTimeout(() => setPrepostoDropdownOpen(false), 150); registerPrepostoUse(form.contractor_preposto || ""); }}
+                  placeholder="Nome e funcao do preposto"
+                  autoComplete="off"
+                />
               </div>
+              {prepostoDropdownOpen && companyPrepostos.filter(p => !form.contractor_preposto || p.name.toLowerCase().includes(form.contractor_preposto.toLowerCase())).length > 0 && (
+                <div className="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                  {companyPrepostos.filter(p => !form.contractor_preposto || p.name.toLowerCase().includes(form.contractor_preposto.toLowerCase())).map(p => (
+                    <button key={p.id} type="button"
+                      onMouseDown={() => { setForm((prev: any) => ({ ...prev, contractor_preposto: p.name })); setPrepostoDropdownOpen(false); }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 text-slate-700">
+                      {p.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!form.contractor_name && (
+                <p className="text-xs text-slate-400 mt-1">Selecione a empresa primeiro para ver prepostos cadastrados.</p>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
