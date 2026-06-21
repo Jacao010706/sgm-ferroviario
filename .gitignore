@@ -21,3 +21,17 @@ debug_*.py
 monitor_*.py
 test_*.py
 check*.js
+
+# Dependencias e build (Node.js)
+node_modules/
+.next/
+out/
+
+# Variaveis de ambiente
+.env
+.env.local
+.env.production
+.env*.local
+
+# Lockfiles (opcional, mas evita conflitos)
+package-lock.json
