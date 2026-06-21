@@ -53,3 +53,26 @@ async def register_fiscal_name_use(
     await db.commit()
     await db.refresh(fiscal)
     return fiscal
+
+
+@router.post("/import-from-teams")
+async def import_fiscal_names_from_teams(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
+    from app.models.user import User
+    result = await db.execute(select(User).where(User.is_active == True))
+    users = result.scalars().all()
+
+    imported = 0
+    skipped = 0
+    for u in users:
+        name = (u.name or "").strip()
+        if not name:
+            continue
+        existing = await db.execute(select(FiscalName).where(FiscalName.name == name))
+        if existing.scalar_one_or_none():
+            skipped += 1
+            continue
+        db.add(FiscalName(name=name, times_used=0))
+        imported += 1
+
+    await db.commit()
+    return {"imported": imported, "skipped": skipped, "total_users": len(users)}
