@@ -119,7 +119,7 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
     </tr>
     <tr>
       <td colspan="2"><strong>DATA DA EXECUCAO:</strong> ${dataExec}</td>
-      <td colspan="3"><strong>EMPRESA CONTRATADA:</strong> ${esc(form.contractor_name || "")}</td>
+      <td colspan="3"><strong>EMPRESA CONTRATADA:</strong> <span style="font-size:12px;font-weight:bold">${esc(form.contractor_name || "")}</span></td>
     </tr>
   </table>
 
@@ -164,9 +164,9 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
 
   <table class="tt">
     <tr>
-      <td style="width:33%"><strong>Programada por:</strong><br/><div style="min-height:16px">&nbsp;</div><div style="display:flex;gap:8px"><span>RE:</span><span>Assinatura:</span></div></td>
-      <td style="width:34%"><strong>Preposto da CONTRATADA ${esc(form.contractor_name || "")}:</strong><br/><div style="min-height:16px">${esc(form.contractor_preposto || "")}</div></td>
-      <td style="width:33%"><strong>Fiscal Trensurb (M):</strong><br/><div style="min-height:16px">${esc(form.fiscal_1 || "")}</div><strong>Fiscal Trensurb (T):</strong><br/><div style="min-height:16px">${esc(form.fiscal_2 || "")}</div></td>
+      <td style="width:33%"><strong>Programada por:</strong><br/><div style="min-height:16px">&nbsp;</div><div style="display:flex;gap:8px;font-size:11px"><span>RE:</span><span>Assinatura:</span></div></td>
+      <td style="width:34%"><strong>Preposto da CONTRATADA ${esc(form.contractor_name || "")}:</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold">${esc(form.contractor_preposto || "")}</div></td>
+      <td style="width:33%"><strong>Fiscal Trensurb (M):</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold">${esc(form.fiscal_1 || "")}</div><strong>Fiscal Trensurb (T):</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold">${esc(form.fiscal_2 || "")}</div></td>
     </tr>
   </table>
 
