@@ -179,10 +179,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <KpiCard
             label="Alertas Criticos"
-            value={activeAlerts.critical ?? 0}
+            value={activeAlerts.by_severity?.CRITICAL ?? 0}
             icon={<AlertTriangle size={22} className="text-red-600" />}
             color="bg-red-50"
-            sub={`+${activeAlerts.high ?? 0} alta prioridade`}
+            sub={`+${activeAlerts.by_severity?.HIGH ?? 0} alta prioridade`}
           />
           <KpiCard
             label="Total OS"
