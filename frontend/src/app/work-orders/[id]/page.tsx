@@ -112,8 +112,8 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
       <td style="width:10%"><strong>TURNO:</strong><br/>${turno}</td>
       <td style="width:46%">
         <table style="width:100%;border-collapse:collapse">
-          <tr><td style="border:none;padding:1px 0;width:75%"><strong>Fiscal Trensurb (1):</strong> ${esc(form.fiscal_1 || "")}</td><td style="border:none;padding:1px 0;width:25%"><strong>RE:</strong></td></tr>
-          <tr><td style="border:none;padding:1px 0"><strong>Fiscal Trensurb (2):</strong> ${esc(form.fiscal_2 || "")}</td><td style="border:none;padding:1px 0"><strong>RE:</strong></td></tr>
+          <tr><td style="border:none;padding:1px 0;width:75%"><strong>Fiscal Trensurb (1):</strong> <span style="font-size:11px">${esc(form.fiscal_1 || "")}</span></td><td style="border:none;padding:1px 0;width:25%"><strong>RE:</strong></td></tr>
+          <tr><td style="border:none;padding:1px 0"><strong>Fiscal Trensurb (2):</strong> <span style="font-size:11px">${esc(form.fiscal_2 || "")}</span></td><td style="border:none;padding:1px 0"><strong>RE:</strong></td></tr>
         </table>
       </td>
     </tr>
@@ -165,7 +165,7 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
   <table class="tt">
     <tr>
       <td style="width:33%"><strong>Programada por:</strong><br/><div style="min-height:16px">&nbsp;</div><div style="display:flex;gap:8px;font-size:11px"><span>RE:</span><span>Assinatura:</span></div></td>
-      <td style="width:34%"><strong>Preposto da CONTRATADA ${esc(form.contractor_name || "")}:</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold">${esc(form.contractor_preposto || "")}</div></td>
+      <td style="width:34%"><strong>Preposto da CONTRATADA ${esc(form.contractor_name || "")}:</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold;text-align:center">${esc(form.contractor_preposto || "")}</div></td>
       <td style="width:33%"><strong>Fiscal Trensurb (M):</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold">${esc(form.fiscal_1 || "")}</div><strong>Fiscal Trensurb (T):</strong><br/><div style="min-height:16px;font-size:12px;font-weight:bold">${esc(form.fiscal_2 || "")}</div></td>
     </tr>
   </table>
