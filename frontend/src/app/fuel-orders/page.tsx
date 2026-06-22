@@ -3,7 +3,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import Sidebar from "@/components/Sidebar";
-import { Plus, RefreshCw, X, Printer, Fuel, Droplets, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, RefreshCw, X, Printer, Fuel, Droplets, FileText, ChevronDown, ChevronUp, Pencil, Check } from "lucide-react";
 import clsx from "clsx";
 
 const SHIFT_OPTIONS = ["MANHA", "TARDE", "NOITE"];
@@ -23,11 +23,39 @@ const emptyForm = {
   employee_1_name: "", employee_1_re: "", employee_2_name: "", employee_2_re: "",
 };
 
+function SimNaoToggle({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange("Sim")}
+        className={clsx(
+          "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm font-medium transition-all",
+          value === "Sim" ? "border-green-500 bg-green-50 text-green-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"
+        )}
+      >
+        {value === "Sim" && <Check size={14} />} Sim
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange("Nao")}
+        className={clsx(
+          "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm font-medium transition-all",
+          value === "Nao" ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"
+        )}
+      >
+        {value === "Nao" && <Check size={14} />} Nao
+      </button>
+    </div>
+  );
+}
+
 function FuelOrdersContent() {
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingOrder, setEditingOrder] = useState<any>(null);
   const [form, setForm] = useState<any>({ ...emptyForm });
   const [items, setItems] = useState<any[]>([{ ...emptyItem, subitem: "1.1" }]);
   const [saving, setSaving] = useState(false);
@@ -45,7 +73,7 @@ function FuelOrdersContent() {
   useEffect(() => {
     load();
     api.get("/teams/").then((r) => { const all = r.data.flatMap((t: any) => t.members || []); setTechnicians(all); }).catch(() => {});
-    api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data.filter((a: any) => a.asset_type === "generator"))).catch(() => {});
+    api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data.filter((a: any)=> a.asset_type === "generator"))).catch(() => {});
   }, []);
   useEffect(() => {
     if (searchParams.get("new") === "true") {
@@ -58,15 +86,62 @@ function FuelOrdersContent() {
     }
   }, [searchParams]);
   useEffect(() => {
-    if (showModal) {
+    if (showModal && !editingOrder) {
       api.get("/fuel-orders/next-number").then((r) => setForm((f: any) => ({ ...f, number: r.data.number })));
     }
-  }, [showModal]);
+  }, [showModal, editingOrder]);
 
-  const addItem = () => setItems([...items, { ...emptyItem, subitem: `1.${items.length + 1}` }]);
-  const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
+  const addItem = () => setItems([...items, { ...emptyItem, subitem: `1.${items.length + 1}` }]);  const removeItem = (i: number) => setItems(items.filter((_, idx) => idx !== i));
   const updateItem = (i: number, field: string, value: string) => {
     setItems(items.map((item, idx) => idx === i ? { ...item, [field]: value } : item));
+  };
+
+  const openNewModal = () => {
+    setEditingOrder(null);
+    setForm({ ...emptyForm });
+    setItems([{ ...emptyItem, subitem: "1.1" }]);
+    setError("");
+    setShowModal(true);
+  };
+
+  const openEditModal = (order: any) => {
+    setEditingOrder(order);
+    setForm({
+      number: order.number || "",
+      execution_date: order.execution_date ? order.execution_date.split("T")[0] : new Date().toISOString().split("T")[0],
+      location: order.location || "Sala do GGD",
+      sector: order.sector || "SENERG",
+      shift: order.shift || "NOITE",
+      week: order.week || "",
+      supplier: order.supplier || "",
+      fiscal_1: order.fiscal_1 || "",
+      fiscal_2: order.fiscal_2 || "",
+      additive_station: order.additive_station || "",
+      additive_forecast_ml: order.additive_forecast_ml ?? "",
+      additive_quantity_ml: order.additive_quantity_ml ?? "",
+      additive_completed: order.additive_completed || "",
+      observations: order.observations || "",
+      management_observations: order.management_observations || "",
+      responsible_name: order.responsible_name || "Leonardo Costa Santos",
+      responsible_re: order.responsible_re || "2885",
+      employee_1_name: order.employee_1_name || "",
+      employee_1_re: order.employee_1_re || "",
+      employee_2_name: order.employee_2_name || "",
+      employee_2_re: order.employee_2_re || "",
+    });
+    setItems(
+      order.items && order.items.length > 0
+        ? order.items.map((i: any) => ({
+            subitem: i.subitem || "",
+            station: i.station || "",
+            forecast_liters: i.forecast_liters ?? "",
+            supplied_liters: i.supplied_liters ?? "",
+            ggd_automatic: i.ggd_automatic || "",
+          }))
+        : [{ ...emptyItem, subitem: "1.1" }]
+    );
+    setError("");
+    setShowModal(true);
   };
 
   const handleSubmit = async () => {
@@ -84,23 +159,28 @@ function FuelOrdersContent() {
           supplied_liters: i.supplied_liters ? parseFloat(i.supplied_liters) : null,
         })),
       };
-      await api.post("/fuel-orders/", payload);
+      if (editingOrder) {
+        await api.patch("/fuel-orders/" + editingOrder.id, payload);
+      } else {
+        await api.post("/fuel-orders/", payload);
+      }
       setShowModal(false);
+      setEditingOrder(null);
       setForm({ ...emptyForm });
       setItems([{ ...emptyItem, subitem: "1.1" }]);
       load();
     } catch (e: any) {
-      const msg = e?.response?.data?.detail || "Erro ao criar OS";
+      const msg = e?.response?.data?.detail || (editingOrder ? "Erro ao atualizar OS" : "Erro ao criar OS");
       if (msg === "Credenciais invalidas") {
         setError("Sessao expirada. Faca logout e login novamente.");
       } else {
-        setError(msg);
+        setError(typeof msg === "string" ? msg : "Erro de validacao");
       }
     } finally { setSaving(false); }
   };
 
   const closeModal = () => {
-    setShowModal(false); setError("");
+    setShowModal(false); setError(""); setEditingOrder(null);
     setForm({ ...emptyForm });
     setItems([{ ...emptyItem, subitem: "1.1" }]);
   };
@@ -187,9 +267,7 @@ function FuelOrdersContent() {
               </thead>
               <tbody>
                 <tr>
-                  <td style={{border:"1px solid black",padding:"3px"}}>Colocacao de Aditivo.</td>
-                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>ml</td>
-                  <td style={{border:"1px solid black",padding:"3px"}}>{o.additive_station}</td>
+                  <td style={{border:"1px solid black",padding:"3px"}}>Colocacao de Aditivo.</td>                  <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>ml</td>                  <td style={{border:"1px solid black",padding:"3px"}}>{o.additive_station}</td>
                   <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.additive_forecast_ml}</td>
                   <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.additive_quantity_ml}</td>
                   <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.additive_completed}</td>
@@ -214,92 +292,25 @@ function FuelOrdersContent() {
                   </th>
                 </tr>
                 <tr style={{backgroundColor:"#f0f0f0"}}>
-                  <th style={{border:"1px solid black",padding:"3px",width:"4%"}}>✓</th>
+                  <th style={{border:"1px solid black",padding:"3px",width:"4%"}}>OK</th>
                   <th style={{border:"1px solid black",padding:"3px",width:"46%",textAlign:"left"}}>Atividade</th>
-                  <th style={{border:"1px solid black",padding:"3px",width:"4%"}}>✓</th>
+                  <th style={{border:"1px solid black",padding:"3px",width:"4%"}}>OK</th>
                   <th style={{border:"1px solid black",padding:"3px",width:"46%",textAlign:"left"}}>Atividade</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({length: Math.ceil(o.checklist_items.length / 2)}, (_: any, i: number) => (
                   <tr key={i}>
-                    <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.checklist_items[i*2]?.done ? "✓" : "☐"}</td>
-                    <td style={{border:"1px solid black",padding:"3px",textDecoration:o.checklist_items[i*2]?.done?"line-through":"none",color:o.checklist_items[i*2]?.done?"#666":"#000"}}>{o.checklist_items[i*2]?.text}</td>
-                    <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.checklist_items[i*2+1] ? (o.checklist_items[i*2+1]?.done ? "✓" : "☐") : ""}</td>
-                    <td style={{border:"1px solid black",padding:"3px",textDecoration:o.checklist_items[i*2+1]?.done?"line-through":"none",color:o.checklist_items[i*2+1]?.done?"#666":"#000"}}>{o.checklist_items[i*2+1]?.text || ""}</td>
+                    <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.checklist_items[i*2]?.done ? "X" : ""}</td>
+                    <td style={{border:"1px solid black",padding:"3px"}}>{o.checklist_items[i*2]?.text || ""}</td>
+                    <td style={{border:"1px solid black",padding:"3px",textAlign:"center"}}>{o.checklist_items[i*2+1]?.done ? "X" : ""}</td>
+                    <td style={{border:"1px solid black",padding:"3px"}}>{o.checklist_items[i*2+1]?.text || ""}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         )}
-        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px",fontWeight:"bold"}}>
-          CONDICOES DE SEGURANCA: REALIZAR A APR ANTES DO INICIO DAS ATIVIDADES
-        </div>
-        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
-          <div style={{fontWeight:"bold",marginBottom:"4px"}}>EMPREGADOS TRENSURB</div>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead>
-              <tr>
-                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Nome</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>RE</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>Assinatura</th>
-                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Nome</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>RE</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>Assinatura</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[0,1,2].map(idx2 => (
-                <tr key={idx2} style={{height:"20px"}}>
-                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_1_name || "") : ""}</td>
-                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_1_re || "") : ""}</td>
-                  <td style={{border:"1px solid black",padding:"3px"}}></td>
-                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_2_name || "") : ""}</td>
-                  <td style={{border:"1px solid black",padding:"3px"}}>{idx2 === 0 ? (o.employee_2_re || "") : ""}</td>
-                  <td style={{border:"1px solid black",padding:"3px"}}></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
-          <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr",gap:"8px"}}>
-            <div><strong>Superior responsavel pela area:</strong> {o.responsible_name}</div>
-            <div><strong>RE:</strong> {o.responsible_re}</div>
-            <div><strong>Contato do CCO:</strong></div>
-          </div>
-          <div style={{marginTop:"8px"}}>
-            <div><strong>Fiscal Trensurb (1):</strong> ___________________________________</div>
-            <div style={{marginTop:"4px"}}><strong>Fiscal Trensurb (2):</strong> ___________________________________</div>
-            <div style={{marginTop:"4px"}}><strong>Preposto da Contratada:</strong> ___________________________________</div>
-          </div>
-        </div>
-        <div style={{border:"1px solid black",padding:"4px",marginBottom:"4px"}}>
-          <strong>OBSERVACOES DA GESTAO / SUPERVISAO</strong>
-          <div style={{height:"150px",marginTop:"4px"}}>{o.management_observations}</div>
-        </div>
-        <div style={{border:"1px solid black",padding:"4px"}}>
-          <strong>RESPONSAVEL PELAS OBSERVACOES</strong>
-          <table style={{width:"100%",borderCollapse:"collapse",marginTop:"4px"}}>
-            <thead>
-              <tr>
-                <th style={{border:"1px solid black",padding:"3px",textAlign:"left"}}>Nome</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>RE</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>Data</th>
-                <th style={{border:"1px solid black",padding:"3px"}}>Assinatura</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr style={{height:"30px"}}>
-                <td style={{border:"1px solid black",padding:"3px"}}></td>
-                <td style={{border:"1px solid black",padding:"3px"}}></td>
-                <td style={{border:"1px solid black",padding:"3px"}}></td>
-                <td style={{border:"1px solid black",padding:"3px"}}></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
       </div>
     );
   }
@@ -324,7 +335,7 @@ function FuelOrdersContent() {
             <p className="text-slate-500 text-sm">Fornecimento de oleo diesel S-500</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+            <button onClick={openNewModal} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
               <Plus size={15} /> Nova OS
             </button>
             <button onClick={load} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">
@@ -355,7 +366,7 @@ function FuelOrdersContent() {
             <div className="bg-white rounded-xl border border-slate-200 p-12 text-center">
               <Fuel size={32} className="text-slate-300 mx-auto mb-3" />
               <p className="text-slate-400">Nenhuma OS de abastecimento cadastrada</p>
-              <button onClick={() => setShowModal(true)} className="mt-4 text-blue-600 text-sm hover:underline">Criar primeira OS</button>
+              <button onClick={openNewModal} className="mt-4 text-blue-600 text-sm hover:underline">Criar primeira OS</button>
             </div>
           ) : orders.map((o) => (
             <div key={o.id} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -376,6 +387,9 @@ function FuelOrdersContent() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={(e) => { e.stopPropagation(); openEditModal(o); }} className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 px-2 py-1.5 border border-slate-200 rounded-lg hover:border-blue-200">
+                    <Pencil size={13} /> Editar
+                  </button>
                   <button onClick={(e) => { e.stopPropagation(); handlePrint(o); }} className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600 px-2 py-1.5 border border-slate-200 rounded-lg hover:border-blue-200">
                     <Printer size={13} /> Imprimir
                   </button>
@@ -434,7 +448,7 @@ function FuelOrdersContent() {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
               <div className="flex items-center justify-between p-6 border-b border-slate-200">
-                <h2 className="text-lg font-bold text-slate-800">Nova OS de Abastecimento</h2>
+                <h2 className="text-lg font-bold text-slate-800">{editingOrder ? `Editar OS No ${editingOrder.number}` : "Nova OS de Abastecimento"}</h2>
                 <button onClick={closeModal} className="p-2 hover:bg-slate-100 rounded-lg"><X size={18} /></button>
               </div>
               <div className="p-6 space-y-5">
@@ -474,7 +488,10 @@ function FuelOrdersContent() {
                     <div><label className={lbl}>Previsao (ml)</label><input type="number" className={inp} value={form.additive_forecast_ml} onChange={e => setForm({ ...form, additive_forecast_ml: e.target.value })} /></div>
                     <div><label className={lbl}>Quantidade (ml)</label><input type="number" className={inp} value={form.additive_quantity_ml} onChange={e => setForm({ ...form, additive_quantity_ml: e.target.value })} /></div>
                   </div>
-                  <div className="mt-3"><label className={lbl}>Servico Concluido?</label><select className={inp} value={form.additive_completed} onChange={e => setForm({ ...form, additive_completed: e.target.value })}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
+                  <div className="mt-3">
+                    <label className={lbl}>Servico Concluido?</label>
+                    <SimNaoToggle value={form.additive_completed} onChange={v => setForm({ ...form, additive_completed: v })} />
+                  </div>
                 </div>
                 <div className="border-t border-slate-100 pt-4">
                   <div className="flex items-center justify-between mb-3">
@@ -483,12 +500,14 @@ function FuelOrdersContent() {
                   </div>
                   <div className="space-y-2">
                     {items.map((item, i) => (
-                      <div key={i} className="grid grid-cols-12 gap-2 items-center bg-slate-50 p-2 rounded-lg">
+                      <div key={i} className="grid grid-cols-12 gap-2 items-start bg-slate-50 p-2 rounded-lg">
                         <div className="col-span-1"><label className="text-xs text-slate-500">Subitem</label><input className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.subitem} onChange={e => updateItem(i, "subitem", e.target.value)} /></div>
-                        <div className="col-span-4"><label className="text-xs text-slate-500">Estacao *</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
+                        <div className="col-span-3"><label className="text-xs text-slate-500">Estacao *</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.station} onChange={e => updateItem(i, "station", e.target.value)}><option value="">Selecione</option>{assets.map((a: any) => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Previsao (L)</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.forecast_liters} onChange={e => updateItem(i, "forecast_liters", e.target.value)}><option value="">Selecione</option>{Array.from({length: 25}, (_, i) => (i+1)*10).map(v => <option key={v} value={v}>{v}L</option>)}</select></div>
                         <div className="col-span-2"><label className="text-xs text-slate-500">Fornecido (L)</label><input type="number" className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.supplied_liters} onChange={e => updateItem(i, "supplied_liters", e.target.value)} /></div>
-                        <div className="col-span-2"><label className="text-xs text-slate-500">GGD Auto?</label><select className="w-full text-xs border border-slate-200 rounded px-2 py-1.5 bg-white" value={item.ggd_automatic} onChange={e => updateItem(i, "ggd_automatic", e.target.value)}><option value="">-</option><option value="Sim">Sim</option><option value="Nao">Nao</option></select></div>
+                        <div className="col-span-3"><label className="text-xs text-slate-500 block mb-1">GGD Auto?</label>
+                          <SimNaoToggle value={item.ggd_automatic} onChange={v => updateItem(i, "ggd_automatic", v)} />
+                        </div>
                         <div className="col-span-1 flex items-end pb-0.5">{items.length > 1 && <button onClick={() => removeItem(i)} className="text-slate-300 hover:text-red-500 mt-4"><X size={14} /></button>}</div>
                       </div>
                     ))}
@@ -514,7 +533,7 @@ function FuelOrdersContent() {
               </div>
               <div className="flex justify-end gap-3 p-6 border-t border-slate-200">
                 <button onClick={closeModal} className="px-4 py-2 border border-slate-200 rounded-lg text-sm hover:bg-slate-50">Cancelar</button>
-                <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">{saving ? "Salvando..." : "Criar OS"}</button>
+                <button onClick={handleSubmit} disabled={saving} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium">{saving ? "Salvando..." : editingOrder ? "Salvar Alteracoes" : "Criar OS"}</button>
               </div>
             </div>
           </div>
@@ -523,7 +542,6 @@ function FuelOrdersContent() {
     </div>
   );
 }
-
 export default function FuelOrdersPage() {
   return (
     <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><p className="text-slate-400">Carregando...</p></div>}>
