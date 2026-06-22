@@ -100,7 +100,7 @@ export default function DashboardPage() {
       api.get("/assets/summary").then((r) => setAssetSummary(r.data)),
       api.get("/work-orders/kpis").then((r) => setWoKpis(r.data)),
       api.get("/alerts/active-count").then((r) => setActiveAlerts(r.data)),
-      api.get("/work-orders", { params: { limit: 5 } }).then((r) => setRecentWO(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])),
+      api.get("/work-orders/", { params: { limit: 5 } }).then((r) => setRecentWO(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])),
       api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
   };
@@ -310,7 +310,7 @@ function AlertsPanel() {
   const [alerts, setAlerts] = useState<any[]>([]);
 
   useEffect(() => {
-    api.get("/alerts", { params: { status: "active", limit: 5 } }).then((r) => setAlerts(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])).catch(() => {});
+    api.get("/alerts/", { params: { status: "active", limit: 5 } }).then((r) => setAlerts(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])).catch(() => {});
   }, []);
 
   const severityClass: Record<string, string> = {
