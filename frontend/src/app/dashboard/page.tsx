@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const [woKpis, setWoKpis] = useState<any>({});
   const [activeAlerts, setActiveAlerts] = useState<any>({});
   const [recentWO, setRecentWO] = useState<any[]>([]);
+  const [allAlerts, setAllAlerts] = useState<any[]>([]);
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -99,7 +100,7 @@ export default function DashboardPage() {
     Promise.all([
       api.get("/assets/summary").then((r) => setAssetSummary(r.data)),
       api.get("/work-orders/kpis").then((r) => setWoKpis(r.data)),
-      api.get("/alerts/active-count").then((r) => setActiveAlerts(r.data)),
+
       api.get("/work-orders/", { params: { limit: 100 } }).then((r) => setRecentWO(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])),
       api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
     ]).finally(() => setLoading(false));
@@ -123,6 +124,8 @@ export default function DashboardPage() {
     value: v as number,
   }));
 
+  const alertCritical = allAlerts.filter(a => a.severity === "CRITICAL").length;
+  const alertHigh = allAlerts.filter(a => a.severity === "HIGH").length;
   const totalAssets = assetSummary.total ?? 0;
   const operationalAssets = assetSummary.by_status?.operational ?? 0;
   const availability = totalAssets > 0 ? Math.round((operationalAssets / totalAssets) * 100) : 0;
@@ -179,10 +182,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <KpiCard
             label="Alertas Criticos"
-            value={activeAlerts.by_severity?.CRITICAL ?? 0}
+            value={alertCritical}
             icon={<AlertTriangle size={22} className="text-red-600" />}
             color="bg-red-50"
-            sub={`+${activeAlerts.by_severity?.HIGH ?? 0} alta prioridade`}
+            sub={`+${alertHigh} alta prioridade`}
           />
           <KpiCard
             label="Total OS"
