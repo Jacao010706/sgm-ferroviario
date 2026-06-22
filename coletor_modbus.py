@@ -383,7 +383,7 @@ def verificar_combustivel(asset_id, tag, nivel, token):
         criar_alerta(
             asset_id, titulo,
             f"Nivel de combustivel em {nivel}%. Necessario abastecimento.",
-            "high" if nivel < 30 else "medium",
+            "critical" if nivel < 40 else "medium",
             "fuel_level", nivel, 50.0, token
         )
         _combustivel_normalizado.discard(asset_id)
