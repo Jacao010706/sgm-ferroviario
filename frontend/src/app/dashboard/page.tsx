@@ -125,8 +125,8 @@ export default function DashboardPage() {
     value: v as number,
   }));
 
-  const alertCritical = allAlerts.filter(a => a.severity === "CRITICAL").length;
-  const alertHigh = allAlerts.filter(a => a.severity === "HIGH").length;
+  const alertCritical = allAlerts.filter(a => a.severity?.toUpperCase() === "CRITICAL").length;
+  const alertHigh = allAlerts.filter(a => a.severity?.toUpperCase() === "HIGH").length;
   const totalAssets = assetSummary.total ?? 0;
   const operationalAssets = assetSummary.by_status?.operational ?? 0;
   const availability = totalAssets > 0 ? Math.round((operationalAssets / totalAssets) * 100) : 0;
