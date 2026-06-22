@@ -328,7 +328,7 @@ function AlertsPanel() {
       {alerts.length === 0 ? (
         <p className="text-slate-400 text-sm py-8 text-center">Nenhum alerta ativo</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {alerts.map((a) => (
             <div key={a.id} className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${severityClass[a.severity] || ""}`}>
               <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />
