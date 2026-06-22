@@ -103,6 +103,7 @@ export default function DashboardPage() {
 
       api.get("/work-orders/", { params: { limit: 100 } }).then((r) => setRecentWO(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])),
       api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/alerts/", { params: { status: "active", limit: 500 } }).then((r) => setAllAlerts(Array.isArray(r.data) ? r.data : r.data.items || [])),
     ]).finally(() => setLoading(false));
   };
 
