@@ -15,7 +15,7 @@ const MAINTENANCE_LABEL: Record<string, string> = { preventive: "Preventiva", co
 const inp = "w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 const lbl = "block text-sm font-medium text-slate-700 mb-1";
 
-interface ChecklistItem { id: string; text: string; done: boolean; }
+interface ChecklistItem { id: string; text: string; done: boolean; completed?: string; autoMode?: string; showStatus?: boolean; }
 interface ContractedCompany { id: number; name: string; cnpj?: string; }
 interface Material { id: string; name: string; quantity: string; unit: string; }
 
@@ -36,6 +36,10 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
   const horaIni = form.actual_start ? new Date(form.actual_start).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : "";
   const horaFim = form.actual_end ? new Date(form.actual_end).toLocaleTimeString("pt-BR", {hour:"2-digit",minute:"2-digit"}) : "";
   const equipamento = (asset ? `${esc(asset.name)} (${esc(asset.tag)})` : "") + (subAsset ? ` &gt; ${esc(subAsset.name)}` : "");
+  const itemConcluido = checklist.find(i => i.completed);
+  const itemModoAuto = checklist.find(i => i.autoMode);
+  const concluidoLabel = itemConcluido?.completed === "Sim" ? "Sim" : itemConcluido?.completed === "Nao" ? "Nao" : (form.status === "completed" ? "Sim" : "");
+  const modoAutoLabel = itemModoAuto?.autoMode === "Sim" ? "Sim" : itemModoAuto?.autoMode === "Nao" ? "Nao" : "";
 
   let checklistHtml = "";
   const checklistDoneItems = checklist.filter(i => i.done);
@@ -154,8 +158,8 @@ function buildOSHtml(order: any, asset: any, subAsset: any, form: any, checklist
       <td>${equipamento}</td>
       <td style="text-align:center">${horaIni}</td>
       <td style="text-align:center">${horaFim}</td>
-      <td style="text-align:center">${form.status === "completed" ? "Sim" : ""}</td>
-      <td style="text-align:center">&nbsp;</td>
+      <td style="text-align:center">${concluidoLabel}</td>
+      <td style="text-align:center">${modoAutoLabel || "&nbsp;"}</td>
     </tr>
   </table>
 
@@ -320,6 +324,34 @@ function openPrintWindow(html: string) {
   };
 }
 
+function MiniSimNaoToggle({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-slate-500 w-20 shrink-0">{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(value === "Sim" ? "" : "Sim")}
+        className={clsx(
+          "flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-all",
+          value === "Sim" ? "border-green-500 bg-green-50 text-green-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"
+        )}
+      >
+        {value === "Sim" && <CheckCircle size={11} />} Sim
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(value === "Nao" ? "" : "Nao")}
+        className={clsx(
+          "flex items-center gap-1 px-2 py-1 rounded-md border text-xs font-medium transition-all",
+          value === "Nao" ? "border-red-400 bg-red-50 text-red-700" : "border-slate-200 text-slate-500 hover:bg-slate-50"
+        )}
+      >
+        {value === "Nao" && <CheckCircle size={11} />} Nao
+      </button>
+    </div>
+  );
+}
+
 export default function WorkOrderDetailPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -384,7 +416,7 @@ export default function WorkOrderDetailPage() {
         fuel_liters_added: o.fuel_liters_added ?? "",
       });
       if (o.checklist_progress && typeof o.checklist_progress === "object") {
-        const items = Object.entries(o.checklist_progress).map(([key, val]: any) => ({ id: key, text: val.text || key, done: val.done || false }));
+        const items = Object.entries(o.checklist_progress).map(([key, val]: any) => ({ id: key, text: val.text || key, done: val.done || false, completed: val.completed || "", autoMode: val.autoMode || "", showStatus: val.showStatus || false }));
         setChecklist(items);
       }
       if (o.parts_used && Array.isArray(o.parts_used)) {
@@ -457,7 +489,7 @@ export default function WorkOrderDetailPage() {
 
   const buildChecklistPayload = (items: ChecklistItem[]) => {
     const obj: Record<string, any> = {};
-    items.forEach(item => { obj[item.id] = { text: item.text, done: item.done }; });
+    items.forEach(item => { obj[item.id] = { text: item.text, done: item.done, completed: item.completed || "", autoMode: item.autoMode || "", showStatus: item.showStatus || false }; });
     return obj;
   };
 
@@ -524,6 +556,9 @@ export default function WorkOrderDetailPage() {
   const addChecklistItem = () => { if (!newTask.trim()) return; setChecklist([...checklist, { id: Date.now().toString(), text: newTask.trim(), done: false }]); setNewTask(""); };
   const toggleChecklistItem = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, done: !i.done } : i));
   const removeChecklistItem = (itemId: string) => setChecklist(checklist.filter(i => i.id !== itemId));
+  const toggleShowStatus = (itemId: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, showStatus: !i.showStatus } : i));
+  const setItemCompleted = (itemId: string, value: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, completed: value } : i));
+  const setItemAutoMode = (itemId: string, value: string) => setChecklist(checklist.map(i => i.id === itemId ? { ...i, autoMode: value } : i));
   const searchParts = async (term: string) => {
     setPartSearch(term);
     setNewMaterial({ ...newMaterial, name: term });
@@ -779,10 +814,26 @@ export default function WorkOrderDetailPage() {
           {checklistTotal > 0 && <div className="w-full bg-slate-100 rounded-full h-2 mb-3"><div className="bg-green-500 h-2 rounded-full transition-all" style={{ width: `${(checklistDone / checklistTotal) * 100}%` }} /></div>}
           <div className="space-y-2 mb-3">
             {checklist.map(item => (
-              <div key={item.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-slate-50">
-                <input type="checkbox" checked={item.done} onChange={() => toggleChecklistItem(item.id)} className="w-4 h-4 rounded accent-blue-600" />
-                <span className={clsx("text-sm flex-1", item.done && "line-through text-slate-400")}>{item.text}</span>
-                <button onClick={() => removeChecklistItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+              <div key={item.id} className="rounded-lg hover:bg-slate-50">
+                <div className="flex items-center gap-3 p-2">
+                  <input type="checkbox" checked={item.done} onChange={() => toggleChecklistItem(item.id)} className="w-4 h-4 rounded accent-blue-600" />
+                  <span className={clsx("text-sm flex-1", item.done && "line-through text-slate-400")}>{item.text}</span>
+                  <button
+                    type="button"
+                    onClick={() => toggleShowStatus(item.id)}
+                    title="Marcar Concluido/Modo Auto para impressao"
+                    className={clsx("text-xs px-2 py-1 rounded-md border transition-colors", item.showStatus ? "border-blue-300 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-400 hover:bg-slate-100")}
+                  >
+                    + Status
+                  </button>
+                  <button onClick={() => removeChecklistItem(item.id)} className="text-slate-300 hover:text-red-500 transition-colors"><X size={14} /></button>
+                </div>
+                {item.showStatus && (
+                  <div className="px-2 pb-2 pl-9 space-y-1.5">
+                    <MiniSimNaoToggle label="Concluido?" value={item.completed} onChange={v => setItemCompleted(item.id, v)} />
+                    <MiniSimNaoToggle label="Modo Auto?" value={item.autoMode} onChange={v => setItemAutoMode(item.id, v)} />
+                  </div>
+                )}
               </div>
             ))}
             {checklist.length === 0 && <p className="text-slate-400 text-sm py-2">Nenhuma tarefa adicionada.</p>}
