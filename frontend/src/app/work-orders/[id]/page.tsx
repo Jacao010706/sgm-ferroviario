@@ -377,6 +377,7 @@ export default function WorkOrderDetailPage() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [newMaterial, setNewMaterial] = useState({ name: "", quantity: "1", unit: "un" });
   const [partSearch, setPartSearch] = useState("");
+  const [allParts, setAllParts] = useState<any[]>([]);
   const [partResults, setPartResults] = useState<any[]>([]);
   const [showPartDropdown, setShowPartDropdown] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -437,6 +438,7 @@ export default function WorkOrderDetailPage() {
       if (o.sub_asset_id) { const sub = allAssets.find((a: any) => a.id === o.sub_asset_id); if (sub) setSubAsset(sub); }
     }).catch(console.error).finally(() => setLoading(false));
     api.get("/contracted-companies/").then(r => setCompanies(r.data)).catch(() => {});
+    api.get("/parts/", { params: { limit: 500 } }).then(r => setAllParts(Array.isArray(r.data) ? r.data : r.data.items || [])).catch(() => {});
     api.get("/fiscal-names/").then(r => setFiscalSuggestions(r.data)).catch(() => {});
   }, [id]);
 
