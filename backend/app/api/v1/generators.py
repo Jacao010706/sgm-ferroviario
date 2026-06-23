@@ -93,7 +93,8 @@ async def comando_gerador(
             pass
     if not coletor_url:
         raise HTTPException(status_code=503, detail="Coletor offline. Reinicie o coletor_modbus.py na maquina da Trensurb para reconectar automaticamente.")
-   try:
+
+    try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(coletor_url + "/command", json={
                 "secret": COLETOR_SECRET,
@@ -101,7 +102,7 @@ async def comando_gerador(
                 "action": body.action,
             })
 
-            # Log defensivo: vê SEMPRE o que o coletor devolveu
+            # Log defensivo: registra SEMPRE o que o coletor devolveu
             log.info(f"Coletor respondeu status={r.status_code} body={r.text[:500]!r}")
 
             if r.status_code == 200:
@@ -112,14 +113,13 @@ async def comando_gerador(
                     action=body.action,
                 )
 
-            # Erro do coletor: tenta extrair JSON, mas não quebra se não for JSON
+            # Erro do coletor: tenta extrair JSON, mas nao quebra se nao for JSON
             detail = "Erro no coletor"
             try:
                 payload = r.json()
                 if isinstance(payload, dict):
                     detail = payload.get("error") or payload.get("detail") or detail
             except Exception:
-                # Resposta não-JSON (HTML, vazio, etc) — usa o texto cru
                 if r.text:
                     detail = f"Coletor retornou {r.status_code}: {r.text[:200]}"
                 else:
@@ -128,7 +128,6 @@ async def comando_gerador(
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
 
     except HTTPException:
-        # Re-propaga HTTPException nossa sem mascarar
         raise
     except httpx.ConnectError:
         raise HTTPException(
