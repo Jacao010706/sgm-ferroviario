@@ -873,7 +873,17 @@ export default function WorkOrderDetailPage() {
             </div>
           )}
           <div className="grid grid-cols-12 gap-2 items-center">
-            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.name} onChange={e => setNewMaterial({ ...newMaterial, name: e.target.value })} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Nome do material ou peca..." />
+            <input className="col-span-6 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.name} onChange={e => searchParts(e.target.value)} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addMaterial(); }}} placeholder="Nome do material ou peca..." onFocus={() => { if (partResults.length > 0) setShowPartDropdown(true); }} />
+            {showPartDropdown && partResults.length > 0 && (
+              <div className="absolute z-50 left-0 top-full mt-1 w-1/2 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {partResults.map((part: any) => (
+                  <button key={part.id} type="button" onClick={() => selectPart(part)} className="w-full text-left px-3 py-2 text-sm hover:bg-blue-50 hover:text-blue-700 border-b border-slate-50 last:border-0">
+                    <span className="font-medium">{part.name}</span>
+                    {part.unit && <span className="text-xs text-slate-400 ml-2">({part.unit})</span>}
+                  </button>
+                ))}
+              </div>
+            )}
             <input type="number" className="col-span-2 border border-slate-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.quantity} onChange={e => setNewMaterial({ ...newMaterial, quantity: e.target.value })} min="0" step="0.1" />
             <select className="col-span-3 border border-slate-200 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" value={newMaterial.unit} onChange={e => setNewMaterial({ ...newMaterial, unit: e.target.value })}>
               {["un","kg","L","m","m2","cx","par","jogo"].map(u => <option key={u} value={u}>{u}</option>)}
