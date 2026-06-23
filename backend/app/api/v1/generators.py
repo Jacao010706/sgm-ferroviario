@@ -93,13 +93,17 @@ async def comando_gerador(
             pass
     if not coletor_url:
         raise HTTPException(status_code=503, detail="Coletor offline. Reinicie o coletor_modbus.py na maquina da Trensurb para reconectar automaticamente.")
-    try:
+   try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(coletor_url + "/command", json={
                 "secret": COLETOR_SECRET,
                 "tag": tag,
                 "action": body.action,
             })
+
+            # Log defensivo: vê SEMPRE o que o coletor devolveu
+            log.info(f"Coletor respondeu status={r.status_code} body={r.text[:500]!r}")
+
             if r.status_code == 200:
                 return ComandoResponse(
                     success=True,
@@ -107,9 +111,25 @@ async def comando_gerador(
                     asset_id=asset_id,
                     action=body.action,
                 )
-            else:
-                detail = r.json().get("error", "Erro no coletor")
-                raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+            # Erro do coletor: tenta extrair JSON, mas não quebra se não for JSON
+            detail = "Erro no coletor"
+            try:
+                payload = r.json()
+                if isinstance(payload, dict):
+                    detail = payload.get("error") or payload.get("detail") or detail
+            except Exception:
+                # Resposta não-JSON (HTML, vazio, etc) — usa o texto cru
+                if r.text:
+                    detail = f"Coletor retornou {r.status_code}: {r.text[:200]}"
+                else:
+                    detail = f"Coletor retornou {r.status_code} sem corpo"
+
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
+
+    except HTTPException:
+        # Re-propaga HTTPException nossa sem mascarar
+        raise
     except httpx.ConnectError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -119,4 +139,10 @@ async def comando_gerador(
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="Timeout ao conectar ao coletor Modbus.",
+        )
+    except Exception as e:
+        log.exception(f"Erro inesperado no comando para {tag}")
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Erro ao processar resposta do coletor: {type(e).__name__}: {str(e)[:150]}",
         )
