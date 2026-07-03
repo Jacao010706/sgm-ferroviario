@@ -268,13 +268,16 @@ def ler_gerador(ip, slave_id, tag):
         ff = 0.01 if is_stemac else 0.1
 
         rpm = r(1030) if not is_stemac else 0
+        stemac_running = bool(regs_stemac[56] & 0x0001) if is_stemac else False
+        is_running = stemac_running if is_stemac else rpm > 0
 
         dados = {
             "status":         r(reg_map["status"]),
             "rpm":            rpm,
-            "tensao_l1":      r(reg_map["tensao_l1"]) * f1 if rpm > 0 else 0,
-            "tensao_l2":      r(reg_map["tensao_l2"]) * f1 if rpm > 0 else 0,
-            "tensao_l3":      r(reg_map["tensao_l3"]) * f1 if rpm > 0 else 0,
+            "stemac_running": stemac_running,
+            "tensao_l1":      r(reg_map["tensao_l1"]) * f1 if is_running else 0,
+            "tensao_l2":      r(reg_map["tensao_l2"]) * f1 if is_running else 0,
+            "tensao_l3":      r(reg_map["tensao_l3"]) * f1 if is_running else 0,
             "corrente_l1":    r(reg_map["corrente_l1"]) * f1,
             "corrente_l2":    r(reg_map["corrente_l2"]) * f1,
             "corrente_l3":    r(reg_map["corrente_l3"]) * f1,
@@ -322,7 +325,7 @@ def enviar_leitura(asset_id, dados, token):
         "fuel_level":      dados.get("nivel_tanque"),
         "runtime_hours":   dados.get("horas_funcio"),
         "rpm":             dados.get("rpm", 0),
-        "is_running":      1 if dados.get("rpm", 0) > 0 else 0,
+        "is_running":      1 if (dados.get("rpm", 0) > 0 or dados.get("stemac_running", False)) else 0,
         "battery_voltage": dados.get("bateria"),
     }
     try:
