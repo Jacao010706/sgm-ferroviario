@@ -268,7 +268,7 @@ def ler_gerador(ip, slave_id, tag):
         ff = 0.01 if is_stemac else 0.1
 
         rpm = r(1030) if not is_stemac else 0
-        stemac_running = bool(regs_stemac[56] & 0x0001) if is_stemac else False
+        stemac_running = (regs_stemac[62] > 0) if is_stemac else False
         is_running = stemac_running if is_stemac else rpm > 0
 
         dados = {
