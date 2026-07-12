@@ -72,13 +72,13 @@ REG = {
     "nivel_tanque":   1027,
     "bateria":        1029,
     "horas_funcio":   0,
-    "tensao_l1":      1065,
-    "tensao_l2":      1061,
-    "tensao_l3":      1063,
-    "corrente_l1":    0,
-    "corrente_l2":    0,
-    "corrente_l3":    0,
-    "frequencia":     0,
+    "tensao_l1":      1033,
+    "tensao_l2":      1035,
+    "tensao_l3":      1037,
+    "corrente_l1":    1045,
+    "corrente_l2":    1047,
+    "corrente_l3":    1049,
+    "frequencia":     1031,
     "potencia_kw":    0,
     "tensao_rede_l1": 1067,
     "tensao_rede_l2": 1069,
@@ -121,7 +121,7 @@ REG_CUSTOM = {
         "tensao_rede_l1": 1067,
         "tensao_rede_l2": 1069,
         "tensao_rede_l3": 1071,
-        "corrente_l1":    1045,
+    "corrente_l1":    1045,
         "corrente_l2":    1047,
         "corrente_l3":    1049,
     },
@@ -268,6 +268,21 @@ def ler_gerador(ip, slave_id, tag):
         ff = 0.01 if is_stemac else 0.1
 
         rpm = r(1030) if not is_stemac else 0
+        potencia_total = round((r(1053) + r(1055) + r(1057)) * 0.001, 2) if not is_stemac else 0
+        if not is_stemac and potencia_total > 0:
+            vl1 = r(1033) * 0.1
+            vl2 = r(1035) * 0.1
+            vl3 = r(1037) * 0.1
+            il1 = r(1045) * 0.1
+            il2 = r(1047) * 0.1
+            il3 = r(1049) * 0.1
+            kva_total = round((vl1*il1 + vl2*il2 + vl3*il3) / 1000, 2)
+            kvar_total = round((kva_total**2 - potencia_total**2)**0.5, 2) if kva_total >= potencia_total else 0
+            fp_total = round(potencia_total / kva_total, 2) if kva_total > 0 else 0
+        else:
+            kva_total = 0
+            kvar_total = 0
+            fp_total = 0
         stemac_running = (regs_stemac[62] > 0) if is_stemac else False
         is_running = stemac_running if is_stemac else rpm > 0
 
@@ -278,10 +293,14 @@ def ler_gerador(ip, slave_id, tag):
             "tensao_l1":      r(reg_map["tensao_l1"]) * f1 if is_running else 0,
             "tensao_l2":      r(reg_map["tensao_l2"]) * f1 if is_running else 0,
             "tensao_l3":      r(reg_map["tensao_l3"]) * f1 if is_running else 0,
+            "corrente_l1":    r(reg_map["corrente_l1"]) * f1,
             "corrente_l2":    r(reg_map["corrente_l2"]) * f1,
             "corrente_l3":    r(reg_map["corrente_l3"]) * f1,
             "frequencia":     r(reg_map["frequencia"]) * f1,
-            "potencia_kw":    r(reg_map["potencia_kw"]) * f1,
+            "potencia_kw":    potencia_total,
+            "kva_total":      kva_total,
+            "kvar_total":     kvar_total,
+            "fp_total":       fp_total,
             "temperatura":    r(reg_map["temperatura"]),
             "nivel_tanque":   r(reg_map["nivel_tanque"]),
             "bateria":        r(reg_map["bateria"]) * 0.1,
@@ -320,6 +339,9 @@ def enviar_leitura(asset_id, dados, token):
         "current_l3":      dados.get("corrente_l3"),
         "frequency":       dados.get("frequencia"),
         "power_kw":        dados.get("potencia_kw"),
+        "power_kva":       dados.get("kva_total"),
+        "power_kvar":      dados.get("kvar_total"),
+        "power_factor":    dados.get("fp_total"),
         "temperature":     dados.get("temperatura"),
         "fuel_level":      dados.get("nivel_tanque"),
         "runtime_hours":   dados.get("horas_funcio"),
