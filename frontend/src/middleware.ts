@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("access_token")?.value;
   const isLoginPage = request.nextUrl.pathname === "/login";
-  const isPublic = request.nextUrl.pathname === "/";
+  const isPublic = request.nextUrl.pathname === "/" || request.nextUrl.pathname.startsWith("/panel");
 
   if (!token && !isLoginPage && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));

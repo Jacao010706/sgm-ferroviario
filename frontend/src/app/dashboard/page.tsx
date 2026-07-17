@@ -91,6 +91,7 @@ export default function DashboardPage() {
   const [woKpis, setWoKpis] = useState<any>({});
   const [activeAlerts, setActiveAlerts] = useState<any>({});
   const [recentWO, setRecentWO] = useState<any[]>([]);
+  const [allAlerts, setAllAlerts] = useState<any[]>([]);
   const [assets, setAssets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -99,9 +100,10 @@ export default function DashboardPage() {
     Promise.all([
       api.get("/assets/summary").then((r) => setAssetSummary(r.data)),
       api.get("/work-orders/kpis").then((r) => setWoKpis(r.data)),
-      api.get("/alerts/active-count").then((r) => setActiveAlerts(r.data)),
-      api.get("/work-orders", { params: { limit: 5 } }).then((r) => setRecentWO(r.data)),
+
+      api.get("/work-orders/", { params: { limit: 100 } }).then((r) => setRecentWO(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])),
       api.get("/assets/", { params: { limit: 100 } }).then((r) => setAssets(r.data)),
+      api.get("/alerts/", { params: { status: "active", limit: 500 } }).then((r) => setAllAlerts(Array.isArray(r.data) ? r.data : r.data.items || [])),
     ]).finally(() => setLoading(false));
   };
 
@@ -123,6 +125,8 @@ export default function DashboardPage() {
     value: v as number,
   }));
 
+  const alertCritical = allAlerts.filter(a => a.severity?.toUpperCase() === "CRITICAL").length;
+  const alertHigh = allAlerts.filter(a => a.severity?.toUpperCase() === "HIGH").length;
   const totalAssets = assetSummary.total ?? 0;
   const operationalAssets = assetSummary.by_status?.operational ?? 0;
   const availability = totalAssets > 0 ? Math.round((operationalAssets / totalAssets) * 100) : 0;
@@ -136,7 +140,7 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold text-slate-800">Dashboard</h1>
             <p className="text-slate-500 text-sm">
-              Visao geral â€” {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+              Visao geral - {new Date().toLocaleDateString("pt-BR", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
             </p>
           </div>
           <button onClick={load} className="p-2 border border-slate-200 rounded-lg hover:bg-slate-50 bg-white">
@@ -179,10 +183,10 @@ export default function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <KpiCard
             label="Alertas Criticos"
-            value={activeAlerts.critical ?? 0}
+            value={alertCritical}
             icon={<AlertTriangle size={22} className="text-red-600" />}
             color="bg-red-50"
-            sub={`+${activeAlerts.high ?? 0} alta prioridade`}
+            sub={`+${alertHigh} alta prioridade`}
           />
           <KpiCard
             label="Total OS"
@@ -279,13 +283,13 @@ export default function DashboardPage() {
             {recentWO.length === 0 ? (
               <p className="text-center text-slate-400 py-8 text-sm">Nenhuma OS encontrada</p>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
                 {recentWO.map((wo) => (
                   <div key={wo.id} className="py-3 flex items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-slate-700 truncate">{wo.title}</p>
                       <p className="text-xs text-slate-400 mt-0.5">
-                        {assets.find(a => a.id === wo.asset_id)?.name || "Ativo"} â€” {new Date(wo.created_at).toLocaleDateString("pt-BR")}
+                        {assets.find(a => a.id === wo.asset_id)?.name || "Ativo"} - {new Date(wo.created_at).toLocaleDateString("pt-BR")}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -310,7 +314,7 @@ function AlertsPanel() {
   const [alerts, setAlerts] = useState<any[]>([]);
 
   useEffect(() => {
-    api.get("/alerts", { params: { status: "active", limit: 5 } }).then((r) => setAlerts(r.data)).catch(() => {});
+    api.get("/alerts/", { params: { status: "active", limit: 100 } }).then((r) => setAlerts(Array.isArray(r.data) ? r.data : r.data.items || r.data.results || [])).catch(() => {});
   }, []);
 
   const severityClass: Record<string, string> = {
@@ -328,7 +332,7 @@ function AlertsPanel() {
       {alerts.length === 0 ? (
         <p className="text-slate-400 text-sm py-8 text-center">Nenhum alerta ativo</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[400px] overflow-y-auto">
           {alerts.map((a) => (
             <div key={a.id} className={`flex items-start gap-3 p-3 rounded-lg border text-sm ${severityClass[a.severity] || ""}`}>
               <AlertTriangle size={15} className="mt-0.5 flex-shrink-0" />

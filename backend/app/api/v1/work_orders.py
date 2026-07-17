@@ -39,6 +39,10 @@ class WorkOrderCreate(BaseModel):
     contractor_document: Optional[str] = None
     internal_hours: Optional[float] = None
     contractor_hours: Optional[float] = None
+    contractor_preposto: Optional[str] = None
+    fiscal_1: Optional[str] = None
+    fiscal_2: Optional[str] = None
+    fuel_liters_added: Optional[float] = None
 
 class WorkOrderUpdate(BaseModel):
     status: Optional[WorkOrderStatus] = None
@@ -59,6 +63,10 @@ class WorkOrderUpdate(BaseModel):
     contractor_document: Optional[str] = None
     internal_hours: Optional[float] = None
     contractor_hours: Optional[float] = None
+    contractor_preposto: Optional[str] = None
+    fiscal_1: Optional[str] = None
+    fiscal_2: Optional[str] = None
+    fuel_liters_added: Optional[float] = None
 
 def generate_os_number() -> str:
     from datetime import date

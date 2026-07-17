@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from pydantic import BaseModel
@@ -117,6 +117,30 @@ async def get_fuel_order(order_id: UUID, db: AsyncSession = Depends(get_db), _: 
     return _serialize(order)
 
 
+
+class FuelOrderUpdate(BaseModel):
+    number: Optional[str] = None
+    execution_date: Optional[datetime] = None
+    location: Optional[str] = None
+    sector: Optional[str] = None
+    shift: Optional[str] = None
+    week: Optional[str] = None
+    supplier: Optional[str] = None
+    fiscal_1: Optional[str] = None
+    fiscal_2: Optional[str] = None
+    additive_station: Optional[str] = None
+    additive_forecast_ml: Optional[float] = None
+    additive_quantity_ml: Optional[float] = None
+    additive_completed: Optional[str] = None
+    observations: Optional[str] = None
+    management_observations: Optional[str] = None
+    responsible_name: Optional[str] = None
+    responsible_re: Optional[str] = None
+    employee_1_name: Optional[str] = None
+    employee_1_re: Optional[str] = None
+    employee_2_name: Optional[str] = None
+    employee_2_re: Optional[str] = None
+    items: Optional[List[FuelOrderItemCreate]] = None
 @router.post("/", status_code=201)
 async def create_fuel_order(
     body: FuelOrderCreate,
@@ -147,6 +171,38 @@ async def create_fuel_order(
     return _serialize(order)
 
 
+
+@router.patch("/{order_id}")
+async def update_fuel_order(
+    order_id: UUID,
+    body: FuelOrderUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    from sqlalchemy.orm import selectinload
+    result = await db.execute(select(FuelOrder).options(selectinload(FuelOrder.items)).where(FuelOrder.id == order_id))
+    order = result.scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail="OS de abastecimento nao encontrada")
+
+    data = body.model_dump(exclude={"items"}, exclude_unset=True)
+    if data.get("execution_date") and hasattr(data["execution_date"], "tzinfo") and data["execution_date"].tzinfo is not None:
+        data["execution_date"] = data["execution_date"].replace(tzinfo=None)
+    for key, value in data.items():
+        setattr(order, key, value)
+
+    if body.items is not None:
+        for item in list(order.items):
+            await db.delete(item)
+        await db.flush()
+        for item_data in body.items:
+            item = FuelOrderItem(**item_data.model_dump(), fuel_order_id=order.id)
+            db.add(item)
+
+    await db.commit()
+    result = await db.execute(select(FuelOrder).options(selectinload(FuelOrder.items)).where(FuelOrder.id == order_id))
+    order = result.scalar_one()
+    return _serialize(order)
 @router.delete("/{order_id}", status_code=204)
 async def delete_fuel_order(order_id: UUID, db: AsyncSession = Depends(get_db), _: User = Depends(get_current_user)):
     result = await db.execute(select(FuelOrder).where(FuelOrder.id == order_id))
