@@ -81,6 +81,7 @@ export default function PanelPage() {
   const [senha, setSenha] = useState("");
   const [erroSenha, setErroSenha] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [alerts, setAlerts] = useState<any[]>([]);
 
   const loadAll = useCallback(async () => {
     try {
@@ -102,6 +103,10 @@ export default function PanelPage() {
       }));
       setLatest(readings);
       setLastUpdate(new Date().toLocaleTimeString("pt-BR"));
+      try {
+        const al = await api.get("/alerts/", { params: { status: "active", limit: 100 } });
+        setAlerts(al.data);
+      } catch { setAlerts([]); }
     } catch(e) { console.error(e); }
     finally { setLoading(false); }
   }, []);
@@ -117,6 +122,20 @@ export default function PanelPage() {
   };
 
   const getVal = (assetId: string, sensor: string) => latest[assetId]?.[sensor]?.value;
+
+  // Filtra alertas que ainda estão em situação anormal
+  const alertasVivos = alerts.filter((al: any) => {
+    const asset = assets.find((a: any) => a.name === al.asset_name || a.tag === al.asset_tag);
+    if (!asset) return true;
+    const s = latest[asset.id];
+    if (!s) return true;
+    const v = s[al.metric_name]?.value;
+    if (v == null) return true;
+    if (al.metric_name === "fuel_level") return v < (al.threshold ?? 50);
+    if (al.metric_name === "temperature") return v > (al.threshold ?? 80);
+    if (al.metric_name === "battery_voltage") return v < (al.threshold ?? 11);
+    return true;
+  });
 
   const row1 = STATIONS.slice(0, 12);
   const row2 = STATIONS.slice(12, 25);
@@ -162,7 +181,7 @@ export default function PanelPage() {
       </div>
 
       {/* Grid geradores */}
-      <div className="p-2 flex flex-col gap-2 h-[calc(100vh-48px)]">
+      <div className="p-2 flex flex-col gap-2" style={{height: alertasVivos.length > 0 ? "calc(100vh-72px)" : "calc(100vh-48px)"}}>
         {[row1, row2].map((row, rowIdx) => (
           <div key={rowIdx} className="flex-1 grid gap-2" style={{gridTemplateColumns:"repeat(13,1fr)"}}>
             {row.map((station) => {
@@ -202,6 +221,28 @@ export default function PanelPage() {
           </div>
         ))}
       </div>
+
+      {/* Barra de alarmes ativos — some automaticamente quando situação normaliza */}
+      {alertasVivos.length > 0 && (
+        <div style={{
+          position:"fixed", bottom:0, left:0, right:0,
+          background:"#0a0000", borderTop:"1px solid #ff4444",
+          padding:"4px 12px", zIndex:50,
+          display:"flex", alignItems:"center", gap:"16px", overflowX:"auto"
+        }}>
+          <span style={{color:"#ff4444", fontSize:"10px", fontWeight:"bold", whiteSpace:"nowrap"}}>
+            ● ALARMES ATIVOS
+          </span>
+          {alertasVivos.map((al: any) => (
+            <span key={al.id} style={{
+              color: al.severity === "critical" ? "#ff4444" : al.severity === "high" ? "#ff8800" : "#ffd700",
+              fontSize:"10px", whiteSpace:"nowrap"
+            }}>
+              ● {al.title}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
