@@ -417,6 +417,19 @@ def verificar_combustivel(asset_id, tag, nivel, token):
         _combustivel_normalizado.add(asset_id)
 
 
+def resolver_alerta(titulo, token):
+    """Resolve alertas ativos com o titulo informado."""
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        r = requests.get(f"{API_BASE}/alerts/", params={"status": "active", "limit": 100}, headers=headers, timeout=10)
+        if r.status_code == 200:
+            for alert in r.json():
+                if alert.get("title") == titulo and alert.get("status") == "active":
+                    requests.post(f"{API_BASE}/alerts/{alert['id']}/resolve", headers=headers, timeout=10)
+                    log.info(f"Alerta resolvido automaticamente: {titulo}")
+    except Exception as e:
+        log.error(f"Erro ao resolver alerta: {e}")
+
 def ler_alarmes_stemac(ip, tag, token, asset_id):
     """Lê alarmes do STEMAC ST2160 e cria alertas sem duplicar."""
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
@@ -428,14 +441,16 @@ def ler_alarmes_stemac(ip, tag, token, asset_id):
             return
         regs = result.registers
         for (reg_idx, bit), descricao in STEMAC_ALARMS.items():
+            titulo = f"{descricao} - {tag}"
             if reg_idx < len(regs) and (regs[reg_idx] & (1 << bit)):
-                titulo = f"{descricao} - {tag}"
                 severity = "high" if any(x in descricao for x in ["Pressao", "Emergencia", "Sobrevelocidade", "Critica"]) else "medium"
                 criar_alerta(
                     asset_id, titulo,
                     f"Alarme Modbus ST2160: {descricao}",
                     severity, "alarm", 1, 0, token
                 )
+            else:
+                resolver_alerta(titulo, token)
     except Exception as e:
         log.error(f"{tag}: erro ler alarmes STEMAC - {e}")
     finally:
