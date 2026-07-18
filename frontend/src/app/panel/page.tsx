@@ -356,22 +356,37 @@ export default function PanelPage() {
           </div>
         ))}
       </div>
-      {alerts.length > 0 && (
-        <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'160px',overflowY:'auto'}}>
-          <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
-            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
-            <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS</span>
+      {(()=>{
+        const agora = Date.now();
+        const vivos = Array.from(new Map(alerts.filter((al)=>{
+          if (!al.metric_name) return (agora - new Date(al.triggered_at).getTime()) < 24*60*60*1000;
+          const s = latest[al.asset_id];
+          if (!s) return true;
+          const v = s[al.metric_name]?.value;
+          if (v==null) return true;
+          if (al.metric_name==="fuel_level") return v < (al.threshold??50);
+          if (al.metric_name==="temperature") return v > (al.threshold??80);
+          if (al.metric_name==="battery_voltage") return v < (al.threshold??11);
+          return true;
+        }).map((a)=>[a.title,a])).values());
+        if (!vivos.length) return null;
+        return (
+          <div className="mx-2 mb-2 rounded border border-red-900" style={{background:'#0a0000',maxHeight:'160px',overflowY:'auto'}}>
+            <div className="flex items-center gap-2 px-2 py-1 border-b border-red-900">
+              <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"/>
+              <span className="text-red-400 text-xs font-bold tracking-wider">ALARMES ATIVOS</span>
+            </div>
+            <div style={{columnCount:3,columnGap:'16px',padding:'4px 8px'}}>
+              {vivos.map((alert,idx)=>(
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
+                  <span style={{fontSize:'14px',fontWeight:'bold',color:alert.severity==='high'?'#f87171':'#facc15',whiteSpace:'nowrap'}}>{alert.title}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div style={{columnCount:3,columnGap:'16px',padding:'4px 8px'}}>
-            {Array.from(new Map(alerts.map((a)=>[a.title,a])).values()).map((alert,idx)=>(
-              <div key={idx} className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{background:alert.severity==='high'?'#ef4444':'#eab308'}}/>
-                <span style={{fontSize:'14px',fontWeight:'bold',color:alert.severity==='high'?'#f87171':'#facc15',whiteSpace:'nowrap'}}>{alert.title}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
       {selected&&(
         <DetailPanel
           station={selected.station}
