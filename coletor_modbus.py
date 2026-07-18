@@ -229,7 +229,7 @@ def ler_gerador(ip, slave_id, tag):
     try:
         if not client.connect():
             log.warning(f"{tag} ({ip}): sem conexao Modbus")
-            return None
+            return "no_comm"
 
         is_stemac = tag in REG_CUSTOM and REG_CUSTOM[tag].get("temperatura", 1000) < 100
 
@@ -471,7 +471,9 @@ def ciclo_coleta(token):
     falha = 0
     for tag, (ip, slave_id, asset_id) in GERADORES.items():
         dados = ler_gerador(ip, slave_id, tag)
-        if dados:
+        titulo_comm = f"Falha de Comunicacao - {tag}"
+        if dados and dados != "no_comm":
+            resolver_alerta(titulo_comm, token)
             if enviar_leitura(asset_id, dados, token):
                 ok += 1
                 if tag in STEMAC_TAGS:
@@ -479,6 +481,9 @@ def ciclo_coleta(token):
                 verificar_combustivel(asset_id, tag, dados.get("nivel_tanque", 100), token)
             else:
                 falha += 1
+        elif dados == "no_comm":
+            criar_alerta(asset_id, titulo_comm, f"Sem conexao Modbus com {tag} ({ip})", "high", "alarm", 1, 0, token)
+            falha += 1
         else:
             falha += 1
         time.sleep(0.5)
