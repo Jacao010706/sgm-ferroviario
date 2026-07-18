@@ -359,7 +359,7 @@ export default function PanelPage() {
       {(()=>{
         const agora = Date.now();
         const vivos = Array.from(new Map(alerts.filter((al)=>{
-          if (!al.metric_name) return (agora - new Date(al.triggered_at).getTime()) < 24*60*60*1000;
+          if (!al.metric_name) return true;
           const s = latest[al.asset_id];
           if (!s) return true;
           const v = s[al.metric_name]?.value;
