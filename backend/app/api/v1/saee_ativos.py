@@ -5,7 +5,7 @@ from typing import Optional
 from datetime import date, timedelta
 from pydantic import BaseModel
 
-from app.database import get_db
+from app.core.database import get_db
 from app.models.saee_ativo import SaeeAtivo
 
 router = APIRouter(prefix="/saee-ativos", tags=["saee-ativos"])
