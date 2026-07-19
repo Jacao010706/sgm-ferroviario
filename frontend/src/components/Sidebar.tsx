@@ -18,7 +18,8 @@ const nav = [
   { href: "/teams", label: "Equipes e Tecnicos", icon: Layers },
   { href: "/alerts", label: "Alertas", icon: Bell },
   { href: "/pending-list", label: "Pendencias SAEE", icon: AlertTriangle },
-  { href: "/daily-report", label: "Relatorio Diario", icon: FileText }, // v2
+  { href: "/saee", label: "Ativos SAEE", icon: Zap },
+  { href: "/daily-report", label: "Relatorio Diario", icon: FileText },
   { href: "/reports", label: "Relatorios", icon: BarChart2 },
   { href: "/parts", label: "Pecas e Materiais", icon: Package },
   { href: "/settings", label: "Configuracoes", icon: Settings },
@@ -37,7 +38,6 @@ export default function Sidebar() {
         setAlertCount(r.data.total || 0);
       }).catch(() => {});
 
-      // Busca alertas ativos de combustivel
       api.get("/alerts/", { params: { status: "active", limit: 20 } }).then((r) => {
         const fuel = r.data.filter((a: any) =>
           a.metric_name === "fuel_level" || a.title?.toLowerCase().includes("combustivel")
@@ -70,7 +70,6 @@ export default function Sidebar() {
           <p className="text-white font-bold text-sm leading-tight">SGM Ferroviario</p>
           <p className="text-blue-300 text-xs">Gestao de Manutencao</p>
         </div>
-        {/* Sino de notificacoes */}
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
@@ -84,7 +83,6 @@ export default function Sidebar() {
             )}
           </button>
 
-          {/* Dropdown notificacoes */}
           {showNotifications && (
             <div className="absolute left-0 top-10 w-72 bg-white rounded-xl shadow-xl border border-slate-200 z-50 overflow-hidden">
               <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -107,7 +105,7 @@ export default function Sidebar() {
                           onClick={() => setShowNotifications(false)}
                           className="text-xs text-blue-600 hover:underline mt-1 block"
                         >
-                          Ver monitoramento â†’
+                          Ver monitoramento →
                         </Link>
                       </div>
                     </div>
@@ -124,7 +122,7 @@ export default function Sidebar() {
                           onClick={() => setShowNotifications(false)}
                           className="text-xs text-blue-600 hover:underline mt-1 block"
                         >
-                          Ver alertas â†’
+                          Ver alertas →
                         </Link>
                       </div>
                     </div>
@@ -160,6 +158,3 @@ export default function Sidebar() {
     </aside>
   );
 }
-
-
-
