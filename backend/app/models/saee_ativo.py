@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Boolean, Date, DateTime, func
-from app.database import Base
+from app.core.database import Base
 
 
 class SaeeAtivo(Base):
