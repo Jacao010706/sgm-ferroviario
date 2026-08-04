@@ -1,5 +1,5 @@
 ﻿from fastapi import APIRouter
-from app.api.v1 import auth, assets, work_orders, maintenance, alerts, iot, admin, checklists, teams, notifications, parts, fuel_orders, contracted_companies, generators, fiscal_names, company_prepostos, saee_ativos
+from app.api.v1 import auth, assets, work_orders, maintenance, alerts, iot, admin, checklists, teams, notifications, parts, fuel_orders, contracted_companies, generators, fiscal_names, company_prepostos, saee_ativos, maintenance_plans
 
 api_router = APIRouter(prefix="/api/v1")
 api_router.include_router(auth.router)
@@ -20,3 +20,4 @@ api_router.include_router(generators.router)
 api_router.include_router(fiscal_names.router)
 api_router.include_router(company_prepostos.router)
 api_router.include_router(saee_ativos.router)
+api_router.include_router(maintenance_plans.router)
