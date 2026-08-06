@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+﻿from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, Date, Text, ForeignKey
 from sqlalchemy.orm import relationship
@@ -29,7 +29,7 @@ class PlanoPreventivo(Base):
     status           = Column(String(20), nullable=False, default="PROGRAMADO")
     observacoes      = Column(Text, nullable=True)
     gerar_proximo    = Column(Integer, nullable=False, default=1)
-    ativo = relationship("SAEEAtivo", backref="planos")
+    ativo = relationship("SaeeAtivo", backref="planos")
 
 class PlanoCreate(BaseModel):
     ativo_id        : int
