@@ -1,73 +1,31 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 from app.core.database import get_db
 
 router = APIRouter(prefix="/admin/reset", tags=["Admin Reset"])
 
-@router.delete("/tudo", summary="Apaga TODOS os dados do sistema")
-async def reset_tudo(confirmar: str, db: Session = Depends(get_db)):
-    """
-    Apaga todos os dados do sistema.
-    Requer o parâmetro confirmar=CONFIRMO_APAGAR_TUDO para evitar acidente.
-    """
+@router.delete("/tudo")
+async def reset_tudo(confirmar: str, db: AsyncSession = Depends(get_db)):
     if confirmar != "CONFIRMO_APAGAR_TUDO":
-        raise HTTPException(status_code=400, detail="Parâmetro de confirmação inválido. Use: confirmar=CONFIRMO_APAGAR_TUDO")
-
-    tabelas = [
-        "planos_preventivos",
-        "inspecoes",
-        "ordens_servico",
-        "alertas",
-        "historico",
-        "saee_ativos",
-    ]
-
-    resultados = {}
-    for tabela in tabelas:
+        raise HTTPException(status_code=400, detail="Use: confirmar=CONFIRMO_APAGAR_TUDO")
+    for tabela in ["planos_preventivos","inspecoes","work_orders","alerts","saee_ativos"]:
         try:
-            result = db.execute(text(f"DELETE FROM {tabela}"))
-            resultados[tabela] = f"{result.rowcount} registros apagados"
-        except Exception as e:
-            resultados[tabela] = f"Tabela não encontrada ou erro: {str(e)}"
-
-    # Reseta sequences (IDs voltam para 1)
-    for tabela in tabelas:
-        try:
-            db.execute(text(f"ALTER SEQUENCE {tabela}_id_seq RESTART WITH 1"))
+            await db.execute(text(f"DELETE FROM {tabela}"))
         except Exception:
             pass
+    await db.commit()
+    return {"status":"ok","mensagem":"Dados apagados com sucesso."}
 
-    db.commit()
-
-    return {
-        "status": "ok",
-        "mensagem": "Todos os dados foram apagados. Sistema pronto para dados reais.",
-        "detalhes": resultados
-    }
-
-
-@router.delete("/saee-ativos", summary="Apaga apenas os GGDs")
-async def reset_ativos(confirmar: str, db: Session = Depends(get_db)):
-    """Apaga apenas os GGDs/saee_ativos."""
+@router.delete("/saee-ativos")
+async def reset_ativos(confirmar: str, db: AsyncSession = Depends(get_db)):
     if confirmar != "CONFIRMO_APAGAR_TUDO":
-        raise HTTPException(status_code=400, detail="Parâmetro inválido")
-
-    tabelas_dependentes = ["planos_preventivos", "inspecoes", "alertas"]
-    for t in tabelas_dependentes:
+        raise HTTPException(status_code=400, detail="Parametro invalido")
+    for tabela in ["planos_preventivos","inspecoes","alerts"]:
         try:
-            db.execute(text(f"DELETE FROM {t}"))
+            await db.execute(text(f"DELETE FROM {tabela}"))
         except Exception:
             pass
-
-    result = db.execute(text("DELETE FROM saee_ativos"))
-    try:
-        db.execute(text("ALTER SEQUENCE saee_ativos_id_seq RESTART WITH 1"))
-    except Exception:
-        pass
-
-    db.commit()
-    return {
-        "status": "ok",
-        "mensagem": f"{result.rowcount} GGDs apagados. Cadastre os dados reais.",
-    }
+    result = await db.execute(text("DELETE FROM saee_ativos"))
+    await db.commit()
+    return {"status":"ok","mensagem":f"{result.rowcount} GGDs apagados."}
