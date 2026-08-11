@@ -1,4 +1,4 @@
-ï»¿"use client";
+"use client";
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
@@ -11,7 +11,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
   return (
     <svg viewBox="0 0 200 300" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
       <rect width="200" height="280" fill="#0a0a0a" rx="4"/>
-      {/* Imagem do gerador (mantÃ©m posiÃ§Ã£o original; a parte de cima sera mascarada) */}
+      {/* Imagem do gerador (mantém posição original; a parte de cima sera mascarada) */}
       <image href={DSE_IMAGE} x="5" y="2" width="190" height="210" style={{filter: noComm ? "grayscale(1) brightness(0.55) contrast(0.9)" : running ? "hue-rotate(200deg) saturate(2) brightness(1.3)" : "saturate(0.6) brightness(0.7)"}}/>
       {/* Mascara cobrindo a torre/linha/chave originais da imagem (substituidas por SVG vetorial abaixo) */}
       <rect x="5" y="2" width="190" height="150" fill="#0a0a0a"/>
@@ -22,7 +22,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
         <rect x="38" y="12" width="10" height="14" fill="#ff3399"/>
         <line x1="43" y1="26" x2="43" y2="34" stroke="#ff3399" strokeWidth="2"/>
       </g>
-      {/* Linha vertical da rede atÃ© a chave de rede */}
+      {/* Linha vertical da rede até a chave de rede */}
       <line x1="43" y1="34" x2="43" y2="58" stroke={noComm?"#555":"#4488ff"} strokeWidth="1.5"/>
       {/* Chave da rede: fechada quando parado(com comm), aberta quando running ou noComm */}
       {(() => {
@@ -35,7 +35,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
           </g>
         );
       })()}
-      {/* Linha vertical da chave de rede atÃ© a chave do gerador */}
+      {/* Linha vertical da chave de rede até a chave do gerador */}
       <line x1="43" y1="72" x2="43" y2="120" stroke={running&&!noComm?color:"#444"} strokeWidth="1.5" strokeDasharray={noComm?"3,2":undefined}/>
       {/* Chave do gerador: fechada quando running(com comm), aberta quando parado ou noComm */}
       {(() => {
@@ -325,7 +325,7 @@ export default function PanelPage() {
               const assetLatest=assetId?latest[assetId]:undefined;
               const timestamps=assetLatest?Object.values(assetLatest).map((r:any)=>new Date(r.timestamp).getTime()).filter((t)=>!isNaN(t)):[];
               const lastReadingTime=timestamps.length>0?Math.max(...timestamps):null;
-              const noComm=!assetId||lastReadingTime===null||(Date.now()-lastReadingTime)>13*60*1000;
+              const noComm=!assetId||lastReadingTime===null||(Date.now()-lastReadingTime)>180*60*1000;
               const borderColor=noComm?"#ffd700":running?"#ff3333":"#4488ff";
               const isStemac=STEMAC_CODES.has(station.code);
               const typeColor=isStemac?"#00bfff":"#ff8c00";
