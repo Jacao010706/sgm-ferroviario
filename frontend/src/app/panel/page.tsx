@@ -262,7 +262,7 @@ export default function PanelPage() {
   useEffect(() => { loadAll(); }, [loadAll]);
   useEffect(() => { const i = setInterval(loadAll, 60000); return () => clearInterval(i); }, [loadAll]);
 
-  const CODE_TO_TAG: Record<string,string> = { MR:"GMG-MERCADO",RD:"GMG-RODOVIARIA",SP:"GMG-SAOPEDRO",FR:"GMG-FARRAPOS",AP:"GMG-AEROPORTO",AN:"GMG-ANCHIETA",NT:"GMG-NITEROI",FT:"GMG-FATIMA",CN:"GMG-CANOAS",MV:"GMG-MATHIASVELHO",SL:"GMG-SAOLUIS",PB:"GMG-PETROBRAS",ES:"GMG-ESTEIO",LP:"GMG-LUIZPASTEUR",SC:"GMG-SAPUCAIA",UN:"GMG-UNISINOS",SO:"GMG-SAOLEOPOLDO",RS:"GMG-RIOSINOS",SF:"GMG-SANTOAFONSO",IN:"GMG-INDUSTRIAL",FN:"GMG-FENAC",NH:"GMG-NOVOHAMBURGO",SUB:"GMG-SUBESTACAO2",B1:"GMG-BACIA1",B2:"GMG-BACIA2" };
+  const CODE_TO_TAG: Record<string,string> = { MR:"GE-MR",RD:"GE-RD",SP:"GE-SP",FR:"GE-FR",AP:"GE-AP",AN:"GE-AN",NT:"GE-NT",FT:"GE-FT",CN:"GE-CN",MV:"GE-MV",SL:"GE-SL",PB:"GE-PB",ES:"GE-ES",LP:"GE-LP",SC:"GE-SC",UN:"GE-UN",SO:"GE-SO",RS:"GE-RS",SF:"GE-SF",IN:"GE-IN",FN:"GE-FN",NH:"GE-NH",SUB:"GE-SUB",B1:"GE-B1",B2:"GE-B2" };
   const getAssetByCode = (code: string) => assets.find(a => a.tag === CODE_TO_TAG[code]);
   const getVal = (assetId: string, sensor: string) => latest[assetId]?.[sensor]?.value;
   const STEMAC_CODES = new Set(["AP","AN","NT","FT","MV","SL","PB","SC","SO","SUB"]);
