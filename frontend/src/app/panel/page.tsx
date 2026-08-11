@@ -325,7 +325,7 @@ export default function PanelPage() {
               const assetLatest=assetId?latest[assetId]:undefined;
               const timestamps=assetLatest?Object.values(assetLatest).map((r:any)=>new Date(r.timestamp).getTime()).filter((t)=>!isNaN(t)):[];
               const lastReadingTime=timestamps.length>0?Math.max(...timestamps):null;
-              const noComm=!assetId||lastReadingTime===null||(Date.now()-lastReadingTime)>10*60*1000;
+              const noComm=!assetId||lastReadingTime===null||(Date.now()-lastReadingTime)>13*60*1000;
               const borderColor=noComm?"#ffd700":running?"#ff3333":"#4488ff";
               const isStemac=STEMAC_CODES.has(station.code);
               const typeColor=isStemac?"#00bfff":"#ff8c00";
