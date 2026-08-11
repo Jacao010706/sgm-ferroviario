@@ -242,7 +242,7 @@ export default function PanelPage() {
           const r = await api.get("/iot/readings/" + asset.id, { params: { hours: 1 } });
           const latestMap: Record<string, any> = {};
           r.data.forEach((reading: any) => {
-            if (!latestMap[reading.sensor_id] || reading.timestamp > latestMap[reading.sensor_id].timestamp) {
+            if (!latestMap[reading.sensor_id] || new Date(reading.timestamp+"Z") > new Date(latestMap[reading.sensor_id].timestamp+"Z")) {
               latestMap[reading.sensor_id] = reading;
             }
           });
