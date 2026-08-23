@@ -33,6 +33,22 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(scada.start())
     except Exception as e:
         log.warning("SCADA Gateway nao iniciado", error=str(e))
+    try:
+        from app.models.user import User, UserRole
+        from app.core.security import hash_password
+        from sqlalchemy.ext.asyncio import AsyncSession
+        from sqlalchemy import select
+        from app.core.database import engine
+        async with AsyncSession(engine) as _db:
+            _r = await _db.execute(select(User).where(User.email == "admin2@sgm.com"))
+            if not _r.scalar_one_or_none():
+                _u = User(name="Admin Trensurb", email="admin2@sgm.com", hashed_password=hash_password("admin123"), role=UserRole.ADMIN)
+                _db.add(_u)
+                await _db.commit()
+                log.info("Usuario admin2@sgm.com criado")
+    except Exception as e:
+        log.warning("Falha ao criar usuario padrao", error=str(e))
+
     log.info("Sistema iniciado com sucesso")
     yield
     log.info("Encerrando sistema")
