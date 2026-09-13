@@ -37,31 +37,31 @@ MODBUS_TIMEOUT = 5
 
 # Mapeamento: tag -> (ip, slave_id, asset_id)
 GERADORES = {
-    "GMG-MERCADO":      ("10.80.0.1",  22, "a600f012-21bb-4099-8ad4-b333aa4bf202"),
-    "GMG-RODOVIARIA":   ("10.80.0.2",  29, "a152d185-e7f0-4ad2-82c9-186d6cc1f3fa"),
-    "GMG-SAOPEDRO":     ("10.80.0.3",  30, "fb62f3ea-ce71-4be5-bf7a-e945d37a0ee0"),
-    "GMG-FARRAPOS":     ("10.80.0.4",  22, "87aab616-83db-4999-9d65-5ca863dce963"),
-    "GMG-AEROPORTO":    ("10.80.0.5",  22, "0dc7f43c-1f43-468b-8f06-c26ba1bda740"),
-    "GMG-ANCHIETA":     ("10.80.0.6",  22, "4815b42c-85b5-4bf7-9273-4e27b2ea00f4"),
-    "GMG-NITEROI":      ("10.80.0.7",  22, "39704013-9edc-4b1e-aa52-0c7ff8399b56"),
-    "GMG-FATIMA":       ("10.80.0.8",  22, "446faf85-0d4f-406e-84ff-27b44d87b0d9"),
-    "GMG-CANOAS":       ("10.80.0.26", 11, "5d3250ae-0640-4e45-ad25-27fdf175420e"),
-    "GMG-MATHIASVELHO": ("10.80.0.10", 22, "5ab60bf2-5075-4ed2-a592-0471e5fdbe69"),
-    "GMG-SAOLUIS":      ("10.80.0.11", 22, "34b49947-bf58-47ef-9e17-f00be9f46e7a"),
-    "GMG-PETROBRAS":    ("10.80.0.12", 22, "f116c3c6-449e-4911-bd6f-516e739764f3"),
-    "GMG-ESTEIO":       ("10.80.0.13", 13, "91375aaa-bc88-47e2-a269-999bf0aa5262"),
-    "GMG-LUIZPASTEUR":  ("10.80.0.14", 10, "5add67ec-4578-42cb-be42-110c020be80b"),
-    "GMG-SAPUCAIA":     ("10.80.0.15", 22, "fa52c2a7-d339-4500-8ca5-38f701caf41a"),
-    "GMG-UNISINOS":     ("10.80.0.16", 16, "24a85079-fc43-44fb-ad06-e8233e878ba9"),
-    "GMG-SAOLEOPOLDO":  ("10.80.0.17", 22, "edb209f2-a77d-4525-8688-dc0694734a99"),
-    "GMG-RIOSINOS":     ("10.80.0.18", 22, "ae8fc3bb-bc93-4e0c-9838-81579f71e907"),
-    "GMG-SANTOAFONSO":  ("10.80.0.19", 19, "50fac9e0-5706-454b-a2f4-127029c38473"),
-    "GMG-INDUSTRIAL":   ("10.80.0.20", 20, "32f60fc0-968a-4c2d-b420-683ff6de533f"),
-    "GMG-FENAC":        ("10.80.0.21", 21, "2a5aa59d-b389-44d4-92fd-be109fed2c6e"),
-    "GMG-NOVOHAMBURGO": ("10.80.0.22", 22, "e5ed5469-2ac7-4217-8e2e-47b2864ddcbb"),
-    "GMG-SUBESTACAO2":  ("10.80.0.23", 22, "568469db-f8ec-4cbc-a84e-82053dc567e4"),
-    "GMG-BACIA1":       ("10.80.0.24", 22, "c6a50466-9a7c-4d8a-a073-fc325852e974"),
-    "GMG-BACIA2":       ("10.80.0.25", 22, "4e29d4fb-2384-494c-b1ab-e7712fb36c72"),
+    "GMG-MERCADO":      ("10.80.0.1",  1,  "09840a92-13e2-4ac5-9988-35cbc1ed3be9"),
+    "GMG-RODOVIARIA":   ("10.80.0.2",  2,  "b5d38303-cd04-4b6f-aae5-717e70acdfbe"),
+    "GMG-SAOPEDRO":     ("10.80.0.3",  3,  "a620efdf-6826-4bf9-b724-c17f36dd9e65"),
+    "GMG-FARRAPOS":     ("10.80.0.4",  4,  "1fe629e4-1432-45df-8eac-e64e682ec2a5"),
+    "GMG-AEROPORTO":    ("10.80.0.5",  5,  "00189b70-fa1b-4127-9270-2f147d0c95e8"),
+    "GMG-ANCHIETA":     ("10.80.0.6",  6,  "ead6e2bf-5718-4245-b45e-9e4686541163"),
+    "GMG-NITEROI":      ("10.80.0.7",  7,  "9701e9d5-2965-4558-9971-622453941e9f"),
+    "GMG-FATIMA":       ("10.80.0.8",  8,  "0630a8c5-d9d2-44b5-b3ef-51cd9f6bec4d"),
+    "GMG-CANOAS":       ("10.80.0.9",  9,  "ba830f68-2f8d-4f9c-96be-2d305e69d924"),
+    "GMG-MATHIASVELHO": ("10.80.0.10", 10, "462ad264-edab-46fa-ae6a-d9556a02281e"),
+    "GMG-SAOLUIS":      ("10.80.0.11", 11, "f29b82f4-ad67-4306-a936-d2a0969d1761"),
+    "GMG-PETROBRAS":    ("10.80.0.12", 12, "1a5ecc9e-29db-489f-a06d-5e300522238f"),
+    "GMG-ESTEIO":       ("10.80.0.13", 13, "d945d875-e52d-4a45-9b1d-24a7737a8247"),
+    "GMG-LUIZPASTEUR":  ("10.80.0.14", 14, "369ec2d9-533c-490d-aab1-b4469319c66c"),
+    "GMG-SAPUCAIA":     ("10.80.0.15", 15, "ba0ac30b-1445-417a-b2df-af5c11f7a23f"),
+    "GMG-UNISINOS":     ("10.80.0.16", 16, "edda6366-494b-4ef9-a0de-8b375e6a9d03"),
+    "GMG-SAOLEOPOLDO":  ("10.80.0.17", 17, "05943bd6-9355-4337-8ce4-d9c79d3a5e79"),
+    "GMG-RIOSINOS":     ("10.80.0.18", 18, "fe93f2af-4bb5-4376-b2c0-3e2ee7d4fe49"),
+    "GMG-SANTOAFONSO":  ("10.80.0.19", 19, "2cba7fec-b47d-4c1b-8697-6a6e674f16d8"),
+    "GMG-INDUSTRIAL":   ("10.80.0.20", 20, "43c2f463-eef2-467f-81af-73b7a336fa26"),
+    "GMG-FENAC":        ("10.80.0.21", 21, "c5e8d594-318e-4de4-94d6-4417c09e34f7"),
+    "GMG-NOVOHAMBURGO": ("10.80.0.22", 22, "7af45b8b-ffbc-4c50-96b5-97c522782ef4"),
+    "GMG-SUBESTACAO2":  ("10.80.0.23", 23, "c679762c-fc6a-4316-a6bd-f2437fc90dd7"),
+    "GMG-BACIA1":       ("10.80.0.24", 24, "37e190ef-601d-4c4a-a6ff-cf43d3b66b92"),
+    "GMG-BACIA2":       ("10.80.0.25", 25, "1ff45722-6633-4e4a-8ca3-5f91eef43000"),
 }
 
 # =============================================================================
@@ -93,20 +93,20 @@ REG_STEMAC = {
     "nivel_tanque":   61,
     "bateria":        58,
     "horas_funcio":   56,
-    "tensao_l1":      74,
-    "tensao_l2":      75,
-    "tensao_l3":      76,
-    "corrente_l1":    0,
-    "corrente_l2":    0,
-    "corrente_l3":    0,
-    "frequencia":     0,
-    "potencia_kw":    0,
+    "tensao_l1":      31,
+    "tensao_l2":      32,
+    "tensao_l3":      33,
+    "corrente_l1":    38,
+    "corrente_l2":    39,
+    "corrente_l3":    40,
+    "frequencia":     47,
+    "potencia_kw":    42,
     "tensao_rede_l1": 71,
     "tensao_rede_l2": 72,
     "tensao_rede_l3": 73,
     "freq_rede":      87,
-    "status":         0,
-    "rpm":            0,
+    "status":         10,
+    "rpm":            62,
 }
 
 REG_CUSTOM = {
@@ -235,7 +235,7 @@ def ler_gerador(ip, slave_id, tag):
 
         if is_stemac:
             regs_stemac = [0] * 200
-            for base in [0, 35, 56, 71, 86]:
+            for base in [0, 30, 55, 70, 85]:
                 rb = client.read_input_registers(address=base, count=35)
                 if not rb.isError():
                     for i, v in enumerate(rb.registers):
@@ -265,7 +265,7 @@ def ler_gerador(ip, slave_id, tag):
 
         f1 = 1.0 if is_stemac else 0.1
         fv = 1.0 if is_stemac else 0.1
-        ff = 0.01 if is_stemac else 0.1
+        ff = 0.1 if is_stemac else 0.1
 
         rpm = r(1030) if not is_stemac else 0
         potencia_total = round((r(1053) + r(1055) + r(1057)) * 0.001, 2) if not is_stemac else 0
@@ -283,7 +283,9 @@ def ler_gerador(ip, slave_id, tag):
             kva_total = 0
             kvar_total = 0
             fp_total = 0
-        stemac_running = (regs_stemac[62] > 0) if is_stemac else False
+        stemac_running = bool(r(10) & 0x2000) if is_stemac else False
+
+
         is_running = stemac_running if is_stemac else rpm > 0
 
         dados = {
