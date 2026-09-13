@@ -5,7 +5,7 @@ from app.models.alert import Alert
 from app.models.iot import IoTReading, SensorConfig
 from app.models.fuel_order import FuelOrder, FuelOrderItem
 from app.models.contracted_company import ContractedCompany
-from app.models.saee_ativo import SaeeAtivo
+from app.models.command_audit_log import CommandAuditLog, ControllerType, AuditCommand, AuditResult, AuditOrigin
 
 __all__ = [
     "User", "Team",
@@ -14,5 +14,5 @@ __all__ = [
     "Alert",
     "IoTReading", "SensorConfig", "FuelOrder", "FuelOrderItem",
     "ContractedCompany",
-    "SaeeAtivo",
+    "CommandAuditLog", "ControllerType", "AuditCommand", "AuditResult", "AuditOrigin",
 ]
