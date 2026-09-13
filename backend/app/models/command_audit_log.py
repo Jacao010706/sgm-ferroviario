@@ -15,8 +15,6 @@ class ControllerType(str, enum.Enum):
 class AuditCommand(str, enum.Enum):
     START = "start"
     STOP = "stop"
-    MANUAL = "manual"
-    AUTO = "auto"
 
 
 class AuditResult(str, enum.Enum):
