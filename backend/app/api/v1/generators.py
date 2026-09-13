@@ -57,7 +57,8 @@ GERADORES_CONFIG = {
 CARGOS_AUTORIZADOS = {"TECHNICIAN", "ENGINEER", "ADMIN", "technician", "engineer", "admin"}
 
 
-async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem_erro=None):
+async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem_erro=None,
+                   registros=None, origem="fastapi"):
     """
     Grava uma linha de auditoria do comando remoto.
 
@@ -80,7 +81,8 @@ async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem
             comando=AuditCommand(action),
             resultado=AuditResult(resultado),
             mensagem_erro=mensagem_erro,
-            origem=AuditOrigin.FASTAPI,
+            registros_modbus=registros,
+            origem=AuditOrigin(origem),
         ))
         await db.commit()
     except Exception:
@@ -150,6 +152,20 @@ async def comando_gerador(
 
             if r.status_code == 200:
                 await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso")
+
+                # Confirmacao do lado do coletor, com os registros Modbus
+                # efetivamente escritos no controlador.
+                _registros = None
+                try:
+                    _corpo = r.json()
+                    if isinstance(_corpo, dict):
+                        _registros = _corpo.get("registros_modbus")
+                except Exception:
+                    pass
+                if _registros:
+                    await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso",
+                                   registros=_registros, origem="flask_local")
+
                 return ComandoResponse(
                     success=True,
                     message=f"Comando '{body.action}' enviado para {tag}.",
