@@ -7,6 +7,7 @@ import httpx
 
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
+from datetime import datetime
 
 log = logging.getLogger(__name__)
 
@@ -91,6 +92,52 @@ async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem
             await db.rollback()
         except Exception:
             pass
+
+@router.get("/audit-log")
+async def listar_auditoria(
+    gmg_id: str | None = None,
+    gmg_tag: str | None = None,
+    usuario: str | None = None,
+    data_inicio: datetime | None = None,
+    data_fim: datetime | None = None,
+    skip: int = 0,
+    limit: int = 100,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Historico de comandos remotos enviados aos GMGs.
+
+    Cada comando gera ate 3 registros: TENTATIVA e SUCESSO/FALHA pela origem
+    FASTAPI, e a confirmacao FLASK_LOCAL com os registros Modbus escritos.
+
+    Os timestamps sao gravados em UTC.
+    """
+    if current_user.role not in CARGOS_AUTORIZADOS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas tecnicos, engenheiros e administradores podem consultar a auditoria.",
+        )
+
+    from sqlalchemy import select as _select
+    from app.models.command_audit_log import CommandAuditLog
+
+    q = _select(CommandAuditLog)
+    if gmg_id:
+        q = q.where(CommandAuditLog.gmg_id == gmg_id)
+    if gmg_tag:
+        q = q.where(CommandAuditLog.gmg_tag == gmg_tag)
+    if usuario:
+        q = q.where(CommandAuditLog.usuario.ilike(f"%{usuario}%"))
+    if data_inicio:
+        q = q.where(CommandAuditLog.created_at >= data_inicio)
+    if data_fim:
+        q = q.where(CommandAuditLog.created_at <= data_fim)
+
+    q = q.order_by(CommandAuditLog.created_at.desc()).offset(skip).limit(limit)
+    result = await db.execute(q)
+    return result.scalars().all()
+
 
 @router.post("/{asset_id}/command", response_model=ComandoResponse)
 async def comando_gerador(
