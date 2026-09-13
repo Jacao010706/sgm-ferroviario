@@ -547,12 +547,13 @@ class CommandHandler(BaseHTTPRequestHandler):
         tipo = "stemac" if tag in STEMAC_TAGS else "dse"
         try:
             from modbus_command import enviar_comando_gerador
-            enviar_comando_gerador(ip, slave_id, action, tipo)
+            _registros = enviar_comando_gerador(ip, slave_id, action, tipo)
             log.info(f"Comando '{action}' executado para {tag} ({ip}) tipo={tipo}")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(_json.dumps({"ok": True, "tag": tag, "action": action}).encode())
+            self.wfile.write(_json.dumps({"ok": True, "tag": tag, "action": action,
+                                          "registros_modbus": _registros}).encode())
         except Exception as e:
             log.error(f"Erro ao executar comando {action} em {tag}: {e}")
             self.send_response(502)

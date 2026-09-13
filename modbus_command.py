@@ -60,6 +60,8 @@ def _escrever_dse_key(ip, slave_id, action):
         if result.isError():
             raise ComandoError(f"DSE {ip} recusou '{action}': {result}")
         log.info(f"DSE {ip} [slave={slave_id}]: '{descricao}' OK")
+        return {"endereco": DSE_REG_CONTROL_KEY, "valores": [key, complement],
+                "descricao": descricao}
     except ModbusException as e:
         raise ComandoError(f"Modbus error em {ip}: {e}") from e
     finally:
@@ -69,12 +71,14 @@ def _escrever_dse_key(ip, slave_id, action):
 def _enviar_dse(ip, slave_id, action):
     if action not in DSE_SCF:
         raise ComandoError(f"Acao '{action}' nao reconhecida para DSE.")
+    registros = []
     if action == "start":
-        _escrever_dse_key(ip, slave_id, "manual")
+        registros.append(_escrever_dse_key(ip, slave_id, "manual"))
         time.sleep(1)
-        _escrever_dse_key(ip, slave_id, "start")
-        return
-    _escrever_dse_key(ip, slave_id, action)
+        registros.append(_escrever_dse_key(ip, slave_id, "start"))
+        return registros
+    registros.append(_escrever_dse_key(ip, slave_id, action))
+    return registros
 
 
 def _st2160_login(client, ip):
@@ -108,28 +112,32 @@ def _st2160_pulso_bit(client, ip, bit, descricao):
         raise ComandoError(f"ST2160 {ip}: recusou '{descricao}' (bit {bit}): {result}")
     log.info(f"ST2160 {ip}: bit {bit} '{descricao}' OK (valor={valor})")
     time.sleep(0.5)
+    return {"endereco": ST2160_REG_COMANDOS_CLIENTE, "valores": [valor],
+            "bit": bit, "descricao": descricao}
 
 
 def _enviar_stemac(ip, slave_id, action):
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
+    registros = []
     try:
         if not client.connect():
             raise ComandoError(f"Sem conexao Modbus com {ip}")
         _st2160_login(client, ip)
         if action == "start":
-            _st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto")
+            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto"))
             time.sleep(1.0)
-            _st2160_pulso_bit(client, ip, ST2160_BIT_PARTIDA, "Partida do GMG")
+            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_PARTIDA, "Partida do GMG"))
         elif action == "stop":
-            _st2160_pulso_bit(client, ip, ST2160_BIT_PARADA_REMOTA, "Parada Remota")
+            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_PARADA_REMOTA, "Parada Remota"))
         elif action == "manual":
-            _st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto")
+            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto"))
         elif action == "auto":
-            _st2160_pulso_bit(client, ip, ST2160_BIT_AUTO_CARGA, "GMG AUTO Assumindo Carga")
+            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_AUTO_CARGA, "GMG AUTO Assumindo Carga"))
         elif action in ("ack", "reset"):
-            _st2160_pulso_bit(client, ip, ST2160_BIT_ACK_ALARMES, "Reconhecimento Alarmes")
+            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_ACK_ALARMES, "Reconhecimento Alarmes"))
         else:
             raise ComandoError(f"Acao '{action}' nao reconhecida para ST2160.")
+        return registros
     except ModbusException as e:
         raise ComandoError(f"Modbus error em {ip}: {e}") from e
     finally:
@@ -137,9 +145,10 @@ def _enviar_stemac(ip, slave_id, action):
 
 
 def enviar_comando_gerador(ip, slave_id, action, tipo="dse"):
+    """Executa o comando e devolve a lista de registros Modbus escritos."""
     if tipo == "dse":
-        _enviar_dse(ip, slave_id, action)
+        return _enviar_dse(ip, slave_id, action) or []
     elif tipo == "stemac":
-        _enviar_stemac(ip, slave_id, action)
+        return _enviar_stemac(ip, slave_id, action) or []
     else:
         raise ComandoError(f"Tipo de controlador '{tipo}' desconhecido.")
