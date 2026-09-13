@@ -26,8 +26,9 @@ function paraLocal(iso: string) {
 }
 
 function corResultado(r: string) {
-  if (r === "SUCESSO") return "#00cc44";
-  if (r === "FALHA") return "#ff3333";
+  const v = (r || "").toUpperCase();
+  if (v === "SUCESSO") return "#00cc44";
+  if (v === "FALHA") return "#ff3333";
   return "#ffd700";
 }
 
@@ -153,8 +154,8 @@ export default function AuditoriaPage() {
         <tbody>
           {agrupado
             ? grupos.map((g) => {
-                const principal = g.itens.find((i) => i.origem === "FLASK_LOCAL")
-                  || g.itens.find((i) => i.resultado !== "TENTATIVA")
+                const principal = g.itens.find((i) => (i.origem || "").toUpperCase() === "FLASK_LOCAL")
+                  || g.itens.find((i) => (i.resultado || "").toUpperCase() !== "TENTATIVA")
                   || g.itens[0];
                 const modbus = g.itens.find((i) => i.registros_modbus)?.registros_modbus;
                 const erroMsg = g.itens.find((i) => i.mensagem_erro)?.mensagem_erro;
@@ -163,8 +164,8 @@ export default function AuditoriaPage() {
                     <td style={{ padding: 8 }}>{paraLocal(principal.created_at)}</td>
                     <td style={{ padding: 8 }}>{principal.gmg_tag}</td>
                     <td style={{ padding: 8 }}>{principal.usuario}</td>
-                    <td style={{ padding: 8 }}>{principal.comando}</td>
-                    <td style={{ padding: 8, color: corResultado(principal.resultado) }}>{principal.resultado}</td>
+                    <td style={{ padding: 8 }}>{(principal.comando || "").toUpperCase()}</td>
+                    <td style={{ padding: 8, color: corResultado(principal.resultado) }}>{(principal.resultado || "").toUpperCase()}</td>
                     <td style={{ padding: 8, color: "#666", fontSize: 11 }}>
                       {erroMsg || (modbus ? JSON.stringify(modbus) : "")}
                     </td>
@@ -176,9 +177,9 @@ export default function AuditoriaPage() {
                   <td style={{ padding: 8 }}>{paraLocal(r.created_at)}</td>
                   <td style={{ padding: 8 }}>{r.gmg_tag}</td>
                   <td style={{ padding: 8 }}>{r.usuario}</td>
-                  <td style={{ padding: 8 }}>{r.comando}</td>
-                  <td style={{ padding: 8, color: corResultado(r.resultado) }}>{r.resultado}</td>
-                  <td style={{ padding: 8, color: "#888" }}>{r.origem}</td>
+                  <td style={{ padding: 8 }}>{(r.comando || "").toUpperCase()}</td>
+                  <td style={{ padding: 8, color: corResultado(r.resultado) }}>{(r.resultado || "").toUpperCase()}</td>
+                  <td style={{ padding: 8, color: "#888" }}>{(r.origem || "").toUpperCase()}</td>
                   <td style={{ padding: 8, color: "#666", fontSize: 11 }}>
                     {r.mensagem_erro || (r.registros_modbus ? JSON.stringify(r.registros_modbus) : "")}
                   </td>
