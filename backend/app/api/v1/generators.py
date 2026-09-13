@@ -56,6 +56,40 @@ GERADORES_CONFIG = {
 
 CARGOS_AUTORIZADOS = {"TECHNICIAN", "ENGINEER", "ADMIN", "technician", "engineer", "admin"}
 
+
+async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem_erro=None):
+    """
+    Grava uma linha de auditoria do comando remoto.
+
+    IMPORTANTE: todos os parametros devem ser valores primitivos ja extraidos.
+    db.commit() expira os objetos da sessao (inclusive current_user), e acessar
+    um atributo depois disso dispara lazy load -> MissingGreenlet.
+
+    Nunca propaga excecao: acionar o gerador tem prioridade sobre registrar.
+    """
+    try:
+        from app.models.command_audit_log import (
+            CommandAuditLog, AuditCommand, AuditResult, AuditOrigin, ControllerType,
+        )
+        db.add(CommandAuditLog(
+            gmg_id=asset_id,
+            gmg_tag=tag,
+            gmg_nome=tag,
+            controller_type=ControllerType(tipo),
+            usuario=usuario,
+            comando=AuditCommand(action),
+            resultado=AuditResult(resultado),
+            mensagem_erro=mensagem_erro,
+            origem=AuditOrigin.FASTAPI,
+        ))
+        await db.commit()
+    except Exception:
+        log.exception("Falha ao gravar auditoria (comando segue normalmente)")
+        try:
+            await db.rollback()
+        except Exception:
+            pass
+
 @router.post("/{asset_id}/command", response_model=ComandoResponse)
 async def comando_gerador(
     asset_id: str,
@@ -77,6 +111,13 @@ async def comando_gerador(
     log.info(f"Comando '{body.action}' por {current_user.email} -> {tag} [{tipo}]")
     log.info(f"current_user.role={current_user.role} CARGOS={CARGOS_AUTORIZADOS}")
 
+    # Extrai antes do primeiro commit: apos o commit a sessao expira os
+    # objetos e acessar current_user.email dispararia lazy load.
+    _usuario = current_user.email
+    _acao = body.action
+
+    await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "tentativa")
+
     from app.core.coletor_state import _coletor_url
     import redis.asyncio as _redis
     from app.core.config import settings as _settings
@@ -92,6 +133,8 @@ async def comando_gerador(
         except Exception:
             pass
     if not coletor_url:
+        await _auditar(db, asset_id, tag, tipo, _usuario, _acao,
+                       "falha", "Coletor offline (URL nao registrada)")
         raise HTTPException(status_code=503, detail="Coletor offline. Reinicie o coletor_modbus.py na maquina da Trensurb para reconectar automaticamente.")
 
     try:
@@ -106,6 +149,7 @@ async def comando_gerador(
             log.info(f"Coletor respondeu status={r.status_code} body={r.text[:500]!r}")
 
             if r.status_code == 200:
+                await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso")
                 return ComandoResponse(
                     success=True,
                     message=f"Comando '{body.action}' enviado para {tag}.",
@@ -125,16 +169,21 @@ async def comando_gerador(
                 else:
                     detail = f"Coletor retornou {r.status_code} sem corpo"
 
+            await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "falha", detail)
             raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=detail)
 
     except HTTPException:
         raise
     except httpx.ConnectError:
+        await _auditar(db, asset_id, tag, tipo, _usuario, _acao,
+                       "falha", "Coletor inacessivel (ConnectError)")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Coletor Modbus offline ou inacessivel. Verifique se o servico esta rodando na rede da Trensurb.",
         )
     except httpx.TimeoutException:
+        await _auditar(db, asset_id, tag, tipo, _usuario, _acao,
+                       "falha", "Timeout ao conectar ao coletor")
         raise HTTPException(
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="Timeout ao conectar ao coletor Modbus.",
