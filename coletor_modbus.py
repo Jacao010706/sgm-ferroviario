@@ -266,8 +266,9 @@ def ler_gerador(ip, slave_id, tag):
         f1 = 1.0 if is_stemac else 0.1
         fv = 1.0 if is_stemac else 0.1
         ff = 0.1 if is_stemac else 0.1
+        fq = 0.01 if is_stemac else 0.1
 
-        rpm = r(1030) if not is_stemac else 0
+        rpm = r(1030) if not is_stemac else (r(62) if ((r(10) & 0x0100) and not (r(21) & 0x0080)) else 0)
         potencia_total = round((r(1053) + r(1055) + r(1057)) * 0.001, 2) if not is_stemac else 0
         if not is_stemac and potencia_total > 0:
             vl1 = r(1033) * 0.1
@@ -279,11 +280,17 @@ def ler_gerador(ip, slave_id, tag):
             kva_total = round((vl1*il1 + vl2*il2 + vl3*il3) / 1000, 2)
             kvar_total = round((kva_total**2 - potencia_total**2)**0.5, 2) if kva_total >= potencia_total else 0
             fp_total = round(potencia_total / kva_total, 2) if kva_total > 0 else 0
+        elif is_stemac and ((r(10) & 0x0100) and not (r(21) & 0x0080)):
+            potencia_total = r(42) * 1.0
+            kva_total = r(43) * 1.0
+            _kvar = r(44)
+            kvar_total = (_kvar - 65536) * 1.0 if _kvar > 32767 else _kvar * 1.0
+            fp_total = r(46) * 0.01
         else:
             kva_total = 0
             kvar_total = 0
             fp_total = 0
-        stemac_running = bool(r(10) & 0x2000) if is_stemac else False
+        stemac_running = bool((r(10) & 0x0100) and not (r(21) & 0x0080)) if is_stemac else False
 
 
         is_running = stemac_running if is_stemac else rpm > 0
@@ -298,7 +305,7 @@ def ler_gerador(ip, slave_id, tag):
             "corrente_l1":    r(reg_map["corrente_l1"]) * f1,
             "corrente_l2":    r(reg_map["corrente_l2"]) * f1,
             "corrente_l3":    r(reg_map["corrente_l3"]) * f1,
-            "frequencia":     r(reg_map["frequencia"]) * f1,
+            "frequencia":     r(reg_map["frequencia"]) * fq,
             "potencia_kw":    potencia_total,
             "kva_total":      kva_total,
             "kvar_total":     kvar_total,
