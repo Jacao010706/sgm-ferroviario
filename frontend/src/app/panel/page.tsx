@@ -313,6 +313,10 @@ export default function PanelPage() {
     }
   };
 
+  // Guarda o motivo da ultima falha de carga para mostrar no cabecalho.
+  // Sem isso a tela fica so com tracinhos e nao da para saber o porque.
+  const [erroCarga, setErroCarga] = useState<string>("");
+
   const loadAll = useCallback(async () => {
     try {
       const res = await api.get("/assets/", { params: { limit: 50 } });
@@ -337,12 +341,25 @@ export default function PanelPage() {
         const al = await api.get("/alerts/", { params: { status: "active", limit: 100 } });
         setAlerts(al.data);
       } catch { setAlerts([]); }
-    } catch(e) { console.error(e); }
+      setErroCarga("");
+    } catch(e: any) {
+      console.error(e);
+      const st = e?.response?.status;
+      const det = e?.response?.data?.erro || e?.response?.data?.detail;
+      setErroCarga(det ? `${st ?? ""} ${det}`.trim() : `FALHA NA CARGA${st ? " (" + st + ")" : ""}`);
+    }
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { loadAll(); }, [loadAll]);
-  useEffect(() => { const i = setInterval(loadAll, 60000); return () => clearInterval(i); }, [loadAll]);
+  // A busca so pode acontecer depois do login: o proxy exige o cookie de
+  // sessao do CCO. Antes isso rodava na montagem, tomava 401, e a tela
+  // ficava vazia ate o proximo ciclo de 60s.
+  useEffect(() => { if (auth) loadAll(); }, [auth, loadAll]);
+  useEffect(() => {
+    if (!auth) return;
+    const i = setInterval(loadAll, 60000);
+    return () => clearInterval(i);
+  }, [auth, loadAll]);
 
   // Assets numa ref para o Realtime nao reassinar a cada poll de 60s
   const assetsRef = useRef<any[]>([]);
@@ -442,6 +459,7 @@ export default function PanelPage() {
         </div>
         <div className="flex items-center gap-4">
           {loading && <span className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</span>}
+          {erroCarga && <span className="text-red-400 text-xs" title={erroCarga}>{erroCarga}</span>}
           <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
           <a href="/auditoria" className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</a>
           <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">TELA CHEIA</button>
