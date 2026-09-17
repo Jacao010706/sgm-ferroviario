@@ -160,6 +160,34 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
             <div className="h-full rounded transition-all" style={{width:fuel!=null?Math.min(100,fuel)+"%":"0%",background:fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"}}/>
           </div>
         </div>
+
+        {station?.code === "RD" && (() => {
+          const tq = tanqueAux(v("dse_flex"));
+          const cor = tq === 1 ? "#00ff41" : tq === 0 ? "#ff3333" : "#555555";
+          return (
+            <div className="mb-3 rounded p-2" style={{background:"#0a1a00",border:"1px solid #00ff4133"}}>
+              <div className="text-xs text-green-600 mb-1 font-bold tracking-wider">TANQUE EXTERNO</div>
+              {tq != null ? (
+                <>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="rounded-full" style={{width:10,height:10,background:cor}}/>
+                    <span className="font-bold text-sm font-mono" style={{color:cor}}>
+                      {tq === 1 ? "CHEIO" : "NIVEL BAIXO"}
+                    </span>
+                  </div>
+                  <div className="w-full rounded h-3 overflow-hidden" style={{background:"#001a00",border:"1px solid #333"}}>
+                    <div className="h-full rounded transition-all" style={{width:tq===1?"100%":"0%",background:cor}}/>
+                  </div>
+                </>
+              ) : (
+                <div className="text-xs" style={{color:"#555"}}>
+                  Aguardando o coletor enviar o sensor flexivel D
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         <div className="mb-3">
           <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
           {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"text-green-400 border border-green-800":"text-red-400 border border-red-800"}`}>{cmdMsg.text}</div>}
@@ -215,6 +243,18 @@ const STATIONS = [
 // Banco grava sem acento e em maiuscula; compara normalizado dos dois lados.
 const normSub = (v: string) =>
   v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+
+// Tanque externo: so a Rodoviaria tem. E o sensor flexivel D do DSE (4o nibble
+// do HR[2179]), que o coletor envia no vetor dse_flex. Codificacao GenComm:
+// 1 = inativo (tanque cheio), 2..4 = warning/shutdown/trip (nivel baixo).
+// Fora disso o sensor esta desabilitado e nao ha leitura para mostrar.
+function tanqueAux(flex: any): number | null {
+  if (!Array.isArray(flex) || flex.length < 4) return null;
+  const d = flex[3];
+  if (d === 1) return 1;
+  if (d >= 2 && d <= 4) return 0;
+  return null;
+}
 
 const CODE_TO_TAG: Record<string,string> = { MR:"GE-MR",RD:"GE-RD",SP:"GE-SP",FR:"GE-FR",AP:"GE-AP",AN:"GE-AN",NT:"GE-NT",FT:"GE-FT",CN:"GE-CN",MV:"GE-MV",SL:"GE-SL",PB:"GE-PB",ES:"GE-ES",LP:"GE-LP",SC:"GE-SC",UN:"GE-UN",SO:"GE-SO",RS:"GE-RS",SF:"GE-SF",IN:"GE-IN",FN:"GE-FN",NH:"GE-NH",SUB:"GE-SUB",B1:"GE-B1",B2:"GE-B2" };
 
@@ -438,6 +478,15 @@ export default function PanelPage() {
                     <span style={{color:"#888"}}>{temp!=null?Math.round(Number(temp))+"C":"--"}</span>
                     <span style={{color:"#00cc44"}}>{gridV!=null?Math.round(Number(gridV))+"V":"---"}</span>
                     <span style={{color:fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"}}>{fuel!=null?fuel+"%":"--"}</span>
+                    {station.code === "RD" && (() => {
+                      const tq = assetId ? tanqueAux(getVal(assetId,"dse_flex")) : null;
+                      if (tq == null) return null;
+                      return (
+                        <span style={{color:tq===1?"#00aa00":"#ff0000"}}>
+                          {tq === 1 ? "EXT:CHEIO" : "EXT:BAIXO"}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               );
