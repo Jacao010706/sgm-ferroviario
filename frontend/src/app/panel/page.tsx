@@ -205,8 +205,11 @@ const STATIONS = [
   {code:"FN", name:"Fenac",         sublocal:"FENAC"},
   {code:"NH", name:"Novo Hamburgo", sublocal:"NOVO HAMBURGO"},
   {code:"SUB",name:"Sub02 Pátio",   sublocal:"SE_2_PÁTIO"},
-  {code:"B1", name:"Bacia Rodo",    sublocal:"BACIA RODO"},
-  {code:"B2", name:"Aeromóvel",     sublocal:"AEROMÓVEL_ATR"},
+  {code:"B1", name:"Bacia Rodoferroviária 1", sublocal:"BACIA RODO"},
+  // O GGD do Aeromovel esta fora de operacao sem previsao de retorno. O
+  // equipamento e o mesmo (tag GE-B2, 10.80.0.25); mudou so o rotulo. O
+  // sublocal continua AEROMÓVEL_ATR porque e a chave que o coletor envia.
+  {code:"B2", name:"Bacia Rodoferroviária 2", sublocal:"AEROMÓVEL_ATR"},
 ];
 
 // Banco grava sem acento e em maiuscula; compara normalizado dos dois lados.
