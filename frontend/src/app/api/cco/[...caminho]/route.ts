@@ -62,17 +62,54 @@ async function encaminhar(req: NextRequest, corpo?: string) {
 
   const url = `${API_BASE}/api/v1${caminhoOriginal(req)}${req.nextUrl.search || ""}`;
 
-  const chamar = async (token: string) =>
-    fetch(url, {
+  // Os redirecionamentos sao seguidos a mao, e nao com redirect: "follow".
+  //
+  // O uvicorn do backend roda sem --proxy-headers, entao ele nao enxerga o
+  // X-Forwarded-Proto da Railway e acha que esta atendendo em http. Quando o
+  // FastAPI acrescenta a barra final que falta (/assets -> /assets/), ele monta
+  // o Location com esse http. Seguir aquilo sai da borda https da Railway e
+  // volta 404 -- foi exatamente o que esvaziou o painel.
+  //
+  // Aqui so o caminho e a query do Location interessam; a origem continua sendo
+  // a do API_BASE. Assim qualquer rota do backend que redirecione funciona, sem
+  // precisar decorar quais terminam em barra.
+  const chamar = async (destino: string, token: string): Promise<Response> => {
+    let alvo = destino;
+
+    for (let salto = 0; salto < 3; salto++) {
+      const r = await fetch(alvo, {
+        method: corpo === undefined ? "GET" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(corpo !== undefined ? { "Content-Type": "application/json" } : {}),
+        },
+        ...(corpo !== undefined ? { body: corpo } : {}),
+        redirect: "manual",
+        cache: "no-store",
+      });
+
+      if (r.status < 300 || r.status > 399) return r;
+
+      const local = r.headers.get("location");
+      if (!local) return r;
+
+      const destinoDoBackend = new URL(local, alvo);
+      alvo = `${API_BASE}${destinoDoBackend.pathname}${destinoDoBackend.search}`;
+    }
+
+    // Tres saltos sem chegar a lugar nenhum: devolve o ultimo estado em vez de
+    // ficar girando.
+    return fetch(alvo, {
       method: corpo === undefined ? "GET" : "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         ...(corpo !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       ...(corpo !== undefined ? { body: corpo } : {}),
-      redirect: "follow",
+      redirect: "manual",
       cache: "no-store",
     });
+  };
 
   let token = await obterToken();
   if (!token) {
@@ -82,10 +119,10 @@ async function encaminhar(req: NextRequest, corpo?: string) {
     );
   }
 
-  let r = await chamar(token);
+  let r = await chamar(url, token);
   if (r.status === 401) {                 // token expirado: renova e repete
     token = await obterToken(true);
-    if (token) r = await chamar(token);
+    if (token) r = await chamar(url, token);
   }
 
   const texto = await r.text();
