@@ -33,21 +33,36 @@ async def lifespan(app: FastAPI):
         asyncio.create_task(scada.start())
     except Exception as e:
         log.warning("SCADA Gateway nao iniciado", error=str(e))
+    # Usuario administrador inicial.
+    #
+    # Antes este bloco criava, a cada inicializacao, o usuario admin2@sgm.com com
+    # a senha "admin123" escrita aqui no codigo. Era uma conta de administrador
+    # com senha publica, recriada sozinha mesmo que alguem a removesse do banco.
+    #
+    # Agora so cria se as duas variaveis estiverem definidas no ambiente, e
+    # nunca com senha literal. Sem elas, nao cria nada.
     try:
-        from app.models.user import User, UserRole
-        from app.core.security import hash_password
-        from sqlalchemy.ext.asyncio import AsyncSession
-        from sqlalchemy import select
-        from app.core.database import engine
-        async with AsyncSession(engine) as _db:
-            _r = await _db.execute(select(User).where(User.email == "admin2@sgm.com"))
-            if not _r.scalar_one_or_none():
-                _u = User(name="Admin Trensurb", email="admin2@sgm.com", hashed_password=hash_password("admin123"), role=UserRole.ADMIN)
-                _db.add(_u)
-                await _db.commit()
-                log.info("Usuario admin2@sgm.com criado")
+        import os as _os
+        _email = _os.getenv("ADMIN_INICIAL_EMAIL")
+        _senha = _os.getenv("ADMIN_INICIAL_SENHA")
+        if _email and _senha:
+            from app.models.user import User, UserRole
+            from app.core.security import hash_password
+            from sqlalchemy.ext.asyncio import AsyncSession
+            from sqlalchemy import select
+            from app.core.database import engine
+            async with AsyncSession(engine) as _db:
+                _r = await _db.execute(select(User).where(User.email == _email))
+                if not _r.scalar_one_or_none():
+                    _u = User(name="Administrador", email=_email,
+                              hashed_password=hash_password(_senha), role=UserRole.ADMIN)
+                    _db.add(_u)
+                    await _db.commit()
+                    log.info("Usuario administrador inicial criado", email=_email)
+        else:
+            log.info("ADMIN_INICIAL_EMAIL/SENHA nao definidos - nenhum usuario criado")
     except Exception as e:
-        log.warning("Falha ao criar usuario padrao", error=str(e))
+        log.warning("Falha ao criar usuario inicial", error=str(e))
 
     log.info("Sistema iniciado com sucesso")
     yield
