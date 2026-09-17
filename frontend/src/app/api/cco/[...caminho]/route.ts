@@ -40,9 +40,13 @@ async function obterToken(forcar = false): Promise<string | null> {
   }
 }
 
-// Reaproveita o caminho exato que o navegador pediu, em vez de remontar a
-// partir dos segmentos. O FastAPI distingue /assets/ de /assets e responde
-// com redirecionamento no segundo caso -- remontar perdia a barra final.
+// Reaproveita o caminho que chegou, em vez de remontar a partir dos segmentos.
+//
+// Atencao a barra final: o backend sobe com redirect_slashes=False, entao
+// /assets e /assets/ sao coisas diferentes e a primeira da 404 seco, sem
+// redirecionamento. O Next.js, por sua vez, remove a barra final antes de
+// chamar este handler. Ou seja: a barra que o painel pediu ja se perdeu aqui e
+// nao ha como recupera-la do pathname -- ver a repeticao com barra em chamar().
 function caminhoOriginal(req: NextRequest): string {
   const p = req.nextUrl.pathname.replace(/^\/api\/cco/, "");
   return p.startsWith("/") ? p : "/" + p;
@@ -62,53 +66,36 @@ async function encaminhar(req: NextRequest, corpo?: string) {
 
   const url = `${API_BASE}/api/v1${caminhoOriginal(req)}${req.nextUrl.search || ""}`;
 
-  // Os redirecionamentos sao seguidos a mao, e nao com redirect: "follow".
-  //
-  // O uvicorn do backend roda sem --proxy-headers, entao ele nao enxerga o
-  // X-Forwarded-Proto da Railway e acha que esta atendendo em http. Quando o
-  // FastAPI acrescenta a barra final que falta (/assets -> /assets/), ele monta
-  // o Location com esse http. Seguir aquilo sai da borda https da Railway e
-  // volta 404 -- foi exatamente o que esvaziou o painel.
-  //
-  // Aqui so o caminho e a query do Location interessam; a origem continua sendo
-  // a do API_BASE. Assim qualquer rota do backend que redirecione funciona, sem
-  // precisar decorar quais terminam em barra.
-  const chamar = async (destino: string, token: string): Promise<Response> => {
-    let alvo = destino;
-
-    for (let salto = 0; salto < 3; salto++) {
-      const r = await fetch(alvo, {
-        method: corpo === undefined ? "GET" : "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(corpo !== undefined ? { "Content-Type": "application/json" } : {}),
-        },
-        ...(corpo !== undefined ? { body: corpo } : {}),
-        redirect: "manual",
-        cache: "no-store",
-      });
-
-      if (r.status < 300 || r.status > 399) return r;
-
-      const local = r.headers.get("location");
-      if (!local) return r;
-
-      const destinoDoBackend = new URL(local, alvo);
-      alvo = `${API_BASE}${destinoDoBackend.pathname}${destinoDoBackend.search}`;
-    }
-
-    // Tres saltos sem chegar a lugar nenhum: devolve o ultimo estado em vez de
-    // ficar girando.
-    return fetch(alvo, {
+  const bater = (destino: string, token: string) =>
+    fetch(destino, {
       method: corpo === undefined ? "GET" : "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         ...(corpo !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       ...(corpo !== undefined ? { body: corpo } : {}),
-      redirect: "manual",
+      redirect: "follow",
       cache: "no-store",
     });
+
+  // O backend sobe com redirect_slashes=False: as rotas de colecao existem so
+  // com barra final (/assets/, /alerts/) e as de item so sem ela
+  // (/iot/readings/{id}). Como o Next.js apaga a barra final antes de chegar
+  // aqui, toda chamada de colecao caia em 404 e o painel ficava vazio.
+  //
+  // Em vez de manter uma lista de quais rotas levam barra -- que envelhece mal
+  // e quebra calada --, repete uma unica vez com a barra quando der 404. So
+  // custa uma ida a mais no caso que ja estava falhando de qualquer jeito.
+  const chamar = async (destino: string, token: string): Promise<Response> => {
+    const r = await bater(destino, token);
+    if (r.status !== 404) return r;
+
+    const u = new URL(destino);
+    if (u.pathname.endsWith("/")) return r;
+
+    u.pathname += "/";
+    const comBarra = await bater(u.toString(), token);
+    return comBarra.status === 404 ? r : comBarra;
   };
 
   let token = await obterToken();
