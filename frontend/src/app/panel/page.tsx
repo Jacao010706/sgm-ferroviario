@@ -1,6 +1,7 @@
 ﻿"use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { api } from "@/lib/api";
+import { getSupabase } from "@/lib/supabase";
 
 const DSE_IMAGE = "data:image/png;base64,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";
 
@@ -175,17 +176,44 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
   );
 }
 
+// Nomes conferidos contra o mapa GERADORES do coletor. SL, SO e RS estavam
+// deslocados em uma posicao: cada um exibia o nome do seguinte, entao o
+// operador via falha em "Sao Leopoldo" quando a estacao real era Sao Luis, e
+// "Rodoviaria Sul" nao existe na frota. O sublocal e a chave que casa com a
+// tabela iot_readings do Supabase.
 const STATIONS = [
-  {code:"MR",name:"Mercado"},{code:"RD",name:"Rodoviaria"},{code:"SP",name:"Sao Pedro"},
-  {code:"FR",name:"Farrapos"},{code:"AP",name:"Aeroporto"},{code:"AN",name:"Anchieta"},
-  {code:"NT",name:"Niteroi"},{code:"FT",name:"Fatima"},{code:"CN",name:"Canoas"},
-  {code:"MV",name:"Mathias Velho"},{code:"SL",name:"Sao Leopoldo"},{code:"PB",name:"Petrobras"},
-  {code:"ES",name:"Esteio"},{code:"LP",name:"Luiz Pasteur"},{code:"SC",name:"Sapucaia"},
-  {code:"UN",name:"Unisinos"},{code:"SO",name:"Rio dos Sinos"},{code:"RS",name:"Rodoviaria Sul"},
-  {code:"SF",name:"Santo Afonso"},{code:"IN",name:"Industrial"},{code:"FN",name:"Fenac"},
-  {code:"NH",name:"Novo Hamburgo"},{code:"SUB",name:"Sub02 Patio"},
-  {code:"B1",name:"Bacia 1"},{code:"B2",name:"Bacia 2"},
+  {code:"MR", name:"Mercado",       sublocal:"MERCADO"},
+  {code:"RD", name:"Rodoviária",    sublocal:"RODOVIÁRIA"},
+  {code:"SP", name:"São Pedro",     sublocal:"SÃO PEDRO"},
+  {code:"FR", name:"Farrapos",      sublocal:"FARRAPOS"},
+  {code:"AP", name:"Aeroporto",     sublocal:"AEROPORTO"},
+  {code:"AN", name:"Anchieta",      sublocal:"ANCHIETA"},
+  {code:"NT", name:"Niterói",       sublocal:"NITERÓI"},
+  {code:"FT", name:"Fátima",        sublocal:"FÁTIMA"},
+  {code:"CN", name:"Canoas",        sublocal:"CANOAS"},
+  {code:"MV", name:"Mathias Velho", sublocal:"MATHIAS VELHO"},
+  {code:"SL", name:"São Luís",      sublocal:"SÃO LUÍS"},
+  {code:"PB", name:"Petrobrás",     sublocal:"PETROBRAS"},
+  {code:"ES", name:"Esteio",        sublocal:"ESTEIO"},
+  {code:"LP", name:"Luís Pasteur",  sublocal:"LUIZ PASTEUR"},
+  {code:"SC", name:"Sapucaia",      sublocal:"SAPUCAIA"},
+  {code:"UN", name:"Unisinos",      sublocal:"UNISINOS"},
+  {code:"SO", name:"São Leopoldo",  sublocal:"SÃO LEOPOLDO"},
+  {code:"RS", name:"Rio dos Sinos", sublocal:"RIO DOS SINOS"},
+  {code:"SF", name:"Santo Afonso",  sublocal:"SANTO AFONSO"},
+  {code:"IN", name:"Industrial",    sublocal:"INDUSTRIAL"},
+  {code:"FN", name:"Fenac",         sublocal:"FENAC"},
+  {code:"NH", name:"Novo Hamburgo", sublocal:"NOVO HAMBURGO"},
+  {code:"SUB",name:"Sub02 Pátio",   sublocal:"SE_2_PÁTIO"},
+  {code:"B1", name:"Bacia Rodo",    sublocal:"BACIA RODO"},
+  {code:"B2", name:"Aeromóvel",     sublocal:"AEROMÓVEL_ATR"},
 ];
+
+// Banco grava sem acento e em maiuscula; compara normalizado dos dois lados.
+const normSub = (v: string) =>
+  v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+
+const CODE_TO_TAG: Record<string,string> = { MR:"GE-MR",RD:"GE-RD",SP:"GE-SP",FR:"GE-FR",AP:"GE-AP",AN:"GE-AN",NT:"GE-NT",FT:"GE-FT",CN:"GE-CN",MV:"GE-MV",SL:"GE-SL",PB:"GE-PB",ES:"GE-ES",LP:"GE-LP",SC:"GE-SC",UN:"GE-UN",SO:"GE-SO",RS:"GE-RS",SF:"GE-SF",IN:"GE-IN",FN:"GE-FN",NH:"GE-NH",SUB:"GE-SUB",B1:"GE-B1",B2:"GE-B2" };
 
 const API_URL = "https://laudable-peace-production-09cd.up.railway.app/api/v1";
 
@@ -262,7 +290,64 @@ export default function PanelPage() {
   useEffect(() => { loadAll(); }, [loadAll]);
   useEffect(() => { const i = setInterval(loadAll, 60000); return () => clearInterval(i); }, [loadAll]);
 
-  const CODE_TO_TAG: Record<string,string> = { MR:"GE-MR",RD:"GE-RD",SP:"GE-SP",FR:"GE-FR",AP:"GE-AP",AN:"GE-AN",NT:"GE-NT",FT:"GE-FT",CN:"GE-CN",MV:"GE-MV",SL:"GE-SL",PB:"GE-PB",ES:"GE-ES",LP:"GE-LP",SC:"GE-SC",UN:"GE-UN",SO:"GE-SO",RS:"GE-RS",SF:"GE-SF",IN:"GE-IN",FN:"GE-FN",NH:"GE-NH",SUB:"GE-SUB",B1:"GE-B1",B2:"GE-B2" };
+  // Assets numa ref para o Realtime nao reassinar a cada poll de 60s
+  const assetsRef = useRef<any[]>([]);
+  useEffect(() => { assetsRef.current = assets; }, [assets]);
+
+  // --- Realtime: a leitura chega na hora, sem esperar o ciclo de 60s -------
+  // Mesma tabela iot_readings que o painel do SGM Trensurb assina. Quem
+  // preenche e o coletor Modbus; aqui so escutamos, nunca escrevemos. Sem
+  // Supabase configurado o painel segue no polling, sem quebrar nada.
+  useEffect(() => {
+    if (!auth) return;
+    const supabase = getSupabase();
+    if (!supabase) return;
+
+    const canal = supabase
+      .channel("panel-cco-iot")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "iot_readings" },
+        (payload: { new: unknown }) => {
+          const row = payload.new as {
+            sublocal?: string;
+            readings?: Record<string, number>;
+            updated_at?: string;
+          };
+          if (!row?.sublocal) return;
+
+          const st = STATIONS.find(x => normSub(x.sublocal) === normSub(row.sublocal!));
+          if (!st) return;
+
+          const asset = assetsRef.current.find(a => a.tag === CODE_TO_TAG[st.code]);
+          if (!asset) return;
+
+          const quando = row.updated_at ?? new Date().toISOString();
+          const brutas = row.readings ?? {};
+
+          // O painel le por sensor_id; o coletor manda battery_voltage e aqui
+          // o sensor se chama battery.
+          const valores: Record<string, number> = { ...brutas };
+          if (brutas.battery_voltage != null) valores.battery = brutas.battery_voltage;
+
+          const mapa: Record<string, any> = {};
+          for (const [sensor, value] of Object.entries(valores)) {
+            mapa[sensor] = { sensor_id: sensor, value, timestamp: quando };
+          }
+
+          setLatest(prev => ({
+            ...prev,
+            [asset.id]: { ...(prev[asset.id] ?? {}), ...mapa },
+          }));
+          setLastUpdate(new Date().toLocaleTimeString("pt-BR"));
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(canal); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth]);
+
   const getAssetByCode = (code: string) => assets.find(a => a.tag === CODE_TO_TAG[code]);
   const getVal = (assetId: string, sensor: string) => latest[assetId]?.[sensor]?.value;
   const STEMAC_CODES = new Set(["AP","AN","NT","FT","MV","SL","PB","SC","SO","SUB"]);
