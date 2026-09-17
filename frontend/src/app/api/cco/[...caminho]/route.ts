@@ -27,34 +27,40 @@ async function obterToken(forcar = false): Promise<string | null> {
       body: JSON.stringify({ email, password }),
       cache: "no-store",
     });
-    if (!r.ok) return null;
+    if (!r.ok) {
+      console.error("[cco] login no backend falhou:", r.status, await r.text());
+      return null;
+    }
     const d = await r.json();
     tokenCache = d?.access_token ?? null;
     return tokenCache;
-  } catch {
+  } catch (e) {
+    console.error("[cco] erro no login do backend:", e);
     return null;
   }
 }
 
-function autorizado(req: NextRequest) {
-  return req.cookies.get("cco_sessao")?.value === "ok";
+// Reaproveita o caminho exato que o navegador pediu, em vez de remontar a
+// partir dos segmentos. O FastAPI distingue /assets/ de /assets e responde
+// com redirecionamento no segundo caso -- remontar perdia a barra final.
+function caminhoOriginal(req: NextRequest): string {
+  const p = req.nextUrl.pathname.replace(/^\/api\/cco/, "");
+  return p.startsWith("/") ? p : "/" + p;
 }
 
-async function encaminhar(req: NextRequest, caminho: string[], corpo?: string) {
-  if (!autorizado(req)) {
+async function encaminhar(req: NextRequest, corpo?: string) {
+  if (req.cookies.get("cco_sessao")?.value !== "ok") {
     return NextResponse.json({ erro: "Sessao do CCO ausente" }, { status: 401 });
   }
 
-  const email = process.env.PANEL_API_EMAIL;
-  if (!email || !process.env.PANEL_API_PASSWORD) {
+  if (!process.env.PANEL_API_EMAIL || !process.env.PANEL_API_PASSWORD) {
     return NextResponse.json(
       { erro: "PANEL_API_EMAIL / PANEL_API_PASSWORD nao configurados no servidor" },
       { status: 503 },
     );
   }
 
-  const busca = req.nextUrl.search || "";
-  const url = `${API_BASE}/api/v1/${caminho.join("/")}${busca}`;
+  const url = `${API_BASE}/api/v1${caminhoOriginal(req)}${req.nextUrl.search || ""}`;
 
   const chamar = async (token: string) =>
     fetch(url, {
@@ -64,34 +70,32 @@ async function encaminhar(req: NextRequest, caminho: string[], corpo?: string) {
         ...(corpo !== undefined ? { "Content-Type": "application/json" } : {}),
       },
       ...(corpo !== undefined ? { body: corpo } : {}),
+      redirect: "follow",
       cache: "no-store",
     });
 
   let token = await obterToken();
-  if (!token) return NextResponse.json({ erro: "Falha ao autenticar no backend" }, { status: 502 });
+  if (!token) {
+    return NextResponse.json(
+      { erro: "Falha ao autenticar no backend -- confira PANEL_API_EMAIL e PANEL_API_PASSWORD" },
+      { status: 502 },
+    );
+  }
 
   let r = await chamar(token);
-
-  // Token expirado: renova uma vez e repete.
-  if (r.status === 401) {
+  if (r.status === 401) {                 // token expirado: renova e repete
     token = await obterToken(true);
     if (token) r = await chamar(token);
   }
 
   const texto = await r.text();
+  if (!r.ok) console.error("[cco]", r.status, url, texto.slice(0, 300));
+
   return new NextResponse(texto, {
     status: r.status,
     headers: { "Content-Type": r.headers.get("Content-Type") ?? "application/json" },
   });
 }
 
-export async function GET(req: NextRequest, ctx: { params: Promise<{ caminho: string[] }> }) {
-  const { caminho } = await ctx.params;
-  return encaminhar(req, caminho);
-}
-
-export async function POST(req: NextRequest, ctx: { params: Promise<{ caminho: string[] }> }) {
-  const { caminho } = await ctx.params;
-  const corpo = await req.text();
-  return encaminhar(req, caminho, corpo || "{}");
-}
+export async function GET(req: NextRequest)  { return encaminhar(req); }
+export async function POST(req: NextRequest) { return encaminhar(req, (await req.text()) || "{}"); }
