@@ -65,7 +65,7 @@ function GeneratorSVG({ mode, fuelLevel, gridVoltage, voltageL1, running, temp, 
   );
 }
 
-function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmdMsg }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void, onCommand: (id:string,action:string)=>void, cmdLoading: boolean, cmdMsg: {text:string,ok:boolean}|null }) {
+function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmdMsg, operador, onIdentificar }: { station: any, asset: any, vals: Record<string,any>, onClose: () => void, onCommand: (id:string,action:string)=>void, cmdLoading: boolean, cmdMsg: {text:string,ok:boolean}|null, operador: string, onIdentificar: () => void }) {
   const v = (key: string) => vals?.[key]?.value;
   const fmt = (val: any, unit: string, dec = 0) => val != null ? Number(val).toFixed(dec) + (unit ? " " + unit : "") : "---";
   const isRunning = v("is_running");
@@ -162,7 +162,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
         </div>
 
         {station?.code === "RD" && (() => {
-          const tq = tanqueAux(v("external_tank"), v("dse_flex"));
+          const tq = tanqueAux(v("dse_flex"));
           const cor = tq === 1 ? "#00ff41" : tq === 0 ? "#ff3333" : "#555555";
           return (
             <div className="mb-3 rounded p-2" style={{background:"#0a1a00",border:"1px solid #00ff4133"}}>
@@ -181,7 +181,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
                 </>
               ) : (
                 <div className="text-xs" style={{color:"#555"}}>
-                  Sem leitura do sensor de nivel (flexivel D)
+                  Aguardando o coletor enviar o sensor flexivel D
                 </div>
               )}
             </div>
@@ -191,12 +191,23 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
         <div className="mb-3">
           <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
           {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"text-green-400 border border-green-800":"text-red-400 border border-red-800"}`}>{cmdMsg.text}</div>}
+          {!operador ? (
+            // Ver o painel e operar um gerador sao coisas diferentes. Quem so
+            // olha nao precisa de nome; quem manda parar um equipamento de
+            // emergencia, sim -- a auditoria do backend grava quem foi.
+            <button onClick={onIdentificar}
+              className="w-full py-2 rounded text-sm font-bold"
+              style={{background:"#0a0a0a",border:"1px solid #00aa55",color:"#00aa55"}}>
+              IDENTIFIQUE-SE PARA OPERAR
+            </button>
+          ) : (
           <div className="flex gap-2">
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"start")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#003300",border:"1px solid #00ff41",color:"#00ff41"}}>{cmdLoading?"AGUARDE...":"LIGAR"}</button>
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"manual")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#1a1000",border:"1px solid #ff8c00",color:"#ff8c00"}}>{cmdLoading?"AGUARDE...":"MANUAL"}</button>
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"stop")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#330000",border:"1px solid #ff4444",color:"#ff4444"}}>{cmdLoading?"AGUARDE...":"DESLIGAR"}</button>
             <button disabled={cmdLoading||!asset} onClick={()=>asset&&onCommand(asset.id,"auto")} className="flex-1 py-2 rounded text-sm font-bold disabled:opacity-40" style={{background:"#1a1a00",border:"1px solid #ffd700",color:"#ffd700"}}>{cmdLoading?"AGUARDE...":"AUTO"}</button>
           </div>
+          )}
         </div>
         <div className="text-center text-green-800 text-xs pt-2 border-t border-green-900">Clique fora para fechar</div>
       </div>
@@ -244,27 +255,11 @@ const STATIONS = [
 const normSub = (v: string) =>
   v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 
-// Tanque externo: so a Rodoviaria tem. A origem fisica e o sensor flexivel D
-// do DSE (4o nibble do HR[2179]), na codificacao GenComm -- 1 = inativo
-// (tanque cheio), 2..4 = warning/shutdown/trip (nivel baixo), o resto e sensor
-// desabilitado, sem leitura a mostrar.
-//
-// Quem decodifica isso e o coletor, que manda o resultado pronto no campo
-// external_tank. O vetor dse_flex inteiro NAO chega ate aqui: o backend do
-// Ferroviario guarda leituras escalares ({sensor_id, value} com value
-// numerico), entao nao ha onde gravar um array. O painel esperava o vetor e
-// por isso ficava eternamente em "aguardando o coletor" -- so o SGM Trensurb
-// consegue receber o dse_flex completo, porque la o campo readings e JSONB
-// livre.
-//
-// O parametro flex fica como segunda opcao para o dia em que os nibbles
-// tambem forem gravados individualmente.
-function tanqueAux(externalTank: any, flex?: any): number | null {
-  if (externalTank != null) {
-    const t = Number(externalTank);
-    if (t === 1) return 1;
-    if (t === 0) return 0;
-  }
+// Tanque externo: so a Rodoviaria tem. E o sensor flexivel D do DSE (4o nibble
+// do HR[2179]), que o coletor envia no vetor dse_flex. Codificacao GenComm:
+// 1 = inativo (tanque cheio), 2..4 = warning/shutdown/trip (nivel baixo).
+// Fora disso o sensor esta desabilitado e nao ha leitura para mostrar.
+function tanqueAux(flex: any): number | null {
   if (!Array.isArray(flex) || flex.length < 4) return null;
   const d = flex[3];
   if (d === 1) return 1;
@@ -275,178 +270,6 @@ function tanqueAux(externalTank: any, flex?: any): number | null {
 const CODE_TO_TAG: Record<string,string> = { MR:"GE-MR",RD:"GE-RD",SP:"GE-SP",FR:"GE-FR",AP:"GE-AP",AN:"GE-AN",NT:"GE-NT",FT:"GE-FT",CN:"GE-CN",MV:"GE-MV",SL:"GE-SL",PB:"GE-PB",ES:"GE-ES",LP:"GE-LP",SC:"GE-SC",UN:"GE-UN",SO:"GE-SO",RS:"GE-RS",SF:"GE-SF",IN:"GE-IN",FN:"GE-FN",NH:"GE-NH",SUB:"GE-SUB",B1:"GE-B1",B2:"GE-B2" };
 
 
-// ---------------------------------------------------------------------------
-// Auditoria de acionamentos, dentro do proprio painel.
-//
-// Antes isto era um link para /auditoria -- uma pagina do app, protegida pelo
-// login normal. O operador do CCO entra com a senha do painel, nao tem sessao
-// do app, e caia na tela de login sem entender o porque. A API de auditoria e
-// a mesma que o botao de comando ja usa e que ja funciona pelo proxy do CCO,
-// entao a consulta abre aqui mesmo, sem sair do painel.
-//
-// O CCO ve so acionamento de gerador: quem mandou ligar, desligar, passar para
-// manual ou automatico. O resto da auditoria do sistema -- acesso, alteracao de
-// OS -- fica no SGM Trensurb, na aba Auditoria.
-//
-// Cada comando grava ate 3 linhas: tentativa e sucesso/falha pela FASTAPI, mais
-// a confirmacao FLASK_LOCAL com os registros Modbus. Filtrar origem=fastapi e
-// descartar a tentativa deixa exatamente uma linha por acionamento.
-const ACIONAMENTO_ROTULO: Record<string, string> = {
-  start: "LIGOU", stop: "DESLIGOU", manual: "MANUAL", auto: "AUTOMATICO",
-};
-const ACIONAMENTO_COR: Record<string, string> = {
-  start: "#00ff41", stop: "#ff4444", manual: "#ff8c00", auto: "#ffd700",
-};
-
-function AuditoriaModal({ onClose }: { onClose: () => void }) {
-  const [linhas, setLinhas] = useState<any[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [erro, setErro] = useState("");
-
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      try {
-        const r = await api.get("/generators/audit-log", { params: { limit: 200 } });
-        if (!vivo) return;
-        setLinhas((r.data || []).filter(
-          (l: any) => l.origem === "fastapi" && l.resultado !== "tentativa"
-        ));
-      } catch (e: any) {
-        if (!vivo) return;
-        setErro(e?.response?.data?.detail || "Nao foi possivel carregar a auditoria.");
-      } finally {
-        if (vivo) setCarregando(false);
-      }
-    })();
-    return () => { vivo = false; };
-  }, []);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
-      <div className="rounded border border-green-700 w-[900px] max-h-[85vh] flex flex-col font-mono"
-        style={{ background: "#080808" }} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between p-4 border-b border-green-800">
-          <div>
-            <div className="text-green-400 font-bold text-base tracking-widest">
-              AUDITORIA DE ACIONAMENTOS
-            </div>
-            <div className="text-green-700 text-xs">
-              Quem acionou cada gerador: ligar, desligar, manual, automatico
-            </div>
-          </div>
-          <button onClick={onClose} className="text-green-700 hover:text-green-400 text-lg">x</button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 p-4">
-          {carregando && <div className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</div>}
-          {erro && <div className="text-red-400 text-xs">{erro}</div>}
-          {!carregando && !erro && linhas.length === 0 && (
-            <div className="text-green-800 text-xs">Nenhum acionamento registrado.</div>
-          )}
-          {linhas.length > 0 && (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="text-green-700 border-b border-green-900">
-                  <th className="text-left py-2">DATA / HORA</th>
-                  <th className="text-left py-2">GERADOR</th>
-                  <th className="text-left py-2">ACAO</th>
-                  <th className="text-left py-2">QUEM ACIONOU</th>
-                  <th className="text-left py-2">RESULTADO</th>
-                </tr>
-              </thead>
-              <tbody>
-                {linhas.map((l: any) => (
-                  <tr key={l.id} className="border-b border-green-950">
-                    <td className="py-2 text-green-600">
-                      {new Date(l.created_at + "Z").toLocaleString("pt-BR")}
-                    </td>
-                    <td className="py-2 text-green-400">{l.gmg_tag || l.gmg_nome}</td>
-                    <td className="py-2 font-bold"
-                      style={{ color: ACIONAMENTO_COR[l.comando] || "#00ff41" }}>
-                      {ACIONAMENTO_ROTULO[l.comando] || String(l.comando).toUpperCase()}
-                    </td>
-                    <td className="py-2 text-green-300">{l.usuario}</td>
-                    <td className="py-2 font-bold"
-                      style={{ color: l.resultado === "sucesso" ? "#00ff41" : "#ff4444" }}>
-                      {l.resultado === "sucesso" ? "OK" : "FALHA"}
-                      {l.mensagem_erro && (
-                        <span className="text-red-700 font-normal"> {"\u2014"} {l.mensagem_erro}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-// ---------------------------------------------------------------------------
-// Identificacao do operador.
-//
-// A tela do CCO fica aberta o turno inteiro para VER: numa sala de controle
-// nao se pode perder a visao dos 25 geradores porque uma sessao expirou.
-// ACIONAR e que exige nome. Enquanto o comando saia pela conta de servico do
-// proxy, a auditoria registrava o painel, e nao a pessoa -- "quem desligou o
-// gerador as tres da manha" ficava sem resposta.
-function OperadorModal({ onOk, onCancel, aviso }: { onOk: (op: any) => void, onCancel: () => void, aviso?: string }) {
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [erro, setErro] = useState("");
-  const [enviando, setEnviando] = useState(false);
-
-  const entrar = async () => {
-    if (!email || !senha) { setErro("Informe e-mail e senha."); return; }
-    setEnviando(true); setErro("");
-    try {
-      const r = await fetch("/api/cco/operador", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, senha }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setErro(d?.erro || "Nao foi possivel identificar."); setSenha(""); return; }
-      onOk(d.operador);
-    } catch {
-      setErro("Nao foi possivel falar com o servidor.");
-    } finally {
-      setEnviando(false);
-    }
-  };
-
-  const campo = "w-full bg-black border border-green-800 text-green-400 px-3 py-2 rounded text-sm focus:outline-none focus:border-green-500 font-mono";
-
-  return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.9)" }}>
-      <div className="rounded border border-green-700 p-6 w-[380px] font-mono" style={{ background: "#080808" }}>
-        <div className="text-green-400 font-bold text-sm tracking-widest mb-1">IDENTIFICACAO DO OPERADOR</div>
-        <div className="text-green-700 text-xs mb-4">O acionamento fica registrado no seu nome.</div>
-        {aviso && <div className="text-yellow-500 text-xs mb-3 border border-yellow-900 rounded p-2">{aviso}</div>}
-        <label className="text-green-600 text-xs block mb-1">E-MAIL</label>
-        <input type="email" autoFocus value={email} className={campo + " mb-3"}
-          onChange={e => { setEmail(e.target.value); setErro(""); }}
-          onKeyDown={e => { if (e.key === "Enter") entrar(); }} />
-        <label className="text-green-600 text-xs block mb-1">SENHA</label>
-        <input type="password" value={senha} className={campo}
-          onChange={e => { setSenha(e.target.value); setErro(""); }}
-          onKeyDown={e => { if (e.key === "Enter") entrar(); }} />
-        {erro && <p className="text-red-500 text-xs mt-2">{erro}</p>}
-        <div className="flex gap-2 mt-4">
-          <button onClick={onCancel} disabled={enviando}
-            className="flex-1 py-2 border border-green-900 text-green-700 rounded text-sm hover:text-green-400 font-mono">CANCELAR</button>
-          <button onClick={entrar} disabled={enviando}
-            className="flex-1 py-2 border border-green-700 text-green-400 rounded text-sm hover:bg-green-900 font-mono disabled:opacity-40">
-            {enviando ? "VERIFICANDO..." : "ASSUMIR"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function PanelPage() {
   const [assets, setAssets] = useState<any[]>([]);
@@ -481,29 +304,29 @@ export default function PanelPage() {
       setEntrando(false);
     }
   };
+  // Link do monitor: /panel?k=<chave>. As telas do CCO e da sala dos tecnicos
+  // ficam ligadas o dia inteiro e nao tem quem digite senha. A chave e
+  // conferida no servidor e so abre visualizacao.
+  useEffect(() => {
+    const k = new URLSearchParams(window.location.search).get("k");
+    if (!k) return;
+    (async () => {
+      try {
+        const r = await fetch("/api/cco/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chave: k }),
+        });
+        if (r.ok) setAuth(true);
+      } catch {}
+    })();
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{station:any,asset:any}|null>(null);
   const [alerts, setAlerts] = useState<any[]>([]);
   const [cmdLoading, setCmdLoading] = useState(false);
   const [cmdMsg, setCmdMsg] = useState<{text:string,ok:boolean}|null>(null);
-    const [verAuditoria, setVerAuditoria] = useState(false);
-  const [operador, setOperador] = useState<{ nome: string, email: string, papel: string } | null>(null);
-  const [pedirOperador, setPedirOperador] = useState(false);
-  const pendenteRef = useRef<{ assetId: string, action: string } | null>(null);
-
-  // Quem esta identificado. O rotulo vem do servidor a cada carga, e nao de um
-  // cookie de nome: se bastasse adulterar um cookie para a tela exibir uma
-  // pessoa enquanto a auditoria grava outra, o cabecalho nao valeria nada numa
-  // ocorrencia. Quem autoriza o comando e o token httpOnly, que o script nao le.
-  const carregarOperador = useCallback(async () => {
-    try {
-      const r = await fetch("/api/cco/operador");
-      const d = await r.json().catch(() => ({}));
-      setOperador(d?.operador ?? null);
-    } catch { setOperador(null); }
-  }, []);
-
-  useEffect(() => { if (auth) carregarOperador(); }, [auth, carregarOperador]);
 
   const enviarComando = async (assetId: string, action: string) => {
     setCmdLoading(true);
@@ -512,40 +335,57 @@ export default function PanelPage() {
       await api.post(`/generators/${assetId}/command`, { action });
       setCmdMsg({ text: `Comando "${action}" enviado com sucesso!`, ok: true });
     } catch (e: any) {
-      // SEM_OPERADOR: ninguem identificado, ou a identificacao venceu. Guarda o
-      // comando e pede a credencial -- o operador nao perde o que estava
-      // fazendo por causa de uma sessao expirada, o que numa emergencia importa.
-      if (e?.response?.data?.codigo === "SEM_OPERADOR") {
-        pendenteRef.current = { assetId, action };
-        setOperador(null);
-        setPedirOperador(true);
-        setCmdMsg({ text: e?.response?.data?.erro || "Identifique-se para acionar.", ok: false });
+      const d = e?.response?.data;
+      if (d?.precisa_operador) {
+        setOperador("");
+        setModalOp(true);
+        setCmdMsg({ text: d?.erro || "Identifique-se para operar.", ok: false });
       } else {
-        const detail = e?.response?.data?.detail || e?.response?.data?.erro || "Erro ao enviar comando.";
-        setCmdMsg({ text: detail, ok: false });
+        setCmdMsg({ text: d?.detail || d?.erro || "Erro ao enviar comando.", ok: false });
       }
     } finally {
       setCmdLoading(false);
     }
   };
 
-  // Identificou: refaz o comando que ficou pendente.
-  const aposIdentificar = async (op: any) => {
-    setOperador(op);
-    setPedirOperador(false);
-    const p = pendenteRef.current;
-    pendenteRef.current = null;
-    if (p) await enviarComando(p.assetId, p.action);
-  };
-
-  const sairOperador = async () => {
-    try { await fetch("/api/cco/operador", { method: "DELETE" }); } catch {}
-    setOperador(null);
-  };
-
   // Guarda o motivo da ultima falha de carga para mostrar no cabecalho.
   // Sem isso a tela fica so com tracinhos e nao da para saber o porque.
   const [erroCarga, setErroCarga] = useState<string>("");
+
+  // Operador identificado. Vazio = modo visualizacao (monitor de parede,
+  // sala dos tecnicos, ou alguem que so quer olhar).
+  const [operador, setOperador] = useState("");
+  const [modalOp, setModalOp] = useState(false);
+  const [opEmail, setOpEmail] = useState("");
+  const [opSenha, setOpSenha] = useState("");
+  const [opErro, setOpErro] = useState("");
+  const [opEntrando, setOpEntrando] = useState(false);
+
+  const identificar = async () => {
+    setOpEntrando(true); setOpErro("");
+    try {
+      const r = await fetch("/api/cco/operador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: opEmail, senha: opSenha }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setOperador(d?.nome || opEmail);
+        setModalOp(false); setOpSenha(""); setOpErro("");
+      } else {
+        setOpErro(d?.erro || "Nao foi possivel identificar.");
+        setOpSenha("");
+      }
+    } catch {
+      setOpErro("Nao foi possivel falar com o servidor.");
+    } finally { setOpEntrando(false); }
+  };
+
+  const encerrarOperacao = async () => {
+    try { await fetch("/api/cco/operador", { method: "DELETE" }); } catch {}
+    setOperador("");
+  };
 
   const loadAll = useCallback(async () => {
     try {
@@ -689,22 +529,21 @@ export default function PanelPage() {
         </div>
         <div className="flex items-center gap-4">
           {loading && <span className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</span>}
-          {erroCarga && <span className="text-red-400 text-xs" title={erroCarga}>{erroCarga}</span>}
-          <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
           {operador ? (
-            <span className="text-xs whitespace-nowrap">
-              <span className="text-green-700">OP: </span>
-              <span className="text-green-300 font-bold">{operador.nome}</span>
-              <button onClick={sairOperador} title="Encerrar identificacao (troca de turno)"
-                className="ml-2 text-green-800 hover:text-green-500 border border-green-900 px-1 rounded">SAIR</button>
+            <span className="flex items-center gap-2">
+              <span className="text-green-400 text-xs font-bold tracking-wider">OP: {operador}</span>
+              <button onClick={encerrarOperacao} className="text-green-800 text-xs hover:text-green-500">SAIR</button>
             </span>
           ) : (
-            <button onClick={()=>setPedirOperador(true)}
-              className="text-yellow-600 text-xs hover:text-yellow-400 border border-yellow-900 px-2 py-0.5 rounded whitespace-nowrap">
-              IDENTIFICAR OPERADOR
+            <button onClick={()=>{setOpErro("");setModalOp(true);}}
+              className="text-xs px-2 py-1 rounded"
+              style={{border:"1px solid #005522",color:"#00aa55"}}>
+              OPERAR
             </button>
           )}
-          <button onClick={()=>setVerAuditoria(true)} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</button>
+          {erroCarga && <span className="text-red-400 text-xs" title={erroCarga}>{erroCarga}</span>}
+          <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
+          <a href="/auditoria" className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</a>
           <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">TELA CHEIA</button>
           <div className="w-2 h-2 rounded-full bg-green-400"/>
         </div>
@@ -804,17 +643,44 @@ export default function PanelPage() {
           vals={selected.asset?latest[selected.asset.id]||{}:{}}
           onClose={()=>{setSelected(null);setCmdMsg(null);}}
           onCommand={enviarComando}
+          operador={operador}
+          onIdentificar={()=>{setOpErro("");setModalOp(true);}}
           cmdLoading={cmdLoading}
           cmdMsg={cmdMsg}
         />
       )}
-      {verAuditoria && <AuditoriaModal onClose={()=>setVerAuditoria(false)} />}
-      {pedirOperador && (
-        <OperadorModal
-          onOk={aposIdentificar}
-          onCancel={()=>{ pendenteRef.current = null; setPedirOperador(false); }}
-          aviso={pendenteRef.current ? "Confirme quem esta acionando para o comando seguir." : undefined}
-        />
+
+      {modalOp && (
+        <div className="fixed inset-0 flex items-center justify-center z-50" style={{background:"rgba(0,0,0,0.85)"}}>
+          <div className="border border-green-800 rounded p-6 w-80" style={{background:"#0a0a0a"}}>
+            <div className="text-green-400 text-sm font-bold tracking-widest mb-1">IDENTIFICACAO DO OPERADOR</div>
+            <div className="text-green-800 text-xs mb-4">Use seu usuario do SGM. Todo comando fica registrado no seu nome.</div>
+
+            <label className="text-green-600 text-xs block mb-1">USUARIO</label>
+            <input type="email" autoFocus
+              className="w-full bg-black border border-green-800 text-green-400 px-3 py-2 rounded text-sm mb-3 focus:outline-none focus:border-green-500 font-mono"
+              value={opEmail} onChange={e=>{setOpEmail(e.target.value);setOpErro("");}} />
+
+            <label className="text-green-600 text-xs block mb-1">SENHA</label>
+            <input type="password"
+              className="w-full bg-black border border-green-800 text-green-400 px-3 py-2 rounded text-sm focus:outline-none focus:border-green-500 font-mono"
+              value={opSenha} onChange={e=>{setOpSenha(e.target.value);setOpErro("");}}
+              onKeyDown={e=>{if(e.key==="Enter")identificar();}} />
+
+            {opErro && <p className="text-red-500 text-xs mt-2">{opErro}</p>}
+
+            <div className="flex gap-2 mt-4">
+              <button onClick={()=>{setModalOp(false);setOpSenha("");setOpErro("");}}
+                className="flex-1 py-2 border border-green-900 text-green-700 rounded text-sm font-mono">
+                CANCELAR
+              </button>
+              <button onClick={identificar} disabled={opEntrando}
+                className="flex-1 py-2 border border-green-700 text-green-400 rounded text-sm hover:bg-green-900 font-mono disabled:opacity-40">
+                {opEntrando ? "VERIFICANDO..." : "ENTRAR"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

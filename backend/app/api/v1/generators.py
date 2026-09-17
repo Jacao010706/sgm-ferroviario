@@ -59,7 +59,13 @@ GERADORES_CONFIG = {
     "1ff45722-6633-4e4a-8ca3-5f91eef43000": ("GMG-BACIA2",        "dse"),
 }
 
-CARGOS_AUTORIZADOS = {"TECHNICIAN", "ENGINEER", "ADMIN", "technician", "engineer", "admin"}
+# Quem pode comandar um gerador pelo painel: operadores do CCO, tecnicos,
+# engenheiros, supervisao/chefia e administradores. VIEWER fica de fora --
+# ve o painel, nao opera.
+CARGOS_AUTORIZADOS = {
+    "OPERATOR", "TECHNICIAN", "ENGINEER", "MANAGER", "ADMIN",
+    "operator", "technician", "engineer", "manager", "admin",
+}
 
 
 async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem_erro=None,

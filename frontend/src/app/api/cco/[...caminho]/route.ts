@@ -8,16 +8,14 @@ import { NextRequest, NextResponse } from "next/server";
 // num monitor de sala de controle. Agora as credenciais ficam so aqui, no
 // servidor, e o navegador conversa apenas com esta rota.
 //
-// Dois tokens passam por aqui, com papeis distintos:
+// Leitura e comando andam por caminhos diferentes:
 //
-//   LEITURA  -- a conta de servico (PANEL_API_EMAIL). A tela precisa ficar no
-//               ar o turno inteiro, entao o monitoramento nao pode depender de
-//               ninguem estar identificado.
-//
-//   COMANDO  -- o token do operador, posto pelo /api/cco/operador. Enquanto
-//               todo comando saia pela conta de servico, a auditoria gravava o
-//               que foi feito e em qual gerador, mas no "quem" respondia sempre
-//               a mesma conta, qualquer que fosse a pessoa no console.
+//   GET  -- usa a conta de servico do painel. Serve a quem so olha, inclusive
+//           o monitor que fica ligado sozinho.
+//   POST -- usa o token pessoal do operador (cookie cco_op, posto por
+//           /api/cco/operador). E o que faz a auditoria do backend gravar quem
+//           de fato mandou parar o gerador, em vez da conta de servico. Sem
+//           esse cookie o comando nao sai.
 
 const API_BASE = (process.env.PANEL_API_URL
   || "https://laudable-peace-production-09cd.up.railway.app").replace(/\/+$/, "");
@@ -63,48 +61,46 @@ function caminhoOriginal(req: NextRequest): string {
   return p.startsWith("/") ? p : "/" + p;
 }
 
-// Acionamento de gerador: /generators/{id}/command
-const ehComando = (caminho: string) =>
-  /^\/generators\/[^/]+\/command\/?$/.test(caminho);
-
-const semOperador = (mensagem: string) =>
-  NextResponse.json({ erro: mensagem, codigo: "SEM_OPERADOR" }, { status: 401 });
-
 async function encaminhar(req: NextRequest, corpo?: string) {
-  if (req.cookies.get("cco_sessao")?.value !== "ok") {
+  if (!req.cookies.get("cco_sessao")?.value) {
     return NextResponse.json({ erro: "Sessao do CCO ausente" }, { status: 401 });
   }
 
-  if (!process.env.PANEL_API_EMAIL || !process.env.PANEL_API_PASSWORD) {
+  const ehComando = corpo !== undefined;
+
+  // Comando exige operador identificado. Visualizacao, nao.
+  const tokenOperador = req.cookies.get("cco_op")?.value;
+  if (ehComando && !tokenOperador) {
+    return NextResponse.json(
+      { erro: "Identifique-se para operar", precisa_operador: true },
+      { status: 401 },
+    );
+  }
+
+  if (!ehComando && (!process.env.PANEL_API_EMAIL || !process.env.PANEL_API_PASSWORD)) {
     return NextResponse.json(
       { erro: "PANEL_API_EMAIL / PANEL_API_PASSWORD nao configurados no servidor" },
       { status: 503 },
     );
   }
 
-  const caminho = caminhoOriginal(req);
-  const url = `${API_BASE}/api/v1${caminho}${req.nextUrl.search || ""}`;
+  const url = `${API_BASE}/api/v1${caminhoOriginal(req)}${req.nextUrl.search || ""}`;
 
   const bater = (destino: string, token: string) =>
     fetch(destino, {
-      method: corpo === undefined ? "GET" : "POST",
+      method: ehComando ? "POST" : "GET",
       headers: {
         Authorization: `Bearer ${token}`,
-        ...(corpo !== undefined ? { "Content-Type": "application/json" } : {}),
+        ...(ehComando ? { "Content-Type": "application/json" } : {}),
       },
-      ...(corpo !== undefined ? { body: corpo } : {}),
+      ...(ehComando ? { body: corpo } : {}),
       redirect: "follow",
       cache: "no-store",
     });
 
-  // O backend sobe com redirect_slashes=False: as rotas de colecao existem so
-  // com barra final (/assets/, /alerts/) e as de item so sem ela
-  // (/iot/readings/{id}). Como o Next.js apaga a barra final antes de chegar
-  // aqui, toda chamada de colecao caia em 404 e o painel ficava vazio.
-  //
-  // Em vez de manter uma lista de quais rotas levam barra -- que envelhece mal
-  // e quebra calada --, repete uma unica vez com a barra quando der 404. So
-  // custa uma ida a mais no caso que ja estava falhando de qualquer jeito.
+  // Repete uma unica vez com a barra final quando der 404 -- ver o comentario
+  // de caminhoOriginal(). Melhor que manter uma lista de quais rotas levam
+  // barra, que envelhece mal e quebra calada.
   const chamar = async (destino: string, token: string): Promise<Response> => {
     const r = await bater(destino, token);
     if (r.status !== 404) return r;
@@ -117,54 +113,43 @@ async function encaminhar(req: NextRequest, corpo?: string) {
     return comBarra.status === 404 ? r : comBarra;
   };
 
-  const devolver = async (r: Response) => {
-    const texto = await r.text();
-    if (!r.ok) console.error("[cco]", r.status, url, texto.slice(0, 300));
-    return new NextResponse(texto, {
-      status: r.status,
-      headers: { "Content-Type": r.headers.get("Content-Type") ?? "application/json" },
-    });
-  };
+  let r: Response;
 
-  // ── Acionamento: assina com o token do operador ──────────────────────────
-  //
-  // Nao ha recurso a conta de servico quando o operador nao esta identificado.
-  // Cair de volta nela faria o comando passar assinado por "o painel", que e
-  // exatamente o que esta mudanca existe para acabar: um acionamento sem dono.
-  // Melhor pedir a identificacao do que gravar um registro que nao responde
-  // quem acionou.
-  if (corpo !== undefined && ehComando(caminho)) {
-    const tokenOperador = req.cookies.get("cco_operador")?.value;
-    if (!tokenOperador) {
-      return semOperador("Identifique-se para acionar o gerador.");
-    }
-
-    const r = await chamar(url, tokenOperador);
+  if (ehComando) {
+    r = await chamar(url, tokenOperador as string);
     if (r.status === 401) {
-      // Sem a senha nao ha como renovar por conta propria: pede de novo.
-      const res = semOperador("Sua identificacao expirou. Entre novamente para acionar.");
-      res.cookies.set("cco_operador", "", { path: "/", maxAge: 0 });
+      // O token do operador venceu. Quem so olha continua vendo; quem ia
+      // comandar se identifica de novo.
+      const res = NextResponse.json(
+        { erro: "Sessao de operacao expirada. Identifique-se novamente.", precisa_operador: true },
+        { status: 401 },
+      );
+      res.cookies.set("cco_op", "", { httpOnly: true, path: "/", maxAge: 0 });
+      res.cookies.set("cco_op_nome", "", { path: "/", maxAge: 0 });
       return res;
     }
-    return devolver(r);
+  } else {
+    let token = await obterToken();
+    if (!token) {
+      return NextResponse.json(
+        { erro: "Falha ao autenticar no backend -- confira PANEL_API_EMAIL e PANEL_API_PASSWORD" },
+        { status: 502 },
+      );
+    }
+    r = await chamar(url, token);
+    if (r.status === 401) {                 // token expirado: renova e repete
+      token = await obterToken(true);
+      if (token) r = await chamar(url, token);
+    }
   }
 
-  // ── Leitura e demais rotas: conta de servico ─────────────────────────────
-  let token = await obterToken();
-  if (!token) {
-    return NextResponse.json(
-      { erro: "Falha ao autenticar no backend -- confira PANEL_API_EMAIL e PANEL_API_PASSWORD" },
-      { status: 502 },
-    );
-  }
+  const texto = await r.text();
+  if (!r.ok) console.error("[cco]", r.status, url, texto.slice(0, 300));
 
-  let r = await chamar(url, token);
-  if (r.status === 401) {                 // token expirado: renova e repete
-    token = await obterToken(true);
-    if (token) r = await chamar(url, token);
-  }
-
-  return devolver(r);
+  return new NextResponse(texto, {
+    status: r.status,
+    headers: { "Content-Type": r.headers.get("Content-Type") ?? "application/json" },
+  });
 }
 
 export async function GET(req: NextRequest)  { return encaminhar(req); }
