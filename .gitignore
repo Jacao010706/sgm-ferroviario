@@ -35,3 +35,5 @@ out/
 
 # Lockfiles (opcional, mas evita conflitos)
 package-lock.json
+
+coletor_modbus.log
