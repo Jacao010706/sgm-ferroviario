@@ -312,6 +312,7 @@ def ler_gerador(ip, slave_id, tag):
             "fp_total":       fp_total,
             "temperatura":    r(reg_map["temperatura"]),
             "nivel_tanque":   r(reg_map["nivel_tanque"]),
+            "external_tank":  0 if ((r(1059) >> 4) & 0xF) == 0 else 1,  # FLEX_D: d=0->BAIXO, d>0->CHEIO
             "bateria":        r(reg_map["bateria"]) * 0.1,
             "horas_funcio":   r(reg_map["horas_funcio"]),
             "tensao_rede_l1": r(reg_map["tensao_rede_l1"]) * fv,
@@ -353,6 +354,7 @@ def enviar_leitura(asset_id, dados, token):
         "power_factor":    dados.get("fp_total"),
         "temperature":     dados.get("temperatura"),
         "fuel_level":      dados.get("nivel_tanque"),
+        "external_tank":   dados.get("external_tank"),
         "runtime_hours":   dados.get("horas_funcio"),
         "rpm":             dados.get("rpm", 0),
         "is_running":      1 if (dados.get("rpm", 0) > 0 or dados.get("stemac_running", False)) else 0,
