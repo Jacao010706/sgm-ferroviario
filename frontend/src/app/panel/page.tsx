@@ -159,6 +159,21 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
             <div className="h-full rounded transition-all" style={{width:fuel!=null?Math.min(100,fuel)+"%":"0%",background:fuel>50?"#00aa00":fuel>20?"#ffd700":"#ff0000"}}/>
           </div>
         </div>
+                {station?.code === "RD" && (() => {
+          const rawTank = v("external_tank");
+          const tq = rawTank != null ? Number(rawTank) : null;
+          return (
+            <div className="mb-3 rounded p-2" style={{background:"#0a1a00",border:"1px solid #00ff4133"}}>
+              <div className="text-xs text-green-600 mb-1 font-bold">TANQUE EXTERNO (FLEX D)</div>
+              {tq === null
+                ? <span className="text-yellow-400 text-xs">Aguardando leitura do sensor flexível D...</span>
+                : <span className="font-bold text-sm" style={{color: tq===1?"#00ff41":"#ff4444"}}>
+                    {tq===1?"EXT:CHEIO":"EXT:BAIXO"}
+                  </span>
+              }
+            </div>
+          );
+        })()}
         <div className="mb-3">
           <div className="text-xs text-green-600 mb-2 font-bold">COMANDO REMOTO</div>
           {cmdMsg && <div className={`text-xs mb-2 p-2 rounded ${cmdMsg.ok?"text-green-400 border border-green-800":"text-red-400 border border-red-800"}`}>{cmdMsg.text}</div>}
