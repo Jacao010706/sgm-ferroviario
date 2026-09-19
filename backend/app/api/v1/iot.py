@@ -159,7 +159,7 @@ async def post_asset_readings(
         ("external_tank", ReadingType.STATUS,  "",    "external_tank"),
     ]
     saved = 0
-        elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3","grid_voltage_l1","grid_voltage_l2","grid_voltage_l3","rpm","is_running","external_tank"}
+    elec_fields = {"voltage_l1","voltage_l2","voltage_l3","current_l1","current_l2","current_l3","grid_voltage_l1","grid_voltage_l2","grid_voltage_l3","rpm","is_running","external_tank"}
     for field, rtype, unit, sensor_id in mapping:
         val = body.get(field)
         if val is None:
