@@ -385,6 +385,69 @@ function AuditoriaModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+// ---------------------------------------------------------------------------
+// Identificacao do operador.
+//
+// A tela do CCO fica aberta o turno inteiro para VER: numa sala de controle
+// nao se pode perder a visao dos 25 geradores porque uma sessao expirou.
+// ACIONAR e que exige nome. Enquanto o comando saia pela conta de servico do
+// proxy, a auditoria registrava o painel, e nao a pessoa -- "quem desligou o
+// gerador as tres da manha" ficava sem resposta.
+function OperadorModal({ onOk, onCancel, aviso }: { onOk: (op: any) => void, onCancel: () => void, aviso?: string }) {
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  const entrar = async () => {
+    if (!email || !senha) { setErro("Informe e-mail e senha."); return; }
+    setEnviando(true); setErro("");
+    try {
+      const r = await fetch("/api/cco/operador", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, senha }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) { setErro(d?.erro || "Nao foi possivel identificar."); setSenha(""); return; }
+      onOk(d.operador);
+    } catch {
+      setErro("Nao foi possivel falar com o servidor.");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const campo = "w-full bg-black border border-green-800 text-green-400 px-3 py-2 rounded text-sm focus:outline-none focus:border-green-500 font-mono";
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ background: "rgba(0,0,0,0.9)" }}>
+      <div className="rounded border border-green-700 p-6 w-[380px] font-mono" style={{ background: "#080808" }}>
+        <div className="text-green-400 font-bold text-sm tracking-widest mb-1">IDENTIFICACAO DO OPERADOR</div>
+        <div className="text-green-700 text-xs mb-4">O acionamento fica registrado no seu nome.</div>
+        {aviso && <div className="text-yellow-500 text-xs mb-3 border border-yellow-900 rounded p-2">{aviso}</div>}
+        <label className="text-green-600 text-xs block mb-1">E-MAIL</label>
+        <input type="email" autoFocus value={email} className={campo + " mb-3"}
+          onChange={e => { setEmail(e.target.value); setErro(""); }}
+          onKeyDown={e => { if (e.key === "Enter") entrar(); }} />
+        <label className="text-green-600 text-xs block mb-1">SENHA</label>
+        <input type="password" value={senha} className={campo}
+          onChange={e => { setSenha(e.target.value); setErro(""); }}
+          onKeyDown={e => { if (e.key === "Enter") entrar(); }} />
+        {erro && <p className="text-red-500 text-xs mt-2">{erro}</p>}
+        <div className="flex gap-2 mt-4">
+          <button onClick={onCancel} disabled={enviando}
+            className="flex-1 py-2 border border-green-900 text-green-700 rounded text-sm hover:text-green-400 font-mono">CANCELAR</button>
+          <button onClick={entrar} disabled={enviando}
+            className="flex-1 py-2 border border-green-700 text-green-400 rounded text-sm hover:bg-green-900 font-mono disabled:opacity-40">
+            {enviando ? "VERIFICANDO..." : "ASSUMIR"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function PanelPage() {
   const [assets, setAssets] = useState<any[]>([]);
   const [latest, setLatest] = useState<Record<string, Record<string, any>>>({});
@@ -424,6 +487,23 @@ export default function PanelPage() {
   const [cmdLoading, setCmdLoading] = useState(false);
   const [cmdMsg, setCmdMsg] = useState<{text:string,ok:boolean}|null>(null);
     const [verAuditoria, setVerAuditoria] = useState(false);
+  const [operador, setOperador] = useState<{ nome: string, email: string, papel: string } | null>(null);
+  const [pedirOperador, setPedirOperador] = useState(false);
+  const pendenteRef = useRef<{ assetId: string, action: string } | null>(null);
+
+  // Quem esta identificado. O rotulo vem do servidor a cada carga, e nao de um
+  // cookie de nome: se bastasse adulterar um cookie para a tela exibir uma
+  // pessoa enquanto a auditoria grava outra, o cabecalho nao valeria nada numa
+  // ocorrencia. Quem autoriza o comando e o token httpOnly, que o script nao le.
+  const carregarOperador = useCallback(async () => {
+    try {
+      const r = await fetch("/api/cco/operador");
+      const d = await r.json().catch(() => ({}));
+      setOperador(d?.operador ?? null);
+    } catch { setOperador(null); }
+  }, []);
+
+  useEffect(() => { if (auth) carregarOperador(); }, [auth, carregarOperador]);
 
   const enviarComando = async (assetId: string, action: string) => {
     setCmdLoading(true);
@@ -432,11 +512,35 @@ export default function PanelPage() {
       await api.post(`/generators/${assetId}/command`, { action });
       setCmdMsg({ text: `Comando "${action}" enviado com sucesso!`, ok: true });
     } catch (e: any) {
-      const detail = e?.response?.data?.detail || "Erro ao enviar comando.";
-      setCmdMsg({ text: detail, ok: false });
+      // SEM_OPERADOR: ninguem identificado, ou a identificacao venceu. Guarda o
+      // comando e pede a credencial -- o operador nao perde o que estava
+      // fazendo por causa de uma sessao expirada, o que numa emergencia importa.
+      if (e?.response?.data?.codigo === "SEM_OPERADOR") {
+        pendenteRef.current = { assetId, action };
+        setOperador(null);
+        setPedirOperador(true);
+        setCmdMsg({ text: e?.response?.data?.erro || "Identifique-se para acionar.", ok: false });
+      } else {
+        const detail = e?.response?.data?.detail || e?.response?.data?.erro || "Erro ao enviar comando.";
+        setCmdMsg({ text: detail, ok: false });
+      }
     } finally {
       setCmdLoading(false);
     }
+  };
+
+  // Identificou: refaz o comando que ficou pendente.
+  const aposIdentificar = async (op: any) => {
+    setOperador(op);
+    setPedirOperador(false);
+    const p = pendenteRef.current;
+    pendenteRef.current = null;
+    if (p) await enviarComando(p.assetId, p.action);
+  };
+
+  const sairOperador = async () => {
+    try { await fetch("/api/cco/operador", { method: "DELETE" }); } catch {}
+    setOperador(null);
   };
 
   // Guarda o motivo da ultima falha de carga para mostrar no cabecalho.
@@ -587,7 +691,20 @@ export default function PanelPage() {
           {loading && <span className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</span>}
           {erroCarga && <span className="text-red-400 text-xs" title={erroCarga}>{erroCarga}</span>}
           <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
-                    <button onClick={()=>setVerAuditoria(true)} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</button>
+          {operador ? (
+            <span className="text-xs whitespace-nowrap">
+              <span className="text-green-700">OP: </span>
+              <span className="text-green-300 font-bold">{operador.nome}</span>
+              <button onClick={sairOperador} title="Encerrar identificacao (troca de turno)"
+                className="ml-2 text-green-800 hover:text-green-500 border border-green-900 px-1 rounded">SAIR</button>
+            </span>
+          ) : (
+            <button onClick={()=>setPedirOperador(true)}
+              className="text-yellow-600 text-xs hover:text-yellow-400 border border-yellow-900 px-2 py-0.5 rounded whitespace-nowrap">
+              IDENTIFICAR OPERADOR
+            </button>
+          )}
+          <button onClick={()=>setVerAuditoria(true)} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</button>
           <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">TELA CHEIA</button>
           <div className="w-2 h-2 rounded-full bg-green-400"/>
         </div>
@@ -692,6 +809,13 @@ export default function PanelPage() {
         />
       )}
       {verAuditoria && <AuditoriaModal onClose={()=>setVerAuditoria(false)} />}
+      {pedirOperador && (
+        <OperadorModal
+          onOk={aposIdentificar}
+          onCancel={()=>{ pendenteRef.current = null; setPedirOperador(false); }}
+          aviso={pendenteRef.current ? "Confirme quem esta acionando para o comando seguir." : undefined}
+        />
+      )}
     </div>
   );
 }
