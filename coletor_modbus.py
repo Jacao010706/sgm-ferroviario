@@ -582,14 +582,44 @@ def iniciar_servidor_http():
 
 import subprocess as _subprocess
 import re as _re
+import atexit as _atexit
+
+
+def _matar_cloudflared_orfaos():
+    """Encerra tuneis cloudflared deixados por execucoes anteriores.
+
+    O coletor e reiniciado com kill forcado, que nao roda atexit: o
+    cloudflared filho sobrevive ao pai e segue servindo um tunel para a
+    porta 8888. Como a API guarda apenas a ultima URL registrada, ela pode
+    acabar apontando para um tunel orfao -- as leituras continuam subindo
+    (o coletor e quem chama a API), mas os comandos aos geradores, que
+    percorrem o caminho inverso, caem num tunel sem dono e falham.
+
+    Limpar na partida e o unico ponto confiavel, justamente porque o kill
+    forcado impede qualquer limpeza no encerramento.
+    """
+    try:
+        r = _subprocess.run(
+            ["taskkill", "/F", "/IM", "cloudflared.exe"],
+            capture_output=True, check=False,
+        )
+        if r.returncode == 0:
+            log.info("Tuneis cloudflared anteriores encerrados")
+    except Exception as e:
+        log.warning(f"Falha ao limpar cloudflared orfaos: {e}")
 
 
 def iniciar_tunnel_e_registrar(token, api_base):
     try:
+        _matar_cloudflared_orfaos()
         proc = _subprocess.Popen(
             ["cloudflared.exe", "tunnel", "--url", "http://localhost:8888"],
             stdout=_subprocess.PIPE, stderr=_subprocess.PIPE
         )
+        # Cobre o encerramento limpo (Ctrl+C, fechar a janela). O kill
+        # forcado nao passa por aqui -- para esse caso vale a limpeza na
+        # partida, acima.
+        _atexit.register(lambda: proc.terminate())
         import time as _time
         url = None
         for _ in range(30):
