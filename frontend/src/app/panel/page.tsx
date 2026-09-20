@@ -275,7 +275,116 @@ function tanqueAux(externalTank: any, flex?: any): number | null {
 const CODE_TO_TAG: Record<string,string> = { MR:"GE-MR",RD:"GE-RD",SP:"GE-SP",FR:"GE-FR",AP:"GE-AP",AN:"GE-AN",NT:"GE-NT",FT:"GE-FT",CN:"GE-CN",MV:"GE-MV",SL:"GE-SL",PB:"GE-PB",ES:"GE-ES",LP:"GE-LP",SC:"GE-SC",UN:"GE-UN",SO:"GE-SO",RS:"GE-RS",SF:"GE-SF",IN:"GE-IN",FN:"GE-FN",NH:"GE-NH",SUB:"GE-SUB",B1:"GE-B1",B2:"GE-B2" };
 
 
+// ---------------------------------------------------------------------------
+// Auditoria de acionamentos, dentro do proprio painel.
+//
+// Antes isto era um link para /auditoria -- uma pagina do app, protegida pelo
+// login normal. O operador do CCO entra com a senha do painel, nao tem sessao
+// do app, e caia na tela de login sem entender o porque. A API de auditoria e
+// a mesma que o botao de comando ja usa e que ja funciona pelo proxy do CCO,
+// entao a consulta abre aqui mesmo, sem sair do painel.
+//
+// O CCO ve so acionamento de gerador: quem mandou ligar, desligar, passar para
+// manual ou automatico. O resto da auditoria do sistema -- acesso, alteracao de
+// OS -- fica no SGM Trensurb, na aba Auditoria.
+//
+// Cada comando grava ate 3 linhas: tentativa e sucesso/falha pela FASTAPI, mais
+// a confirmacao FLASK_LOCAL com os registros Modbus. Filtrar origem=fastapi e
+// descartar a tentativa deixa exatamente uma linha por acionamento.
+const ACIONAMENTO_ROTULO: Record<string, string> = {
+  start: "LIGOU", stop: "DESLIGOU", manual: "MANUAL", auto: "AUTOMATICO",
+};
+const ACIONAMENTO_COR: Record<string, string> = {
+  start: "#00ff41", stop: "#ff4444", manual: "#ff8c00", auto: "#ffd700",
+};
 
+function AuditoriaModal({ onClose }: { onClose: () => void }) {
+  const [linhas, setLinhas] = useState<any[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState("");
+
+  useEffect(() => {
+    let vivo = true;
+    (async () => {
+      try {
+        const r = await api.get("/generators/audit-log", { params: { limit: 200 } });
+        if (!vivo) return;
+        setLinhas((r.data || []).filter(
+          (l: any) => l.origem === "fastapi" && l.resultado !== "tentativa"
+        ));
+      } catch (e: any) {
+        if (!vivo) return;
+        setErro(e?.response?.data?.detail || "Nao foi possivel carregar a auditoria.");
+      } finally {
+        if (vivo) setCarregando(false);
+      }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: "rgba(0,0,0,0.85)" }} onClick={onClose}>
+      <div className="rounded border border-green-700 w-[900px] max-h-[85vh] flex flex-col font-mono"
+        style={{ background: "#080808" }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between p-4 border-b border-green-800">
+          <div>
+            <div className="text-green-400 font-bold text-base tracking-widest">
+              AUDITORIA DE ACIONAMENTOS
+            </div>
+            <div className="text-green-700 text-xs">
+              Quem acionou cada gerador: ligar, desligar, manual, automatico
+            </div>
+          </div>
+          <button onClick={onClose} className="text-green-700 hover:text-green-400 text-lg">x</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-4">
+          {carregando && <div className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</div>}
+          {erro && <div className="text-red-400 text-xs">{erro}</div>}
+          {!carregando && !erro && linhas.length === 0 && (
+            <div className="text-green-800 text-xs">Nenhum acionamento registrado.</div>
+          )}
+          {linhas.length > 0 && (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-green-700 border-b border-green-900">
+                  <th className="text-left py-2">DATA / HORA</th>
+                  <th className="text-left py-2">GERADOR</th>
+                  <th className="text-left py-2">ACAO</th>
+                  <th className="text-left py-2">QUEM ACIONOU</th>
+                  <th className="text-left py-2">RESULTADO</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((l: any) => (
+                  <tr key={l.id} className="border-b border-green-950">
+                    <td className="py-2 text-green-600">
+                      {new Date(l.created_at + "Z").toLocaleString("pt-BR")}
+                    </td>
+                    <td className="py-2 text-green-400">{l.gmg_tag || l.gmg_nome}</td>
+                    <td className="py-2 font-bold"
+                      style={{ color: ACIONAMENTO_COR[l.comando] || "#00ff41" }}>
+                      {ACIONAMENTO_ROTULO[l.comando] || String(l.comando).toUpperCase()}
+                    </td>
+                    <td className="py-2 text-green-300">{l.usuario}</td>
+                    <td className="py-2 font-bold"
+                      style={{ color: l.resultado === "sucesso" ? "#00ff41" : "#ff4444" }}>
+                      {l.resultado === "sucesso" ? "OK" : "FALHA"}
+                      {l.mensagem_erro && (
+                        <span className="text-red-700 font-normal"> {"\u2014"} {l.mensagem_erro}</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
 export default function PanelPage() {
   const [assets, setAssets] = useState<any[]>([]);
   const [latest, setLatest] = useState<Record<string, Record<string, any>>>({});
@@ -314,6 +423,7 @@ export default function PanelPage() {
   const [alerts, setAlerts] = useState<any[]>([]);
   const [cmdLoading, setCmdLoading] = useState(false);
   const [cmdMsg, setCmdMsg] = useState<{text:string,ok:boolean}|null>(null);
+    const [verAuditoria, setVerAuditoria] = useState(false);
 
   const enviarComando = async (assetId: string, action: string) => {
     setCmdLoading(true);
@@ -477,7 +587,7 @@ export default function PanelPage() {
           {loading && <span className="text-yellow-400 text-xs animate-pulse">CARREGANDO...</span>}
           {erroCarga && <span className="text-red-400 text-xs" title={erroCarga}>{erroCarga}</span>}
           <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
-          <a href="/auditoria" className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</a>
+                    <button onClick={()=>setVerAuditoria(true)} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</button>
           <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">TELA CHEIA</button>
           <div className="w-2 h-2 rounded-full bg-green-400"/>
         </div>
@@ -581,6 +691,7 @@ export default function PanelPage() {
           cmdMsg={cmdMsg}
         />
       )}
+      {verAuditoria && <AuditoriaModal onClose={()=>setVerAuditoria(false)} />}
     </div>
   );
 }
