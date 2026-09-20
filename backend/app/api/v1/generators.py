@@ -21,6 +21,10 @@ class ComandoResponse(BaseModel):
     message: str
     asset_id: str
     action: str
+    # "ok" quando a auditoria gravou; caso contrario, o motivo da falha.
+    # O comando nao depende disso -- acionar o gerador tem prioridade --,
+    # mas quem chamou fica sabendo que o acionamento nao deixou rastro.
+    auditoria: str = "ok"
 
 # Mapeamento asset_id -> (tag, tipo, ip_coletor)
 # O coletor roda na rede interna da Trensurb em 10.80.0.100:8888
@@ -59,15 +63,22 @@ CARGOS_AUTORIZADOS = {"TECHNICIAN", "ENGINEER", "ADMIN", "technician", "engineer
 
 
 async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem_erro=None,
-                   registros=None, origem="fastapi"):
+                   registros=None, origem="fastapi") -> str | None:
     """
     Grava uma linha de auditoria do comando remoto.
+
+    Retorna None quando gravou, ou uma descricao curta da falha.
 
     IMPORTANTE: todos os parametros devem ser valores primitivos ja extraidos.
     db.commit() expira os objetos da sessao (inclusive current_user), e acessar
     um atributo depois disso dispara lazy load -> MissingGreenlet.
 
     Nunca propaga excecao: acionar o gerador tem prioridade sobre registrar.
+    Mas a falha deixou de ser silenciosa. Ela volta ao chamador, que a devolve
+    no corpo da resposta: uma auditoria que falha calada e pior do que nao ter
+    auditoria nenhuma, porque passa a impressao de existir registro de quem
+    acionou o que -- e e justamente esse registro que se procura depois de um
+    incidente.
     """
     try:
         from app.models.command_audit_log import (
@@ -86,12 +97,14 @@ async def _auditar(db, asset_id, tag, tipo, usuario, action, resultado, mensagem
             origem=AuditOrigin(origem),
         ))
         await db.commit()
-    except Exception:
+        return None
+    except Exception as e:
         log.exception("Falha ao gravar auditoria (comando segue normalmente)")
         try:
             await db.rollback()
         except Exception:
             pass
+        return f"{type(e).__name__}: {str(e)[:200]}"
 
 @router.get("/audit-log")
 async def listar_auditoria(
@@ -139,6 +152,101 @@ async def listar_auditoria(
     return result.scalars().all()
 
 
+@router.get("/audit-log/diagnostico")
+async def diagnosticar_auditoria(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Explica por que a auditoria de comandos nao esta gravando.
+
+    A gravacao engole excecoes de proposito, entao a falha nao aparece em
+    lugar nenhum a nao ser no log do servidor. Este endpoint responde
+    direto, verificando as tres causas possiveis:
+
+    1. a tabela command_audit_log nao existe (o projeto nao tem Alembic, ela
+       so existe se alguem rodou create_all depois que o modelo entrou);
+    2. os rotulos dos tipos enum no PostgreSQL divergem do que o SQLAlchemy
+       grava -- ele persiste o NOME do membro, em maiusculo;
+    3. a chave estrangeira nao e satisfeita: gmg_id referencia assets.id, mas
+       o endpoint de comando valida o asset_id apenas contra o dicionario
+       GERADORES_CONFIG, chumbado no Python e nunca conferido contra o banco.
+       Um UUID que exista no dicionario e nao na tabela faz o comando passar
+       e so a auditoria quebrar -- exatamente o sintoma observado.
+    """
+    if current_user.role not in CARGOS_AUTORIZADOS:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas tecnicos, engenheiros e administradores podem consultar a auditoria.",
+        )
+
+    from sqlalchemy import text as _text
+
+    diag: dict = {}
+
+    async def _consultar(rotulo: str, sql: str):
+        """Executa e, em caso de erro, registra o motivo e limpa a sessao.
+
+        Sem o rollback, a primeira falha aborta a transacao e todas as
+        consultas seguintes falhariam por tabela, escondendo o diagnostico.
+        """
+        try:
+            return await db.execute(_text(sql))
+        except Exception as e:
+            diag[f"{rotulo}_erro"] = f"{type(e).__name__}: {str(e)[:200]}"
+            try:
+                await db.rollback()
+            except Exception:
+                pass
+            return None
+
+    r = await _consultar("tabela", "SELECT to_regclass('public.command_audit_log')")
+    existe = bool(r and r.scalar())
+    diag["1_tabela_existe"] = existe
+
+    if existe:
+        r = await _consultar("linhas", "SELECT COUNT(*) FROM command_audit_log")
+        diag["1_linhas_gravadas"] = r.scalar() if r else None
+
+        r = await _consultar("enums", """
+            SELECT t.typname,
+                   string_agg(e.enumlabel, ',' ORDER BY e.enumsortorder)
+              FROM pg_type t
+              JOIN pg_enum e ON e.enumtypid = t.oid
+             WHERE t.typname IN ('controllertype','auditcommand',
+                                 'auditresult','auditorigin')
+             GROUP BY t.typname
+        """)
+        diag["2_enums_no_banco"] = {linha[0]: linha[1] for linha in r.all()} if r else None
+        diag["2_enums_esperados"] = {
+            "controllertype": "DSE,STEMAC",
+            "auditcommand": "START,STOP,MANUAL,AUTO",
+            "auditresult": "TENTATIVA,SUCESSO,FALHA",
+            "auditorigin": "FASTAPI,FLASK_LOCAL",
+        }
+
+    # Hipotese 3: comparacao feita em Python, e nao com "id = ANY(:ids)",
+    # porque a ligacao de array varia conforme o driver.
+    r = await _consultar("assets", "SELECT id::text FROM assets")
+    if r:
+        no_banco = {linha[0] for linha in r.all()}
+        ausentes = [
+            {"tag": cfg[0], "asset_id": uid}
+            for uid, cfg in GERADORES_CONFIG.items()
+            if uid not in no_banco
+        ]
+        diag["3_geradores_no_dicionario"] = len(GERADORES_CONFIG)
+        diag["3_ausentes_na_tabela_assets"] = ausentes
+        diag["3_veredito"] = (
+            "chave estrangeira OK para todos"
+            if not ausentes
+            else f"{len(ausentes)} gerador(es) comandavel(is) sem linha em assets: "
+                 "a auditoria desses sempre falha"
+        )
+
+    return diag
+
+
 @router.post("/{asset_id}/command", response_model=ComandoResponse)
 async def comando_gerador(
     asset_id: str,
@@ -165,7 +273,15 @@ async def comando_gerador(
     _usuario = current_user.email
     _acao = body.action
 
-    await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "tentativa")
+    # Falhas de auditoria nao interrompem o comando, mas sao acumuladas para
+    # voltar na resposta -- ver o docstring de _auditar.
+    _falhas_auditoria: list[str] = []
+
+    def _anotar(erro: str | None) -> None:
+        if erro:
+            _falhas_auditoria.append(erro)
+
+    _anotar(await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "tentativa"))
 
     from app.core.coletor_state import _coletor_url
     import redis.asyncio as _redis
@@ -198,7 +314,7 @@ async def comando_gerador(
             log.info(f"Coletor respondeu status={r.status_code} body={r.text[:500]!r}")
 
             if r.status_code == 200:
-                await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso")
+                _anotar(await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso"))
 
                 # Confirmacao do lado do coletor, com os registros Modbus
                 # efetivamente escritos no controlador.
@@ -210,14 +326,22 @@ async def comando_gerador(
                 except Exception:
                     pass
                 if _registros:
-                    await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso",
-                                   registros=_registros, origem="flask_local")
+                    _anotar(await _auditar(db, asset_id, tag, tipo, _usuario, _acao, "sucesso",
+                                           registros=_registros, origem="flask_local"))
+
+                if _falhas_auditoria:
+                    log.error(
+                        "Comando '%s' em %s executado SEM registro de auditoria: %s",
+                        _acao, tag, " | ".join(_falhas_auditoria),
+                    )
 
                 return ComandoResponse(
                     success=True,
                     message=f"Comando '{body.action}' enviado para {tag}.",
                     asset_id=asset_id,
                     action=body.action,
+                    auditoria=("ok" if not _falhas_auditoria
+                               else "NAO GRAVADA: " + " | ".join(_falhas_auditoria)[:400]),
                 )
 
             # Erro do coletor: tenta extrair JSON, mas nao quebra se nao for JSON

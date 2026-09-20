@@ -162,7 +162,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
         </div>
 
         {station?.code === "RD" && (() => {
-          const tq = tanqueAux(v("dse_flex"));
+          const tq = tanqueAux(v("external_tank"), v("dse_flex"));
           const cor = tq === 1 ? "#00ff41" : tq === 0 ? "#ff3333" : "#555555";
           return (
             <div className="mb-3 rounded p-2" style={{background:"#0a1a00",border:"1px solid #00ff4133"}}>
@@ -181,7 +181,7 @@ function DetailPanel({ station, asset, vals, onClose, onCommand, cmdLoading, cmd
                 </>
               ) : (
                 <div className="text-xs" style={{color:"#555"}}>
-                  Aguardando o coletor enviar o sensor flexivel D
+                  Sem leitura do sensor de nivel (flexivel D)
                 </div>
               )}
             </div>
@@ -244,11 +244,27 @@ const STATIONS = [
 const normSub = (v: string) =>
   v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
 
-// Tanque externo: so a Rodoviaria tem. E o sensor flexivel D do DSE (4o nibble
-// do HR[2179]), que o coletor envia no vetor dse_flex. Codificacao GenComm:
-// 1 = inativo (tanque cheio), 2..4 = warning/shutdown/trip (nivel baixo).
-// Fora disso o sensor esta desabilitado e nao ha leitura para mostrar.
-function tanqueAux(flex: any): number | null {
+// Tanque externo: so a Rodoviaria tem. A origem fisica e o sensor flexivel D
+// do DSE (4o nibble do HR[2179]), na codificacao GenComm -- 1 = inativo
+// (tanque cheio), 2..4 = warning/shutdown/trip (nivel baixo), o resto e sensor
+// desabilitado, sem leitura a mostrar.
+//
+// Quem decodifica isso e o coletor, que manda o resultado pronto no campo
+// external_tank. O vetor dse_flex inteiro NAO chega ate aqui: o backend do
+// Ferroviario guarda leituras escalares ({sensor_id, value} com value
+// numerico), entao nao ha onde gravar um array. O painel esperava o vetor e
+// por isso ficava eternamente em "aguardando o coletor" -- so o SGM Trensurb
+// consegue receber o dse_flex completo, porque la o campo readings e JSONB
+// livre.
+//
+// O parametro flex fica como segunda opcao para o dia em que os nibbles
+// tambem forem gravados individualmente.
+function tanqueAux(externalTank: any, flex?: any): number | null {
+  if (externalTank != null) {
+    const t = Number(externalTank);
+    if (t === 1) return 1;
+    if (t === 0) return 0;
+  }
   if (!Array.isArray(flex) || flex.length < 4) return null;
   const d = flex[3];
   if (d === 1) return 1;

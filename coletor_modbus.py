@@ -4,21 +4,36 @@ Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário
 Executa a cada 15 segundos.
 """
 
+import os
 import time
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import json as _json
 import requests
 import logging
+from logging.handlers import RotatingFileHandler
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
+
+# Pasta do proprio script. O log e o PID do tunel vao sempre para ca, nao
+# para o diretorio de trabalho de quem iniciou o processo -- um atalho sem
+# "Iniciar em" preenchido jogaria os arquivos em C:\Windows\System32.
+_DIR = os.path.dirname(os.path.abspath(__file__))
 
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("coletor_modbus.log", encoding="utf-8"),
+        # Rotaciona a cada 10 MB, guardando 5 arquivos anteriores (~60 MB,
+        # uns 4 dias de historico). Sem rotacao o arquivo cresce para sempre:
+        # sao ~25 linhas a cada 15 segundos, mais de 10 MB por dia.
+        RotatingFileHandler(
+            os.path.join(_DIR, "coletor_modbus.log"),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        ),
     ],
 )
 log = logging.getLogger(__name__)
@@ -246,6 +261,26 @@ def ler_gerador(ip, slave_id, tag):
                 def isError(self): return False
             result = FakeResult(regs_stemac)
         else:
+            # O slave_id recebido por esta funcao nao e repassado ao pymodbus:
+            # toda leitura sai com o device id padrao, 1. Isso e proposital.
+            #
+            # Foi testado o contrario em 20/09/2026, tentando resolver o
+            # GMG-FARRAPOS, que devolve "Gateway Target Device Failed To
+            # Respond" (excecao 11). Reler com device_id=4 fez o painel
+            # responder "request ask for id=4 but got id=1, Skipping",
+            # seguido de tres retries e 15 segundos perdidos a cada ciclo,
+            # atrasando todas as leituras seguintes. Ou seja: o painel
+            # responde como id=1 e nao roteia por unit id.
+            #
+            # Isso tambem esclarece o FARRAPOS -- a excecao 11 e o painel
+            # dizendo que o dispositivo atras dele nao respondeu. O painel
+            # esta acessivel; o controlador DSE e que esta mudo. E problema
+            # de campo, nao de enderecamento.
+            #
+            # Vale notar que os slave_id do dicionario acompanham o ultimo
+            # octeto do IP e nao correspondem aos paineis (a Rodoviaria esta
+            # como 2 e o painel responde como 29), entao nao sao confiaveis
+            # como fonte de unit id de qualquer forma.
             result = client.read_holding_registers(address=1000, count=80)
 
         if result.isError():
@@ -312,7 +347,6 @@ def ler_gerador(ip, slave_id, tag):
             "fp_total":       fp_total,
             "temperatura":    r(reg_map["temperatura"]),
             "nivel_tanque":   r(reg_map["nivel_tanque"]),
-            "external_tank":  0 if ((r(1059) >> 4) & 0xF) == 0 else 1,  # FLEX_D: d=0->BAIXO, d>0->CHEIO
             "bateria":        r(reg_map["bateria"]) * 0.1,
             "horas_funcio":   r(reg_map["horas_funcio"]),
             "tensao_rede_l1": r(reg_map["tensao_rede_l1"]) * fv,
@@ -321,6 +355,54 @@ def ler_gerador(ip, slave_id, tag):
             "freq_rede":      r(reg_map["freq_rede"]) * ff,
         }
         log.info(f"{tag} ({ip}): lido OK | tanque={dados['nivel_tanque']}% temp={dados['temperatura']}C")
+
+        # Bloco de alarmes do painel DSE -- HR[2176..2179], protocolo GenComm,
+        # 4 nibbles por registrador, MSB primeiro (posicao 0 = A, 3 = D):
+        #   2176 = cabecalho (0x0008)
+        #   2177 = entradas digitais A-D
+        #   2178 = entradas digitais E-H
+        #   2179 = sensores flexiveis A-D
+        # Codificacao do nibble:
+        #   0=desabilitado 1=inativo 2=warning 3=shutdown 4=trip 15=nao implementado
+        #
+        # Precisa de leitura propria: este bloco fica fora da janela 1000-1079
+        # lida acima, e o DSE recusa blocos grandes (count=4 passa, count=64
+        # volta com excecao 1).
+        #
+        # E daqui que sai o tanque externo. A versao anterior lia o nibble do
+        # HR[1059], que e a frequencia da rede (x0,1 Hz) -- um valor quase
+        # nunca zero, entao o painel mostrava EXT:CHEIO o tempo todo, inclusive
+        # com o tanque vazio. O sensor de verdade e o flexivel D, e so a
+        # Rodoviaria tem o tanque auxiliar fisicamente instalado; nas demais o
+        # FLEX D existe no painel mas fica inativo.
+        if not is_stemac:
+            try:
+                ra = client.read_holding_registers(address=2176, count=4)
+                if not ra.isError() and len(ra.registers) >= 4:
+                    def _nibs(v):
+                        return [(v >> (12 - pos * 4)) & 0xF for pos in range(4)]
+
+                    di = _nibs(ra.registers[1]) + _nibs(ra.registers[2])
+                    flex = _nibs(ra.registers[3])
+                    dados["dse_di"] = di
+                    dados["dse_flex"] = flex
+                    if any(2 <= v <= 4 for v in di + flex):
+                        log.warning(f"{tag}: ALARME ATIVO DI={di} FLEX={flex}")
+
+                    if tag == "GMG-RODOVIARIA":
+                        d = flex[3]
+                        # 1 = inativo (boia em cima, tanque cheio);
+                        # 2..4 = alarme ativo (nivel baixo);
+                        # 0 ou 15 = sensor desabilitado -> None, para nao
+                        # inventar leitura de um sensor que nao existe.
+                        dados["external_tank"] = 1 if d == 1 else (0 if 2 <= d <= 4 else None)
+                        log.info(
+                            f"{tag}: tanque_externo FLEX_D={d} -> {dados['external_tank']}"
+                        )
+                else:
+                    log.warning(f"{tag}: nao leu bloco de alarmes HR[2176]")
+            except Exception as e:
+                log.warning(f"{tag}: falha ao ler alarmes - {e}")
 
     except ModbusException as e:
         log.error(f"{tag} ({ip}): ModbusException - {e}")
@@ -584,9 +666,13 @@ import subprocess as _subprocess
 import re as _re
 import atexit as _atexit
 
+# Guarda o PID do cloudflared desta execucao, para que a proxima consiga
+# encerrar o tunel orfao deixado para tras.
+_PID_TUNEL = os.path.join(_DIR, ".cloudflared.pid")
 
-def _matar_cloudflared_orfaos():
-    """Encerra tuneis cloudflared deixados por execucoes anteriores.
+
+def _matar_tunel_anterior():
+    """Encerra o cloudflared deixado pela execucao anterior DESTE coletor.
 
     O coletor e reiniciado com kill forcado, que nao roda atexit: o
     cloudflared filho sobrevive ao pai e segue servindo um tunel para a
@@ -597,25 +683,49 @@ def _matar_cloudflared_orfaos():
 
     Limpar na partida e o unico ponto confiavel, justamente porque o kill
     forcado impede qualquer limpeza no encerramento.
+
+    Mata por PID, nunca por nome de imagem: o coletor do SGM Trensurb roda
+    nesta mesma maquina com o seu proprio cloudflared (tunel para a porta
+    8889), e um taskkill /IM derrubaria o tunel do outro sistema junto.
     """
     try:
+        if not os.path.isfile(_PID_TUNEL):
+            return
+        with open(_PID_TUNEL) as f:
+            pid = f.read().strip()
+        os.remove(_PID_TUNEL)
+        if not pid.isdigit():
+            return
+
+        # O Windows reaproveita numero de PID. Confirma que esse ainda e um
+        # cloudflared antes de matar, para nao atingir um processo qualquer
+        # que tenha herdado o numero.
         r = _subprocess.run(
-            ["taskkill", "/F", "/IM", "cloudflared.exe"],
-            capture_output=True, check=False,
+            ["tasklist", "/FI", f"PID eq {pid}", "/FO", "CSV", "/NH"],
+            capture_output=True, text=True, check=False,
         )
-        if r.returncode == 0:
-            log.info("Tuneis cloudflared anteriores encerrados")
+        if "cloudflared" not in (r.stdout or "").lower():
+            return
+
+        _subprocess.run(["taskkill", "/F", "/PID", pid],
+                        capture_output=True, check=False)
+        log.info(f"Tunel cloudflared anterior encerrado (PID {pid})")
     except Exception as e:
-        log.warning(f"Falha ao limpar cloudflared orfaos: {e}")
+        log.warning(f"Falha ao encerrar tunel anterior: {e}")
 
 
 def iniciar_tunnel_e_registrar(token, api_base):
     try:
-        _matar_cloudflared_orfaos()
+        _matar_tunel_anterior()
         proc = _subprocess.Popen(
             ["cloudflared.exe", "tunnel", "--url", "http://localhost:8888"],
             stdout=_subprocess.PIPE, stderr=_subprocess.PIPE
         )
+        try:
+            with open(_PID_TUNEL, "w") as f:
+                f.write(str(proc.pid))
+        except Exception as e:
+            log.warning(f"Nao foi possivel gravar o PID do tunel: {e}")
         # Cobre o encerramento limpo (Ctrl+C, fechar a janela). O kill
         # forcado nao passa por aqui -- para esse caso vale a limpeza na
         # partida, acima.
