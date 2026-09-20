@@ -714,6 +714,47 @@ def _matar_tunel_anterior():
         log.warning(f"Falha ao encerrar tunel anterior: {e}")
 
 
+# URL do tunnel em vigor. Fica aqui, e nao so dentro de
+# iniciar_tunnel_e_registrar, porque o registro precisa ser refeito a cada
+# ciclo -- ver registrar_url, abaixo.
+_TUNNEL_URL = None
+
+
+def registrar_url(token, api_base, quieto=True):
+    """
+    Reenvia a URL do tunnel para a API.
+
+    Chamado a cada ciclo, e nao so na partida.
+    O motivo: do lado da API a URL mora em _coletor_url, um dicionario no
+    processo do FastAPI. Todo deploy, restart ou cold start zera esse valor. Ha
+    uma copia no Redis para cobrir isso, mas a gravacao esta dentro de um
+    "except: pass" -- se o Redis nao estiver configurado, a falha e engolida e
+    nao sobra copia nenhuma. Foi o que aconteceu: depois de publicar, o painel
+    passou a responder "Coletor offline" ate alguem reiniciar o coletor na mao.
+    As leituras seguiam chegando normalmente, porque vao no sentido contrario,
+    entao a falha so aparecia quando alguem precisava acionar um gerador --
+    exatamente o pior momento para descobrir.
+    Reenviar a cada 15s custa um POST e faz o registro se refazer sozinho em um
+    ciclo. Silencioso por padrao para nao encher o log de linha repetida; avisa
+    so quando falha, que e o que interessa.
+    """
+    if not _TUNNEL_URL or not token:
+        return
+    try:
+        r = requests.post(
+            api_base + "/iot/coletor/register",
+            json={"url": _TUNNEL_URL, "secret": "sgm-trensurb-2026"},
+            headers={"Authorization": "Bearer " + token},
+            timeout=10,
+        )
+        if r.status_code != 200:
+            log.warning(f"Registro do tunel devolveu {r.status_code}")
+        elif not quieto:
+            log.info(f"Tunnel registrado: {_TUNNEL_URL}")
+    except Exception as e:
+        log.warning(f"Falha ao reenviar a URL do tunel: {e}")
+
+
 def iniciar_tunnel_e_registrar(token, api_base):
     try:
         _matar_tunel_anterior()
@@ -740,16 +781,9 @@ def iniciar_tunnel_e_registrar(token, api_base):
                 break
             _time.sleep(1)
         if url:
-            try:
-                r = requests.post(
-                    api_base + "/iot/coletor/register",
-                    json={"url": url, "secret": "sgm-trensurb-2026"},
-                    headers={"Authorization": "Bearer " + token},
-                    timeout=10,
-                )
-                log.info(f"Tunnel registrado: {url} status={r.status_code}")
-            except Exception as e:
-                log.error(f"Erro ao registrar tunnel: {e}")
+            global _TUNNEL_URL
+            _TUNNEL_URL = url
+            registrar_url(token, api_base, quieto=False)
         else:
             log.warning("Nao foi possivel obter URL do tunnel")
         return proc
@@ -779,6 +813,9 @@ def main():
                 time.sleep(30)
                 continue
         ciclo_coleta(token)
+        # Refaz o registro da URL. Ver registrar_url: do outro lado o valor vive
+        # na memoria do processo e some a cada publicacao.
+        registrar_url(token, API_BASE)
         token_ciclos += 1
         log.info(f"Aguardando {INTERVALO_SEGUNDOS}s ate proximo ciclo...")
         time.sleep(INTERVALO_SEGUNDOS)
