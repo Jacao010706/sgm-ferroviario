@@ -158,6 +158,40 @@ async def listar_auditoria(
     return result.scalars().all()
 
 
+@router.delete("/audit-log")
+async def limpar_auditoria(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Remove todo o historico de auditoria de comandos remotos.
+
+    Acao irreversivel — restrita a administradores.
+    """
+    if (current_user.role or "").upper() != "ADMIN":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem limpar o historico de auditoria.",
+        )
+
+    from sqlalchemy import delete as _delete
+    from app.models.command_audit_log import CommandAuditLog
+
+    result = await db.execute(_delete(CommandAuditLog))
+    await db.commit()
+
+    log.warning(
+        "Historico de auditoria LIMPO por %s (%s registros removidos)",
+        current_user.email,
+        result.rowcount,
+    )
+
+    return {
+        "deleted": result.rowcount,
+        "mensagem": f"Historico de auditoria limpo. {result.rowcount} registro(s) removido(s).",
+    }
+
+
 @router.get("/audit-log/diagnostico")
 async def diagnosticar_auditoria(
     db: AsyncSession = Depends(get_db),

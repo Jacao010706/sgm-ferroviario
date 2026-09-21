@@ -37,11 +37,25 @@ export default function AuditoriaPage() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [agrupado, setAgrupado] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [limpando, setLimpando] = useState(false);
 
   const [fTag, setFTag] = useState("");
   const [fUsuario, setFUsuario] = useState("");
   const [fInicio, setFInicio] = useState("");
   const [fFim, setFFim] = useState("");
+
+  // Verifica silenciosamente se o usuario logado e administrador
+  useEffect(() => {
+    api.get("/auth/me")
+      .then((r) => {
+        const role = (r.data?.role || "").toString().toUpperCase();
+        setIsAdmin(role === "ADMIN");
+      })
+      .catch(() => {
+        setIsAdmin(false);
+      });
+  }, []);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -62,6 +76,21 @@ export default function AuditoriaPage() {
   }, [fTag, fUsuario, fInicio, fFim]);
 
   useEffect(() => { carregar(); }, []);
+
+  const handleLimpar = async () => {
+    if (!window.confirm("Tem certeza que deseja LIMPAR todo o historico de auditoria?\n\nEsta acao e irreversivel.")) return;
+    setLimpando(true);
+    try {
+      const r = await api.delete("/generators/audit-log");
+      const deletados = r.data?.deleted ?? "?";
+      setRegistros([]);
+      alert(`Historico limpo. ${deletados} registro(s) removido(s).`);
+    } catch (e: any) {
+      alert("Erro ao limpar: " + (e?.response?.data?.detail || e?.message || "Erro desconhecido."));
+    } finally {
+      setLimpando(false);
+    }
+  };
 
   const tags = Array.from(new Set(registros.map((r) => r.gmg_tag).filter(Boolean))) as string[];
 
@@ -131,6 +160,23 @@ export default function AuditoriaPage() {
                 style={{ background: "#111", color: "#ffd700", border: "1px solid #ffd700", padding: "8px 16px", cursor: "pointer" }}>
           {agrupado ? "VER TUDO" : "AGRUPAR"}
         </button>
+
+        {isAdmin && (
+          <button
+            onClick={handleLimpar}
+            disabled={limpando}
+            title="Apenas administradores podem limpar o historico"
+            style={{
+              background: limpando ? "#1a0000" : "#220000",
+              color: limpando ? "#993333" : "#ff3333",
+              border: "1px solid #ff3333",
+              padding: "8px 16px",
+              cursor: limpando ? "not-allowed" : "pointer",
+              marginLeft: "auto",
+            }}>
+            {limpando ? "LIMPANDO..." : "🗑 LIMPAR"}
+          </button>
+        )}
       </div>
 
       {erro && <div style={{ color: "#ff3333", marginBottom: 16 }}>{erro}</div>}
