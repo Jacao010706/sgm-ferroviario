@@ -116,6 +116,12 @@ export default function AuditoriaPage() {
 
   return (
     <div style={{ padding: 24, background: "#0a0a0a", minHeight: "100vh", color: "#ddd", fontFamily: "monospace" }}>
+      <div style={{ marginBottom: 16 }}>
+        <a href="/panel"
+           style={{ color: "#888", fontSize: 12, textDecoration: "none", border: "1px solid #333", padding: "5px 12px", display: "inline-block" }}>
+          ← VOLTAR AO CCO
+        </a>
+      </div>
       <h1 style={{ color: "#00ff41", fontSize: 20, marginBottom: 4 }}>
         AUDITORIA DE COMANDOS REMOTOS
       </h1>
