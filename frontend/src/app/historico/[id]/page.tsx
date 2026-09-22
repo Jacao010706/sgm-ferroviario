@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { api } from "@/lib/api";
 
 type DataPoint = {
@@ -138,8 +138,8 @@ function LineChart({
   );
 }
 
-export default function HistoricoPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function HistoricoPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
   const [pontos, setPontos] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
