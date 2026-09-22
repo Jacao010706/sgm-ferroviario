@@ -3,6 +3,15 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "@/lib/api";
 
+function descrModbus(modbus: any): string {
+  if (!modbus) return "";
+  if (Array.isArray(modbus)) {
+    const descrs = modbus.map((c: any) => c.descricao).filter(Boolean);
+    return descrs.length ? descrs.join(" · ") : "";
+  }
+  return "";
+}
+
 type Registro = {
   id: string;
   created_at: string;
@@ -253,7 +262,7 @@ export default function AuditoriaPage() {
                     <td style={{ padding: 8 }}>{(principal.comando || "").toUpperCase()}</td>
                     <td style={{ padding: 8, color: corResultado(principal.resultado) }}>{(principal.resultado || "").toUpperCase()}</td>
                     <td style={{ padding: 8, color: "#666", fontSize: 11 }}>
-                      {erroMsg || (modbus ? JSON.stringify(modbus) : "")}
+                      {erroMsg || descrModbus(modbus)}
                     </td>
                   </tr>
                 );
@@ -267,7 +276,7 @@ export default function AuditoriaPage() {
                   <td style={{ padding: 8, color: corResultado(r.resultado) }}>{(r.resultado || "").toUpperCase()}</td>
                   <td style={{ padding: 8, color: "#888" }}>{(r.origem || "").toUpperCase()}</td>
                   <td style={{ padding: 8, color: "#666", fontSize: 11 }}>
-                    {r.mensagem_erro || (r.registros_modbus ? JSON.stringify(r.registros_modbus) : "")}
+                    {r.mensagem_erro || descrModbus(r.registros_modbus)}
                   </td>
                 </tr>
               ))}
