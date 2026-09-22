@@ -32,8 +32,32 @@ function corResultado(r: string) {
   return "#ffd700";
 }
 
+const PRINT_STYLE = `
+  @media print {
+    button, a[href], select, input, label { display: none !important; }
+    .no-print { display: none !important; }
+    body { background: white !important; color: black !important; font-family: monospace; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    th, td { border: 1px solid #999; padding: 4px 6px; color: black !important; }
+    th { background: #eee !important; }
+    h1 { color: black !important; font-size: 16px; }
+    p { color: #444 !important; }
+    .print-header { display: block !important; margin-bottom: 12px; font-size: 11px; color: #444; }
+  }
+`;
+
 export default function AuditoriaPage() {
   const [registros, setRegistros] = useState<Registro[]>([]);
+  // Injeta CSS de impressao dinamicamente
+  if (typeof window !== "undefined") {
+    let styleEl = document.getElementById("auditoria-print-style");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = "auditoria-print-style";
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = PRINT_STYLE;
+  }
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [agrupado, setAgrupado] = useState(true);
@@ -128,6 +152,10 @@ export default function AuditoriaPage() {
       <p style={{ fontSize: 12, color: "#888", marginBottom: 20 }}>
         Horarios convertidos para o fuso local. Cada comando gera ate 3 registros.
       </p>
+      <div className="print-header" style={{ display: "none" }}>
+        TRENSURB · SENERG — Auditoria de Comandos Remotos · Gerado em: {new Date().toLocaleString("pt-BR")}
+        {fTag && ` · Gerador: ${fTag}`}{fUsuario && ` · Usuario: ${fUsuario}`}
+      </div>
 
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 16, alignItems: "flex-end" }}>
         <label style={{ fontSize: 12 }}>
@@ -165,6 +193,12 @@ export default function AuditoriaPage() {
         <button onClick={() => setAgrupado(!agrupado)}
                 style={{ background: "#111", color: "#ffd700", border: "1px solid #ffd700", padding: "8px 16px", cursor: "pointer" }}>
           {agrupado ? "VER TUDO" : "AGRUPAR"}
+        </button>
+
+        <button
+          onClick={() => window.print()}
+          style={{ background: "#001122", color: "#44aaff", border: "1px solid #44aaff", padding: "8px 16px", cursor: "pointer" }}>
+          🖨 EXPORTAR PDF
         </button>
 
         {isAdmin && (

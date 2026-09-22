@@ -7,7 +7,7 @@ import httpx
 
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 log = logging.getLogger(__name__)
 
@@ -285,6 +285,190 @@ async def diagnosticar_auditoria(
         )
 
     return diag
+
+
+
+# ─── STATUS DO COLETOR ────────────────────────────────────────────────────────
+
+@router.get("/collector-status")
+async def status_coletor(
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Retorna se o coletor Modbus esta ativo e quando fez a ultima leitura.
+    online: true se a ultima leitura foi ha menos de 10 minutos.
+    """
+    from sqlalchemy import select as _select, func as _func
+    from app.models.iot import IoTReading
+    from app.core.coletor_state import _coletor_url as _cu
+    from app.core.config import settings as _s
+    import redis.asyncio as _redis
+    from datetime import timezone, timedelta
+
+    coletor_registrado = bool(_cu.get("url"))
+    if not coletor_registrado:
+        try:
+            _r = _redis.from_url(_s.REDIS_URL)
+            _v = await _r.get("sgm:coletor_url")
+            await _r.aclose()
+            if _v:
+                coletor_registrado = True
+        except Exception:
+            pass
+
+    result = await db.execute(_select(_func.max(IoTReading.timestamp)))
+    max_ts = result.scalar()
+
+    if max_ts is None:
+        return {"online": False, "minutes_ago": None, "coletor_registrado": coletor_registrado}
+
+    now_utc = datetime.now(timezone.utc)
+    if max_ts.tzinfo is None:
+        max_ts = max_ts.replace(tzinfo=timezone.utc)
+
+    diff_seconds = (now_utc - max_ts).total_seconds()
+    minutes_ago = int(diff_seconds / 60)
+    online = diff_seconds < 10 * 60
+
+    return {
+        "online": online,
+        "minutes_ago": minutes_ago,
+        "coletor_registrado": coletor_registrado,
+    }
+
+
+# ─── HISTORICO DE LEITURAS ───────────────────────────────────────────────────
+
+@router.get("/{asset_id}/history")
+async def historico_gerador(
+    asset_id: str,
+    hours: int = 24,
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user),
+):
+    """
+    Retorna leituras de temperatura e nivel de combustivel das ultimas N horas.
+    Maximo de 1000 pontos por gerador.
+    """
+    from sqlalchemy import select as _select, and_ as _and_
+    from app.models.iot import IoTReading, ReadingType
+    from datetime import timezone, timedelta
+
+    since = datetime.now(timezone.utc) - timedelta(hours=min(hours, 72))
+
+    q = (
+        _select(IoTReading)
+        .where(
+            _and_(
+                IoTReading.asset_id == asset_id,
+                IoTReading.reading_type.in_([
+                    ReadingType.TEMPERATURE,
+                    ReadingType.FUEL_LEVEL,
+                ]),
+                IoTReading.timestamp >= since,
+            )
+        )
+        .order_by(IoTReading.timestamp.asc())
+        .limit(1000)
+    )
+
+    result = await db.execute(q)
+    readings = result.scalars().all()
+
+    return [
+        {
+            "sensor_id": r.sensor_id,
+            "reading_type": r.reading_type.value,
+            "value": r.value,
+            "unit": r.unit,
+            "timestamp": r.timestamp.isoformat(),
+        }
+        for r in readings
+    ]
+
+
+# ─── NOTIFICACAO DE ALARME (chamada pelo coletor) ────────────────────────────
+
+class AlarmeRequest(BaseModel):
+    secret: str
+    tag: str
+    tipo_alarme: str
+    detalhes: str = ""
+
+
+async def _enviar_email_alerta(tag: str, tipo_alarme: str, detalhes: str) -> None:
+    """
+    Envia email de alerta quando um gerador esta em alarme.
+    Requer: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, ALERT_EMAILS.
+    """
+    import smtplib
+    import asyncio as _asyncio
+    from email.mime.text import MIMEText
+    from email.mime.multipart import MIMEMultipart
+    import os
+
+    smtp_host = os.getenv("SMTP_HOST")
+    smtp_user = os.getenv("SMTP_USER")
+    smtp_pass = os.getenv("SMTP_PASS")
+    alert_emails = os.getenv("ALERT_EMAILS", "")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+
+    if not all([smtp_host, smtp_user, smtp_pass, alert_emails]):
+        log.warning("Email de alarme NAO enviado: variaveis SMTP nao configuradas.")
+        return
+
+    destinatarios = [e.strip() for e in alert_emails.split(",") if e.strip()]
+    if not destinatarios:
+        return
+
+    assunto = f"[SGM-TRENSURB] ALARME: {tag} - {tipo_alarme}"
+    corpo = (
+        f"ALERTA AUTOMATICO - SISTEMA DE MONITORAMENTO DE GERADORES\n\n"
+        f"Gerador: {tag}\n"
+        f"Alarme: {tipo_alarme}\n"
+        f"Detalhes: {detalhes or 'Sem detalhes adicionais'}\n\n"
+        f"Acesse o painel: {os.getenv('FRONTEND_URL', 'https://sgm-ferroviario.railway.app')}/panel\n\n"
+        f"-- SENERG / TRENSURB --"
+    )
+
+    msg = MIMEMultipart()
+    msg["From"] = smtp_user
+    msg["To"] = ", ".join(destinatarios)
+    msg["Subject"] = assunto
+    msg.attach(MIMEText(corpo, "plain", "utf-8"))
+
+    def _send():
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, destinatarios, msg.as_string())
+
+    loop = _asyncio.get_event_loop()
+    try:
+        await loop.run_in_executor(None, _send)
+        log.info("Email de alarme enviado para %s: %s - %s", destinatarios, tag, tipo_alarme)
+    except Exception as e:
+        log.error("Falha ao enviar email de alarme: %s", e)
+
+
+@router.post("/alarm-notify")
+async def notificar_alarme(body: AlarmeRequest):
+    """
+    Chamado pelo coletor_modbus.py ao detectar alarme ativo.
+    Valida com COLETOR_SECRET, nao exige JWT.
+    """
+    if body.secret != COLETOR_SECRET:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Chave incorreta.")
+
+    log.warning("[ALARME] %s: %s — %s", body.tag, body.tipo_alarme, body.detalhes)
+
+    import asyncio as _asyncio
+    _asyncio.create_task(_enviar_email_alerta(body.tag, body.tipo_alarme, body.detalhes))
+
+    return {"ok": True, "mensagem": f"Alerta recebido para {body.tag}."}
+
 
 
 @router.post("/{asset_id}/command", response_model=ComandoResponse)
