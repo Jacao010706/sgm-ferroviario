@@ -360,6 +360,7 @@ export default function PanelPage() {
   const [opSenha, setOpSenha] = useState("");
   const [opErro, setOpErro] = useState("");
   const [opEntrando, setOpEntrando] = useState(false);
+  const [coletorStatus, setColetorStatus] = useState<{online:boolean,minutes_ago:number|null}|null>(null);
 
   const identificar = async () => {
     setOpEntrando(true); setOpErro("");
@@ -386,6 +387,21 @@ export default function PanelPage() {
     try { await fetch("/api/cco/operador", { method: "DELETE" }); } catch {}
     setOperador("");
   };
+
+  // Polling do status do coletor a cada 2 minutos
+  useEffect(() => {
+    const fetchColetor = async () => {
+      try {
+        const r = await api.get("/generators/collector-status");
+        setColetorStatus(r.data);
+      } catch {
+        setColetorStatus(null);
+      }
+    };
+    fetchColetor();
+    const id = setInterval(fetchColetor, 2 * 60 * 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const loadAll = useCallback(async () => {
     try {
@@ -543,6 +559,18 @@ export default function PanelPage() {
           )}
           {erroCarga && <span className="text-red-400 text-xs" title={erroCarga}>{erroCarga}</span>}
           <span className="text-green-600 text-xs">ATUALIZACAO: {lastUpdate||"--:--:--"}</span>
+          {coletorStatus !== null && (
+            <span className="text-xs px-2 py-0.5 rounded font-mono"
+              style={{
+                border: `1px solid ${coletorStatus.online ? "#00aa55" : "#ff5533"}`,
+                color: coletorStatus.online ? "#00ff88" : "#ff6644",
+                background: coletorStatus.online ? "#001a0a" : "#1a0500",
+              }}>
+              {coletorStatus.online
+                ? `COLETOR ATIVO · ${coletorStatus.minutes_ago === 0 ? "agora" : `${coletorStatus.minutes_ago}min`}`
+                : `COLETOR OFFLINE · ${coletorStatus.minutes_ago !== null ? `${coletorStatus.minutes_ago}min atrás` : "nunca leu"}`}
+            </span>
+          )}
           <a href="/auditoria" className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">AUDITORIA</a>
           <button onClick={()=>document.documentElement.requestFullscreen()} className="text-green-600 text-xs hover:text-green-400 border border-green-900 px-2 py-0.5 rounded">TELA CHEIA</button>
           <div className="w-2 h-2 rounded-full bg-green-400"/>
