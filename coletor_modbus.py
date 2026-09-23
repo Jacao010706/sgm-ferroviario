@@ -1,6 +1,6 @@
-ï»¿"""
+"""
 Coletor Modbus TCP - Geradores DSE7420 MKII - Trensurb
-LÃª dados dos 25 geradores via Modbus TCP e envia para a API do SGM FerroviÃ¡rio.
+Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário.
 Executa a cada 15 segundos.
 """
 
@@ -39,7 +39,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # =============================================================================
-# CONFIGURAÃ‡ÃƒO
+# CONFIGURAÇÃO
 # =============================================================================
 API_BASE = "https://laudable-peace-production-09cd.up.railway.app/api/v1"
 API_EMAIL = "admin2@sgm.com"
@@ -60,7 +60,7 @@ GERADORES = {
     "GMG-ANCHIETA":     ("10.80.0.6",  6,  "ead6e2bf-5718-4245-b45e-9e4686541163"),
     "GMG-NITEROI":      ("10.80.0.7",  7,  "9701e9d5-2965-4558-9971-622453941e9f"),
     "GMG-FATIMA":       ("10.80.0.8",  8,  "0630a8c5-d9d2-44b5-b3ef-51cd9f6bec4d"),
-    "GMG-CANOAS":       ("10.80.0.9",  9,  "ba830f68-2f8d-4f9c-96be-2d305e69d924"),
+    "GMG-CANOAS":       ("10.80.0.26", 11,  "ba830f68-2f8d-4f9c-96be-2d305e69d924"),
     "GMG-MATHIASVELHO": ("10.80.0.10", 10, "462ad264-edab-46fa-ae6a-d9556a02281e"),
     "GMG-SAOLUIS":      ("10.80.0.11", 11, "f29b82f4-ad67-4306-a936-d2a0969d1761"),
     "GMG-PETROBRAS":    ("10.80.0.12", 12, "1a5ecc9e-29db-489f-a06d-5e300522238f"),
@@ -179,12 +179,12 @@ STEMAC_ALARMS = {
 }
 
 # =============================================================================
-# CACHE DE ALERTAS ATIVOS â€” consultado na API a cada ciclo
+# CACHE DE ALERTAS ATIVOS — consultado na API a cada ciclo
 # Evita duplicar alertas para o mesmo problema
 # =============================================================================
 _alertas_ativos_cache: set = set()  # titulos de alertas ativos na API
 _cache_ultima_atualizacao: float = 0.0
-CACHE_TTL = 60  # segundos entre atualizaÃ§Ãµes do cache
+CACHE_TTL = 60  # segundos entre atualizações do cache
 
 
 def atualizar_cache_alertas(token: str) -> None:
@@ -207,17 +207,17 @@ def atualizar_cache_alertas(token: str) -> None:
 
 
 def alerta_ja_existe(titulo: str) -> bool:
-    """Verifica se jÃ¡ existe um alerta ativo com este tÃ­tulo no cache."""
+    """Verifica se já existe um alerta ativo com este título no cache."""
     return titulo in _alertas_ativos_cache
 
 
 def registrar_alerta_no_cache(titulo: str) -> None:
-    """Adiciona um tÃ­tulo ao cache apÃ³s criaÃ§Ã£o."""
+    """Adiciona um título ao cache após criação."""
     _alertas_ativos_cache.add(titulo)
 
 
 # =============================================================================
-# AUTENTICAÃ‡ÃƒO
+# AUTENTICAÇÃO
 # =============================================================================
 def obter_token():
     try:
@@ -460,15 +460,15 @@ def enviar_leitura(asset_id, dados, token):
 
 
 # =============================================================================
-# ALERTAS â€” com deduplicaÃ§Ã£o via cache da API
+# ALERTAS — com deduplicação via cache da API
 # =============================================================================
-# Controle de combustÃ­vel: quando normaliza, remove do cache para permitir
+# Controle de combustível: quando normaliza, remove do cache para permitir
 # novo alerta se voltar a cair
 _combustivel_normalizado: set = set()
 
 
 def criar_alerta(asset_id, titulo, descricao, severity, metric_name, metric_value, threshold, token):
-    """Cria um alerta na API apenas se nÃ£o existir um ativo com o mesmo tÃ­tulo."""
+    """Cria um alerta na API apenas se não existir um ativo com o mesmo título."""
     if alerta_ja_existe(titulo):
         return
     headers = {"Authorization": f"Bearer {token}"}
@@ -494,7 +494,7 @@ def criar_alerta(asset_id, titulo, descricao, severity, metric_name, metric_valu
 
 
 def verificar_combustivel(asset_id, tag, nivel, token):
-    """Cria alerta de combustÃ­vel baixo se necessÃ¡rio, uma Ãºnica vez."""
+    """Cria alerta de combustível baixo se necessário, uma única vez."""
     titulo = f"Combustivel baixo - {tag}"
     if nivel > 0 and nivel < 50:
         criar_alerta(
@@ -505,7 +505,7 @@ def verificar_combustivel(asset_id, tag, nivel, token):
         )
         _combustivel_normalizado.discard(asset_id)
     elif nivel >= 50 and asset_id not in _combustivel_normalizado:
-        # CombustÃ­vel normalizado â€” remove do cache para permitir novo alerta no futuro
+        # Combustível normalizado — remove do cache para permitir novo alerta no futuro
         _alertas_ativos_cache.discard(titulo)
         _combustivel_normalizado.add(asset_id)
 
@@ -524,7 +524,7 @@ def resolver_alerta(titulo, token):
         log.error(f"Erro ao resolver alerta: {e}")
 
 def ler_alarmes_stemac(ip, tag, token, asset_id):
-    """LÃª alarmes do STEMAC ST2160 e cria alertas sem duplicar."""
+    """Lê alarmes do STEMAC ST2160 e cria alertas sem duplicar."""
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
     try:
         if not client.connect():
