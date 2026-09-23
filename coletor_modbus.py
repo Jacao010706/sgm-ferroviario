@@ -42,20 +42,8 @@ log = logging.getLogger(__name__)
 # CONFIGURAÇÃO
 # =============================================================================
 API_BASE = "https://laudable-peace-production-09cd.up.railway.app/api/v1"
-# Credenciais do coletor vem do ambiente da maquina onde ele roda.
-# Estavam escritas aqui, e este arquivo vive no repositorio -- quem lesse o
-# codigo tinha login de administrador do backend inteiro.
-#
-# Definir na maquina do coletor (PowerShell, uma vez, como usuario):
-#   [Environment]::SetEnvironmentVariable("SGM_API_EMAIL","<usuario>","User")
-#   [Environment]::SetEnvironmentVariable("SGM_API_PASSWORD","<senha>","User")
-API_EMAIL = os.environ.get("SGM_API_EMAIL")
-API_PASSWORD = os.environ.get("SGM_API_PASSWORD")
-if not API_EMAIL or not API_PASSWORD:
-    raise SystemExit(
-        "SGM_API_EMAIL e SGM_API_PASSWORD nao definidas. "
-        "Defina as variaveis de ambiente antes de iniciar o coletor."
-    )
+API_EMAIL = "admin2@sgm.com"
+API_PASSWORD = "admin123"
 INTERVALO_SEGUNDOS = 15
 LIMPEZA_INTERVALO_HORAS = 24  # limpa leituras antigas a cada 24h
 _ultima_limpeza = 0  # timestamp da ultima limpeza
