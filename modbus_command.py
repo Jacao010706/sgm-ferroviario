@@ -124,9 +124,23 @@ def _enviar_stemac(ip, slave_id, action):
             raise ComandoError(f"Sem conexao Modbus com {ip}")
         _st2160_login(client, ip)
         if action == "start":
+            # Passo 1: acionar modo remoto (bit 4 = 0x0010)
             registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto"))
             time.sleep(1.0)
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_PARTIDA, "Partida do GMG"))
+            # Passo 2: PARTIDA + MODO_REMOTO juntos no mesmo write.
+            # Escrever so o bit 2 zeraria o bit 4, fazendo o ST2160 sair do
+            # Modo Remoto antes de processar a partida. (Manual pag.85 e 88)
+            valor_start = (1 << ST2160_BIT_MODO_REMOTO) | (1 << ST2160_BIT_PARTIDA)  # 0x0014
+            result = client.write_registers(
+                address=ST2160_REG_COMANDOS_CLIENTE, values=[valor_start]
+            )
+            if result.isError():
+                raise ComandoError(f"ST2160 {ip}: recusou Partida+ModoRemoto: {result}")
+            log.info(f"ST2160 {ip}: PARTIDA+MODO_REMOTO OK 0x{valor_start:04X}")
+            time.sleep(0.5)
+            registros.append({"endereco": ST2160_REG_COMANDOS_CLIENTE,
+                              "valores": [valor_start], "bit": "2+4",
+                              "descricao": "Partida do GMG (Modo Remoto mantido)"})
         elif action == "stop":
             registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_PARADA_REMOTA, "Parada Remota"))
         elif action == "manual":
