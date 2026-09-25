@@ -146,7 +146,24 @@ def _enviar_stemac(ip, slave_id, action):
         elif action == "manual":
             registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto"))
         elif action == "auto":
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_AUTO_CARGA, "GMG AUTO Assumindo Carga"))
+            # Retirar Modo Remoto (escrever 0): ST2160 retorna ao Modo Automatico nativo.
+            # Em Automatico o proprio STEMAC gerencia o ATS:
+            #   - rede presente -> motor a vazio (CGR aberta, CRD fechada)
+            #   - rede falha    -> parte o motor e fecha a CGR automaticamente (pag.81)
+            # NAO usar bit 5 (AUTO_CARGA): esse bit parte o motor E assume carga agora.
+            result = client.write_registers(
+                address=ST2160_REG_COMANDOS_CLIENTE, values=[0]
+            )
+            if result.isError():
+                raise ComandoError(f"ST2160 {ip}: recusou retorno ao Automatico: {result}")
+            log.info(f"ST2160 {ip}: Modo Remoto retirado, ST2160 em Modo Automatico (ATS automatico)")
+            time.sleep(0.5)
+            registros.append({
+                "endereco": ST2160_REG_COMANDOS_CLIENTE,
+                "valores": [0],
+                "bit": "none",
+                "descricao": "Retorno ao Modo Automatico (ATS: parte e assume carga quando rede falhar)"
+            })
         elif action in ("ack", "reset"):
             registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_ACK_ALARMES, "Reconhecimento Alarmes"))
         else:
