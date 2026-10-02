@@ -175,11 +175,39 @@ def _enviar_stemac(ip, slave_id, action):
         client.close()
 
 
+# DSE 7420 e ST2160 aceitam apenas 1 conexao Modbus simultanea. Quando o
+# WinCC OA (SCADA da Trensurb) ja ocupa o slot, o controlador aceita o TCP
+# mas fecha a conexao assim que o comando chega -- pymodbus lança
+# ModbusException com "Connection unexpectedly closed 0.000 seconds".
+# Mesmo retry ja usado em coletor_modbus_trensurb.py (ler_gerador) para o
+# slot de leitura; aqui cobre o slot de escrita (comando), que fica preso
+# por mais tempo (login + pulsos) e por isso colide com o SCADA com mais
+# frequencia.
+_SLOT_OCUPADO = "Connection unexpectedly closed"
+_MAX_TENTATIVAS = 3
+_RETRY_DELAYS = (2, 3)  # espera em segundos antes da 2a e 3a tentativas
+
+
 def enviar_comando_gerador(ip, slave_id, action, tipo="dse"):
     """Executa o comando e devolve a lista de registros Modbus escritos."""
     if tipo == "dse":
-        return _enviar_dse(ip, slave_id, action) or []
+        executar = _enviar_dse
     elif tipo == "stemac":
-        return _enviar_stemac(ip, slave_id, action) or []
+        executar = _enviar_stemac
     else:
         raise ComandoError(f"Tipo de controlador '{tipo}' desconhecido.")
+
+    for tentativa in range(_MAX_TENTATIVAS):
+        try:
+            return executar(ip, slave_id, action) or []
+        except ComandoError as e:
+            ultima_tentativa = tentativa == _MAX_TENTATIVAS - 1
+            if _SLOT_OCUPADO not in str(e) or ultima_tentativa:
+                raise
+            delay = _RETRY_DELAYS[tentativa]
+            log.warning(
+                f"{tipo.upper()} {ip}: slot Modbus ocupado pelo SCADA "
+                f"(tentativa {tentativa + 1}/{_MAX_TENTATIVAS}) - "
+                f"aguardando {delay}s para retentar"
+            )
+            time.sleep(delay)
