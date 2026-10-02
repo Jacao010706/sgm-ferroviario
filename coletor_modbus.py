@@ -1,6 +1,6 @@
 """
 Coletor Modbus TCP - Geradores DSE7420 MKII - Trensurb
-Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário.
+LÃª dados dos 25 geradores via Modbus TCP e envia para a API do SGM FerroviÃ¡rio.
 Executa a cada 15 segundos.
 """
 
@@ -39,7 +39,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 # =============================================================================
-# CONFIGURAÇÃO
+# CONFIGURAÃ‡ÃƒO
 # =============================================================================
 API_BASE = "https://laudable-peace-production-09cd.up.railway.app/api/v1"
 API_EMAIL = "admin2@sgm.com"
@@ -179,12 +179,12 @@ STEMAC_ALARMS = {
 }
 
 # =============================================================================
-# CACHE DE ALERTAS ATIVOS — consultado na API a cada ciclo
+# CACHE DE ALERTAS ATIVOS â€” consultado na API a cada ciclo
 # Evita duplicar alertas para o mesmo problema
 # =============================================================================
 _alertas_ativos_cache: set = set()  # titulos de alertas ativos na API
 _cache_ultima_atualizacao: float = 0.0
-CACHE_TTL = 60  # segundos entre atualizações do cache
+CACHE_TTL = 60  # segundos entre atualizaÃ§Ãµes do cache
 
 
 def atualizar_cache_alertas(token: str) -> None:
@@ -207,17 +207,17 @@ def atualizar_cache_alertas(token: str) -> None:
 
 
 def alerta_ja_existe(titulo: str) -> bool:
-    """Verifica se já existe um alerta ativo com este título no cache."""
+    """Verifica se jÃ¡ existe um alerta ativo com este tÃ­tulo no cache."""
     return titulo in _alertas_ativos_cache
 
 
 def registrar_alerta_no_cache(titulo: str) -> None:
-    """Adiciona um título ao cache após criação."""
+    """Adiciona um tÃ­tulo ao cache apÃ³s criaÃ§Ã£o."""
     _alertas_ativos_cache.add(titulo)
 
 
 # =============================================================================
-# AUTENTICAÇÃO
+# AUTENTICAÃ‡ÃƒO
 # =============================================================================
 def obter_token():
     try:
@@ -460,15 +460,15 @@ def enviar_leitura(asset_id, dados, token):
 
 
 # =============================================================================
-# ALERTAS — com deduplicação via cache da API
+# ALERTAS â€” com deduplicaÃ§Ã£o via cache da API
 # =============================================================================
-# Controle de combustível: quando normaliza, remove do cache para permitir
+# Controle de combustÃ­vel: quando normaliza, remove do cache para permitir
 # novo alerta se voltar a cair
 _combustivel_normalizado: set = set()
 
 
 def criar_alerta(asset_id, titulo, descricao, severity, metric_name, metric_value, threshold, token):
-    """Cria um alerta na API apenas se não existir um ativo com o mesmo título."""
+    """Cria um alerta na API apenas se nÃ£o existir um ativo com o mesmo tÃ­tulo."""
     if alerta_ja_existe(titulo):
         return
     headers = {"Authorization": f"Bearer {token}"}
@@ -494,7 +494,7 @@ def criar_alerta(asset_id, titulo, descricao, severity, metric_name, metric_valu
 
 
 def verificar_combustivel(asset_id, tag, nivel, token):
-    """Cria alerta de combustível baixo se necessário, uma única vez."""
+    """Cria alerta de combustÃ­vel baixo se necessÃ¡rio, uma Ãºnica vez."""
     titulo = f"Combustivel baixo - {tag}"
     if nivel > 0 and nivel < 50:
         criar_alerta(
@@ -505,7 +505,7 @@ def verificar_combustivel(asset_id, tag, nivel, token):
         )
         _combustivel_normalizado.discard(asset_id)
     elif nivel >= 50 and asset_id not in _combustivel_normalizado:
-        # Combustível normalizado — remove do cache para permitir novo alerta no futuro
+        # CombustÃ­vel normalizado â€” remove do cache para permitir novo alerta no futuro
         _alertas_ativos_cache.discard(titulo)
         _combustivel_normalizado.add(asset_id)
 
@@ -524,7 +524,7 @@ def resolver_alerta(titulo, token):
         log.error(f"Erro ao resolver alerta: {e}")
 
 def ler_alarmes_stemac(ip, tag, token, asset_id):
-    """Lê alarmes do STEMAC ST2160 e cria alertas sem duplicar."""
+    """LÃª alarmes do STEMAC ST2160 e cria alertas sem duplicar."""
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
     try:
         if not client.connect():
@@ -758,8 +758,12 @@ def registrar_url(token, api_base, quieto=True):
 def iniciar_tunnel_e_registrar(token, api_base):
     try:
         _matar_tunel_anterior()
+        # Caminho absoluto: Popen com nome relativo nao busca no cwd em todo
+        # ambiente Windows/Python, e falhava com WinError 2 quando o coletor
+        # era iniciado por um atalho ou shell com cwd diferente de _DIR.
+        _cloudflared = os.path.join(_DIR, "cloudflared.exe")
         proc = _subprocess.Popen(
-            ["cloudflared.exe", "tunnel", "--url", "http://localhost:8888"],
+            [_cloudflared, "tunnel", "--url", "http://localhost:8888"],
             stdout=_subprocess.PIPE, stderr=_subprocess.PIPE
         )
         try:
