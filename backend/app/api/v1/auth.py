@@ -7,6 +7,11 @@ from app.core.database import get_db
 from app.core.security import verify_password, create_access_token, create_refresh_token, hash_password, decode_token
 from app.models.user import User, UserRole
 from app.api.deps import get_current_user
+from fastapi.security import OAuth2PasswordBearer
+
+# Token opcional: /register aceita chamada sem login apenas para criar o
+# primeiro usuario do sistema. Depois disso exige administrador.
+_token_opcional = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -70,15 +75,39 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/register", status_code=201)
-async def register(body: UserCreate, db: AsyncSession = Depends(get_db)):
-    """Cria usuário. Primeiro usuário torna-se admin automaticamente."""
+async def register(
+    body: UserCreate,
+    db: AsyncSession = Depends(get_db),
+    token: str | None = Depends(_token_opcional),
+):
+    """
+    Cria usuario.
+
+    Sem usuarios no banco, cria o primeiro como administrador sem pedir login
+    -- e o unico jeito de inicializar o sistema. A partir dai so um
+    administrador autenticado cria contas.
+
+    Ate 21/09/2026 a rota era aberta e usava o cargo enviado pelo proprio
+    visitante (role=body.role). Qualquer pessoa na internet criava uma conta
+    ADMIN para si e, com ela, acionava geradores pelo painel do CCO.
+    """
     try:
+        count_result = await db.execute(select(User))
+        is_first = count_result.first() is None
+
+        if not is_first:
+            payload = decode_token(token) if token else None
+            if not payload or payload.get("type") == "refresh" or not payload.get("sub"):
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                                    detail="Apenas administradores podem criar usuarios.")
+            quem = (await db.execute(select(User).where(User.id == payload["sub"]))).scalar_one_or_none()
+            if not quem or not quem.is_active or quem.role != UserRole.ADMIN:
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                                    detail="Apenas administradores podem criar usuarios.")
+
         existing = await db.execute(select(User).where(User.email == body.email))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email já cadastrado")
-        # Primeiro usuário vira admin automaticamente
-        count_result = await db.execute(select(User))
-        is_first = count_result.first() is None
         user = User(
             name=body.name,
             email=body.email,

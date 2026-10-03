@@ -1,4 +1,4 @@
-﻿"""
+"""
 Coletor Modbus TCP - Geradores DSE7420 MKII - Trensurb
 Lê dados dos 25 geradores via Modbus TCP e envia para a API do SGM Ferroviário.
 Executa a cada 15 segundos.
@@ -91,7 +91,7 @@ GERADORES = {
     "GMG-ANCHIETA":     ("10.80.0.6",  6,  "ead6e2bf-5718-4245-b45e-9e4686541163"),
     "GMG-NITEROI":      ("10.80.0.7",  7,  "9701e9d5-2965-4558-9971-622453941e9f"),
     "GMG-FATIMA":       ("10.80.0.8",  8,  "0630a8c5-d9d2-44b5-b3ef-51cd9f6bec4d"),
-    "GMG-CANOAS":       ("10.80.0.9",  9,  "ba830f68-2f8d-4f9c-96be-2d305e69d924"),
+    "GMG-CANOAS":       ("10.80.0.26", 11,  "ba830f68-2f8d-4f9c-96be-2d305e69d924"),
     "GMG-MATHIASVELHO": ("10.80.0.10", 10, "462ad264-edab-46fa-ae6a-d9556a02281e"),
     "GMG-SAOLUIS":      ("10.80.0.11", 11, "f29b82f4-ad67-4306-a936-d2a0969d1761"),
     "GMG-PETROBRAS":    ("10.80.0.12", 12, "1a5ecc9e-29db-489f-a06d-5e300522238f"),
@@ -818,8 +818,12 @@ def registrar_url(token, api_base, quieto=True):
 def iniciar_tunnel_e_registrar(token, api_base):
     try:
         _matar_tunel_anterior()
+        # Caminho absoluto: Popen com nome relativo nao busca no cwd em todo
+        # ambiente Windows/Python, e falhava com WinError 2 quando o coletor
+        # era iniciado por um atalho ou shell com cwd diferente de _DIR.
+        _cloudflared = os.path.join(_DIR, "cloudflared.exe")
         proc = _subprocess.Popen(
-            ["cloudflared.exe", "tunnel", "--url", "http://localhost:8888"],
+            [_cloudflared, "tunnel", "--url", "http://localhost:8888"],
             stdout=_subprocess.PIPE, stderr=_subprocess.PIPE
         )
         try:
