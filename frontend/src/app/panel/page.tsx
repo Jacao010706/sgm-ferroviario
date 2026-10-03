@@ -334,6 +334,9 @@ export default function PanelPage() {
     try {
       await api.post(`/generators/${assetId}/command`, { action });
       setCmdMsg({ text: `Comando "${action}" enviado com sucesso!`, ok: true });
+      // O coletor le o gerador em +5/+15/+30/+60s depois do comando;
+      // recarrega logo em seguida para o CCO mostrar o resultado sem esperar o poll.
+      [8000, 18000, 33000, 63000].forEach(ms => setTimeout(() => loadAllRef.current?.(), ms));
     } catch (e: any) {
       const d = e?.response?.data;
       if (d?.precisa_operador) {
@@ -440,10 +443,13 @@ export default function PanelPage() {
   // A busca so pode acontecer depois do login: o proxy exige o cookie de
   // sessao do CCO. Antes isso rodava na montagem, tomava 401, e a tela
   // ficava vazia ate o proximo ciclo de 60s.
+  // enviarComando e declarado antes de loadAll; a ref evita depender da ordem.
+  const loadAllRef = useRef<(() => void) | null>(null);
+  useEffect(() => { loadAllRef.current = loadAll; }, [loadAll]);
   useEffect(() => { if (auth) loadAll(); }, [auth, loadAll]);
   useEffect(() => {
     if (!auth) return;
-    const i = setInterval(loadAll, 60000);
+    const i = setInterval(loadAll, 20000);
     return () => clearInterval(i);
   }, [auth, loadAll]);
 

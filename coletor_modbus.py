@@ -610,6 +610,34 @@ def ciclo_coleta(token):
 # =============================================================================
 COMANDO_SECRET = "sgm-trensurb-2026"
 
+# Leitura imediata depois de um comando: o CCO mostra o resultado em
+# segundos, sem esperar o ciclo completo dos 25 geradores.
+_token_atual = None
+
+
+def _leitura_pos_comando(tag, ip, slave_id, asset_id):
+    inicio = time.time()
+    for alvo in (5, 15, 30, 60):
+        espera = inicio + alvo - time.time()
+        if espera > 0:
+            time.sleep(espera)
+        tk = _token_atual
+        if not tk:
+            return
+        try:
+            dados = ler_gerador(ip, slave_id, tag)
+            if dados and dados != "no_comm":
+                enviar_leitura(asset_id, dados, tk)
+                log.info(f"{tag}: leitura pos-comando enviada (+{alvo}s)")
+        except Exception as e:
+            log.warning(f"{tag}: leitura pos-comando falhou: {e}")
+
+
+def _agendar_leitura_pos_comando(tag, ip, slave_id, asset_id):
+    threading.Thread(target=_leitura_pos_comando,
+                     args=(tag, ip, slave_id, asset_id), daemon=True).start()
+
+
 class CommandHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         log.info(f"HTTP {args}")
@@ -645,6 +673,7 @@ class CommandHandler(BaseHTTPRequestHandler):
             from modbus_command import enviar_comando_gerador
             _registros = enviar_comando_gerador(ip, slave_id, action, tipo)
             log.info(f"Comando '{action}' executado para {tag} ({ip}) tipo={tipo}")
+            _agendar_leitura_pos_comando(tag, ip, slave_id, asset_id)
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
@@ -817,6 +846,7 @@ def main():
     while True:
         if token is None or token_ciclos >= 100:
             token = obter_token()
+            globals()["_token_atual"] = token
             token_ciclos = 0
             if _tunnel_proc is None and token:
                 _tunnel_proc = iniciar_tunnel_e_registrar(token, API_BASE)
