@@ -11,6 +11,8 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 import json as _json
 import requests
 import logging
+import sys as _sys
+import traceback as _traceback
 from logging.handlers import RotatingFileHandler
 from pymodbus.client import ModbusTcpClient
 from pymodbus.exceptions import ModbusException
@@ -24,7 +26,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.StreamHandler(),
+        *([logging.StreamHandler()] if (_sys.stderr is not None and _sys.stderr.isatty()) else []),
         # Rotaciona a cada 10 MB, guardando 5 arquivos anteriores (~60 MB,
         # uns 4 dias de historico). Sem rotacao o arquivo cresce para sempre:
         # sao ~25 linhas a cada 15 segundos, mais de 10 MB por dia.
@@ -37,6 +39,23 @@ logging.basicConfig(
     ],
 )
 log = logging.getLogger(__name__)
+
+
+def _registrar_erro_fatal(tipo, valor, tb, onde="processo"):
+    texto = "".join(_traceback.format_exception(tipo, valor, tb))
+    try:
+        log.critical(f"ERRO FATAL ({onde}) - o coletor vai encerrar:\n{texto}")
+    except Exception:
+        pass
+    try:
+        _sys.__stderr__ and _sys.__stderr__.write(texto)
+    except Exception:
+        pass
+
+
+_sys.excepthook = _registrar_erro_fatal
+threading.excepthook = lambda a: _registrar_erro_fatal(
+    a.exc_type, a.exc_value, a.exc_traceback, f"thread {getattr(a.thread, 'name', '?')}")
 
 # =============================================================================
 # CONFIGURAÇÃO
@@ -854,10 +873,16 @@ def main():
                 log.error("Sem token - aguardando 30s para tentar novamente")
                 time.sleep(30)
                 continue
-        ciclo_coleta(token)
+        try:
+            ciclo_coleta(token)
+        except Exception:
+            log.exception("Erro inesperado no ciclo de coleta - seguindo para o proximo ciclo")
         # Refaz o registro da URL. Ver registrar_url: do outro lado o valor vive
         # na memoria do processo e some a cada publicacao.
-        registrar_url(token, API_BASE)
+        try:
+            registrar_url(token, API_BASE)
+        except Exception:
+            log.exception("Erro ao registrar URL do tunel")
         token_ciclos += 1
         log.info(f"Aguardando {INTERVALO_SEGUNDOS}s ate proximo ciclo...")
         time.sleep(INTERVALO_SEGUNDOS)
