@@ -45,6 +45,23 @@ ST2160_ID_VERIFICADOR = 0
 ST2160_SENHA_NIVEL_5  = 4567
 
 
+# Estado interno do Modo Remoto por IP.
+# O bit 4 (MODO_REMOTO) e um toggle no ST2160: cada pulso inverte o estado.
+# Rastrear o estado evita acionar o toggle desnecessariamente e o bug de
+# dupla inversao que impedia a partida/parada real dos geradores.
+_stemac_modo_remoto: dict = {}  # ip -> bool (True = em Modo Remoto)
+
+
+def _st2160_em_remoto(ip: str) -> bool:
+    """Retorna True se o gerador no IP dado esta atualmente em Modo Remoto."""
+    return _stemac_modo_remoto.get(ip, False)
+
+
+def _st2160_set_remoto(ip: str, valor: bool) -> None:
+    """Atualiza o estado Modo Remoto para o IP dado."""
+    _stemac_modo_remoto[ip] = valor
+
+
 class ComandoError(Exception):
     pass
 
@@ -117,44 +134,82 @@ def _st2160_pulso_bit(client, ip, bit, descricao):
 
 
 def _enviar_stemac(ip, slave_id, action):
+    """Executa um comando no STEMAC ST2160.
+
+    O bit 4 (MODO_REMOTO) e um toggle de hardware: cada pulso inverte o estado
+    interno do ST2160. A versao anterior pulsava o bit duas vezes no 'start'
+    (uma vez sozinho, uma vez junto com o bit 2), cancelando a propria entrada
+    em Modo Remoto. Agora rastreamos o estado por IP e so pulsamos o toggle
+    quando uma mudanca de estado e necessaria.
+    """
     client = ModbusTcpClient(ip, port=MODBUS_PORT, timeout=MODBUS_TIMEOUT)
     registros = []
     try:
         if not client.connect():
             raise ComandoError(f"Sem conexao Modbus com {ip}")
         _st2160_login(client, ip)
+
         if action == "start":
-            # Passo 1: acionar modo remoto (bit 4 = 0x0010)
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto"))
-            time.sleep(1.0)
-            # Passo 2: PARTIDA + MODO_REMOTO juntos no mesmo write.
-            # Escrever so o bit 2 zeraria o bit 4 implicitamente, fazendo o ST2160
-            # interpretar como "retirada do Modo Remoto" e retornar para Automatico
-            # antes de processar a partida. (Manual MAN_670.060.0140 pag.85 e 88)
-            valor_start = (1 << ST2160_BIT_MODO_REMOTO) | (1 << ST2160_BIT_PARTIDA)  # 0x0014
+            # Passo 1: entrar em Modo Remoto APENAS se ainda nao estiver nele.
+            # Pulsalr o toggle quando ja em Remoto faria SAIR do Remoto -- bug original.
+            if not _st2160_em_remoto(ip):
+                registros.append(_st2160_pulso_bit(
+                    client, ip, ST2160_BIT_MODO_REMOTO, "Entrada Modo Remoto"))
+                _st2160_set_remoto(ip, True)
+                time.sleep(1.0)
+            else:
+                log.info(f"ST2160 {ip}: ja em Modo Remoto — toggle de entrada omitido")
+            # Passo 2: PARTIDA (bit 2 somente — nao toca o toggle do bit 4)
             result = client.write_registers(
-                address=ST2160_REG_COMANDOS_CLIENTE, values=[valor_start]
-            )
+                address=ST2160_REG_COMANDOS_CLIENTE, values=[1 << ST2160_BIT_PARTIDA])
             if result.isError():
-                raise ComandoError(f"ST2160 {ip}: recusou Partida+ModoRemoto: {result}")
-            log.info(f"ST2160 {ip}: PARTIDA+MODO_REMOTO OK (valor=0x{valor_start:04X})")
+                raise ComandoError(f"ST2160 {ip}: recusou Partida: {result}")
+            log.info(f"ST2160 {ip}: PARTIDA OK (0x{1 << ST2160_BIT_PARTIDA:04X})")
             time.sleep(0.5)
             registros.append({
                 "endereco": ST2160_REG_COMANDOS_CLIENTE,
-                "valores": [valor_start],
-                "bit": "2+4",
-                "descricao": "Partida do GMG (com Modo Remoto mantido)"
+                "valores": [1 << ST2160_BIT_PARTIDA],
+                "bit": ST2160_BIT_PARTIDA,
+                "descricao": "Partida do GMG"
             })
+
         elif action == "stop":
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_PARADA_REMOTA, "Parada Remota"))
+            # Parada Remota (bit 12) — funciona em qualquer modo
+            registros.append(_st2160_pulso_bit(
+                client, ip, ST2160_BIT_PARADA_REMOTA, "Parada Remota"))
+            time.sleep(1.0)
+            # Voltar para Auto APENAS se estava em Modo Remoto
+            if _st2160_em_remoto(ip):
+                registros.append(_st2160_pulso_bit(
+                    client, ip, ST2160_BIT_MODO_REMOTO, "Saida Modo Remoto (volta para Auto)"))
+                _st2160_set_remoto(ip, False)
+            else:
+                log.info(f"ST2160 {ip}: ja em Auto — toggle de saida omitido")
+
         elif action == "manual":
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_MODO_REMOTO, "Chamada Modo Remoto"))
+            # Entrar em Modo Remoto APENAS se ainda nao estiver nele
+            if not _st2160_em_remoto(ip):
+                registros.append(_st2160_pulso_bit(
+                    client, ip, ST2160_BIT_MODO_REMOTO, "Entrada Modo Remoto"))
+                _st2160_set_remoto(ip, True)
+            else:
+                log.info(f"ST2160 {ip}: ja em Modo Remoto — nenhuma acao necessaria")
+
         elif action == "auto":
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_AUTO_CARGA, "GMG AUTO Assumindo Carga"))
+            # Sair do Modo Remoto APENAS se estiver nele
+            if _st2160_em_remoto(ip):
+                registros.append(_st2160_pulso_bit(
+                    client, ip, ST2160_BIT_MODO_REMOTO, "Saida Modo Remoto (volta para Auto)"))
+                _st2160_set_remoto(ip, False)
+            else:
+                log.info(f"ST2160 {ip}: ja em Auto — nenhuma acao necessaria")
+
         elif action in ("ack", "reset"):
-            registros.append(_st2160_pulso_bit(client, ip, ST2160_BIT_ACK_ALARMES, "Reconhecimento Alarmes"))
+            registros.append(_st2160_pulso_bit(
+                client, ip, ST2160_BIT_ACK_ALARMES, "Reconhecimento Alarmes"))
         else:
             raise ComandoError(f"Acao '{action}' nao reconhecida para ST2160.")
+
         return registros
     except ModbusException as e:
         raise ComandoError(f"Modbus error em {ip}: {e}") from e
