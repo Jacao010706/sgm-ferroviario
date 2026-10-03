@@ -312,7 +312,7 @@ def ler_gerador(ip, slave_id, tag):
 
         f1 = 1.0 if is_stemac else 0.1
         fv = 1.0 if is_stemac else 0.1
-        ff = 0.1 if is_stemac else 0.1
+        ff = 0.01 if is_stemac else 0.1   # STEMAC: frequencia em 0,01 Hz (6002 = 60,02 Hz)
         fq = 0.01 if is_stemac else 0.1
 
         rpm = r(1030) if not is_stemac else (r(62) if ((r(10) & 0x0100) and not (r(21) & 0x0080)) else 0)
