@@ -119,12 +119,7 @@ def _st2160_login(client, ip):
         if id_invalido: partes.append("ID invalido")
         if senha_invalida: partes.append("Senha invalida")
         raise ComandoError(f"ST2160 {ip}: login recusado - {', '.join(partes)} (3x1000=0x{palavra:04X})")
-    # Sincronizar estado Modo Remoto com o hardware.
-    # O bit 4 de 3x1000 reflete se o equipamento esta atualmente em Modo Remoto.
-    # Isso corrige o bug de estado desconhecido apos restart do coletor.
-    em_remoto_hw = bool(palavra & (1 << ST2160_BIT_MODO_REMOTO))
-    _st2160_set_remoto(ip, em_remoto_hw)
-    log.info(f"ST2160 {ip}: login OK (3x1000=0x{palavra:04X}, Modo={'REMOTO' if em_remoto_hw else 'AUTO/LOCAL'}")
+    log.info(f"ST2160 {ip}: login OK (3x1000=0x{palavra:04X})")
 
 
 def _st2160_pulso_bit(client, ip, bit, descricao):
