@@ -1,14 +1,24 @@
-# 🔴 SGM Ferroviário
+# 🔴 sgm-ferroviario — CEREBRO CLAUDE
 
-## Cérebro Central
-Este projeto faz parte do ecossistema CEREBRO CLAUDE.
-Antes de criar qualquer componente, verifique se já existe algo aprovado nos outros projetos.
+## Autonomia
+Claude Code pode executar livremente:
+- Leitura de arquivos e análise de código
+- git status, git diff, git log
+- Rodar testes e builds
+- Buscar padrões e dependências
+
+Claude Code DEVE pedir permissão de Jacques antes de:
+- Editar ou criar qualquer arquivo do projeto
+- git commit ou git push
+- Instalar ou remover pacotes
+- Iniciar ou parar serviços
+- Qualquer ação que modifique o projeto
 
 ## Projetos conectados
-- 🟠 sgm-geradores-trensurb — mesma infraestrutura railway
-- 🟡 sgm-geradores — mesma lógica de geradores
+- 🟠 sgm-geradores-trensurb
+- 🟡 sgm-geradores
 
-## Regras
-1. Ao criar algo reutilizável, documente no Obsidian em CEREBRO CLAUDE/projetos/sgm-ferroviario.md
-2. Só compartilhe código com outros projetos com aprovação de Jacques
-3. Sempre verifique padrões existentes antes de criar do zero
+## Regras do ecossistema
+1. Antes de criar algo, verifique se já existe nos outros projetos
+2. Código reutilizável entre projetos exige aprovação de Jacques
+3. Documente descobertas em CEREBRO CLAUDE/projetos/sgm-ferroviario.md no Obsidian
